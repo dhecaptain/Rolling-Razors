@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    background-color: #073B32;
+    color: #17201E;
+  }
+}
+
+.font-signature {
+  font-family: 'Caveat', cursive, sans-serif;
+}
+
+.font-display {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0B4035;
+}
+::-webkit-scrollbar-thumb {
+  background: #235F53;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #D6A62E;
+}
+
+/* Kenyan Pattern / Workshop subtle textures */
+.bg-leather-texture {
+  background-image: radial-gradient(#D6A62E 0.75px, transparent 0.75px), radial-gradient(#D6A62E 0.75px, #073B32 0.75px);
+  background-size: 30px 30px;
+  background-position: 0 0, 15px 15px;
+  background-opacity: 0.05;
+}
+
+.bg-craft-grain {
+  background-color: #F5F1E8;
+  background-image: radial-gradient(#17201E 0.4px, transparent 0.4px);
+  background-size: 16px 16px;
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.02); }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s ease-in-out infinite;
+}
