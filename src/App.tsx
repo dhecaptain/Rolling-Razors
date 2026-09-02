@@ -17,9 +17,10 @@ import { AuthView } from './components/auth/AuthView';
 import { WhatsAppFloat } from './components/common/WhatsAppFloat';
 import { MpesaModal } from './components/common/MpesaModal';
 import { ToastContainer } from './components/common/ToastContainer';
+import { LegalModal } from './components/common/LegalModal';
 
 const MainContent: React.FC = () => {
-  const { view } = useApp();
+  const { view, legalModal, closeLegalModal, setLegalModalType } = useApp();
 
   return (
     <div className="min-h-screen bg-[#073B32] text-[#F5F1E8] flex flex-col font-sans selection:bg-[#D6A62E] selection:text-[#073B32]">
@@ -52,6 +53,12 @@ const MainContent: React.FC = () => {
       <WhatsAppFloat />
       <MpesaModal />
       <ToastContainer />
+      <LegalModal
+        isOpen={legalModal.isOpen}
+        type={legalModal.type}
+        onClose={closeLegalModal}
+        onSwitchType={setLegalModalType}
+      />
     </div>
   );
 };

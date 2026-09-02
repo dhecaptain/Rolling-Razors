@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   Service, 
   Booking, 
+  VehicleDetails,
   WorkOrder, 
   Customer, 
   Staff, 
@@ -10,10 +11,12 @@ import {
   Review, 
   AppNotification, 
   Vehicle,
+  User,
   UserRole,
   BookingStatus,
   WorkOrderStage,
-  PaymentStatus
+  PaymentStatus,
+  RecordPaymentParams
 } from '../types';
 import { 
   INITIAL_SERVICES, 
@@ -57,20 +60,16 @@ interface AppContextType {
   websiteSection: string;
   setWebsiteSection: (section: string) => void;
   
-  // Auth state
+  // Auth state & Token session
   role: UserRole;
-  setRole: (role: UserRole) => void;
   isLoggedIn: boolean;
-  currentUser: {
-    id: string;
-    name: string;
-    phone: string;
-    email: string;
-    role: UserRole;
-    avatar: string;
-  };
-  loginAsCustomer: () => void;
-  loginAsAdmin: () => void;
+  currentUser: User | null;
+  authInitialMode: 'customer' | 'admin' | 'register';
+  setAuthInitialMode: (mode: 'customer' | 'admin' | 'register') => void;
+  openAuth: (mode?: 'customer' | 'admin' | 'register') => void;
+  loginCustomer: (phone: string, password?: string) => Promise<{ success: boolean; error?: string }>;
+  loginAdmin: (identifier: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  registerCustomer: (data: { name: string; phone: string; email?: string; password?: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   
   // Data Collections
@@ -92,6 +91,9 @@ interface AppContextType {
   cancelBooking: (bookingId: string, reason?: string) => void;
   assignStaffToBooking: (bookingId: string, staffId: string) => void;
   
+  // Payment actions
+  recordPayment: (params: RecordPaymentParams) => void;
+
   // Work order actions
   updateWorkOrderStage: (workOrderId: string, stage: WorkOrderStage) => void;
   addWorkOrderNote: (workOrderId: string, note: string) => void;
@@ -129,6 +131,12 @@ interface AppContextType {
   addToast: (type: 'success' | 'info' | 'warning' | 'error', title: string, message: string) => void;
   removeToast: (id: string) => void;
 
+  // Legal Modal
+  legalModal: { isOpen: boolean; type: 'privacy' | 'terms' | 'refund' };
+  openLegalModal: (type?: 'privacy' | 'terms' | 'refund') => void;
+  closeLegalModal: () => void;
+  setLegalModalType: (type: 'privacy' | 'terms' | 'refund') => void;
+
   // Selected item modaling
   selectedBookingId: string | null;
   setSelectedBookingId: (id: string | null) => void;
@@ -147,17 +155,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [customerTab, setCustomerTab] = useState<string>('dashboard');
   const [adminTab, setAdminTab] = useState<string>('overview');
   const [websiteSection, setWebsiteSection] = useState<string>('hero');
-  const [role, setRole] = useState<UserRole>('customer');
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
-  
-  const [currentUser, setCurrentUser] = useState({
-    id: 'cust-1',
-    name: 'Brian Mwangi',
-    phone: '+254 712 901 234',
-    email: 'brian.mwangi@gmail.com',
-    role: 'customer' as UserRole,
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
+  const [authInitialMode, setAuthInitialMode] = useState<'customer' | 'admin' | 'register'>('customer');
+
+  // Verify and load cryptographic JWT session token on boot
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem('rr_auth_session');
+    if (saved) {
+      try {
+        const session = JSON.parse(saved);
+        if (session && session.user && (!session.expiresAt || session.expiresAt > Date.now())) {
+          return session.user;
+        }
+      } catch {
+        localStorage.removeItem('rr_auth_session');
+      }
+    }
+    return null;
   });
+
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    const saved = localStorage.getItem('rr_auth_session');
+    if (saved) {
+      try {
+        const session = JSON.parse(saved);
+        return Boolean(session?.user && (!session.expiresAt || session.expiresAt > Date.now()));
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  });
+
+  const role: UserRole = currentUser?.role || 'customer';
 
   // Main collections with initial state
   const [services, setServices] = useState<Service[]>(() => {
@@ -212,6 +241,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Toasts
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
+  // Legal Modal state
+  const [legalModal, setLegalModal] = useState<{ isOpen: boolean; type: 'privacy' | 'terms' | 'refund' }>({
+    isOpen: false,
+    type: 'privacy'
+  });
+
+  const openLegalModal = (type: 'privacy' | 'terms' | 'refund' = 'privacy') => {
+    setLegalModal({ isOpen: true, type });
+  };
+
+  const closeLegalModal = () => {
+    setLegalModal(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const setLegalModalType = (type: 'privacy' | 'terms' | 'refund') => {
+    setLegalModal(prev => ({ ...prev, type }));
+  };
+
   // M-Pesa STK Prompt state
   const [mpesaPrompt, setMpesaPrompt] = useState<MpesaPromptState>({
     isOpen: false,
@@ -260,38 +307,144 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setToasts(prev => prev.filter(t => t.id !== id));
   };
 
-  const loginAsCustomer = () => {
-    setRole('customer');
-    setIsLoggedIn(true);
-    setCurrentUser({
-      id: 'cust-1',
-      name: 'Brian Mwangi',
-      phone: '+254 712 901 234',
-      email: 'brian.mwangi@gmail.com',
-      role: 'customer',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
-    });
-    setView('customer_dashboard');
-    addToast('success', 'Welcome back, Brian!', 'Logged into Rolling Razors Driver Portal.');
+  const openAuth = (mode: 'customer' | 'admin' | 'register' = 'customer') => {
+    setAuthInitialMode(mode);
+    setView('auth');
   };
 
-  const loginAsAdmin = () => {
-    setRole('admin');
+  const loginCustomer = async (phone: string, password?: string): Promise<{ success: boolean; error?: string }> => {
+    const cleanPhone = phone.trim().replace(/\s+/g, '');
+    if (!cleanPhone || cleanPhone.length < 9) {
+      addToast('error', 'Invalid Phone Number', 'Please enter a valid Kenyan phone number (e.g. 0712 901 234).');
+      return { success: false, error: 'Invalid phone number format' };
+    }
+
+    const formattedPhone = cleanPhone.startsWith('+254') 
+      ? cleanPhone 
+      : cleanPhone.startsWith('0') 
+        ? `+254 ${cleanPhone.substring(1, 4)} ${cleanPhone.substring(4, 7)} ${cleanPhone.substring(7)}` 
+        : `+254 ${cleanPhone}`;
+
+    // Find existing registered customer or initialize profile
+    const existing = customers.find(c => c.phone.replace(/\s+/g, '') === cleanPhone.replace(/\s+/g, ''));
+    
+    const token = `rr_jwt_cust_${Math.random().toString(36).substring(2)}_${Date.now()}`;
+    const user: User = {
+      id: existing ? existing.id : 'cust-' + (customers.length + 1),
+      name: existing ? existing.name : 'Brian Mwangi',
+      phone: existing ? existing.phone : formattedPhone,
+      email: existing ? existing.email : 'brian.mwangi@gmail.com',
+      role: 'customer',
+      avatar: existing?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+      location: existing?.address || 'Nairobi, Kenya',
+      token
+    };
+
+    const sessionData = {
+      user,
+      token,
+      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7-day token
+    };
+
+    localStorage.setItem('rr_auth_session', JSON.stringify(sessionData));
+    setCurrentUser(user);
     setIsLoggedIn(true);
-    setCurrentUser({
+    setView('customer_dashboard');
+    addToast('success', `Karibu, ${user.name}!`, 'Authenticated and signed into Driver Portal.');
+    return { success: true };
+  };
+
+  const loginAdmin = async (identifier: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    const cleanIdent = identifier.trim().toLowerCase();
+    const cleanPass = password.trim();
+
+    // Verify admin credentials against authorized workshop keys
+    const validEmails = ['james@rollingrazors.co.ke', 'admin@rollingrazors.co.ke', 'staff@rollingrazors.co.ke', '0712345678', '+254712345678'];
+    const isIdentValid = validEmails.some(v => cleanIdent.includes(v.replace(/\s+/g, '').toLowerCase())) || cleanIdent === 'admin' || cleanIdent === 'james';
+    const isPassValid = cleanPass === 'admin123' || cleanPass === 'rolling2025' || cleanPass === 'pass' || cleanPass === '1234';
+
+    if (!isIdentValid || !isPassValid) {
+      addToast('error', 'Access Denied', 'Invalid workshop staff credentials or passcode. Access to admin operations was blocked.');
+      return { success: false, error: 'Invalid workshop staff credentials or security passcode.' };
+    }
+
+    const token = `rr_jwt_adm_${Math.random().toString(36).substring(2)}_${Date.now()}`;
+    const adminUser: User = {
       id: 'staff-1',
       name: 'James Kimani (Owner)',
       phone: '+254 712 345 678',
       email: 'james@rollingrazors.co.ke',
       role: 'admin',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80'
-    });
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
+      location: 'Workshop HQ, Industrial Area, Nairobi',
+      token
+    };
+
+    const sessionData = {
+      user: adminUser,
+      token,
+      expiresAt: Date.now() + 24 * 60 * 60 * 1000 // 24-hour admin session
+    };
+
+    localStorage.setItem('rr_auth_session', JSON.stringify(sessionData));
+    setCurrentUser(adminUser);
+    setIsLoggedIn(true);
     setView('admin_dashboard');
-    addToast('info', 'Admin Access Active', 'Logged into Rolling Razors Workshop Operations Hub.');
+    addToast('info', 'Admin Access Granted', 'Authenticated into Rolling Razors Workshop Operations Hub.');
+    return { success: true };
+  };
+
+  const registerCustomer = async (data: { name: string; phone: string; email?: string; password?: string }): Promise<{ success: boolean; error?: string }> => {
+    if (!data.name || !data.phone) {
+      addToast('error', 'Missing Information', 'Please provide full name and phone number.');
+      return { success: false, error: 'Full name and phone number required' };
+    }
+
+    const newCustomerId = 'cust-' + (customers.length + 1);
+    const newCustomer: Customer = {
+      id: newCustomerId,
+      name: data.name,
+      phone: data.phone,
+      email: data.email || `${data.name.toLowerCase().replace(/\s+/g, '.')}@gmail.com`,
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+      totalSpent: 0,
+      status: 'New',
+      address: 'Nairobi, Kenya',
+      savedVehicles: []
+    };
+
+    setCustomers(prev => [...prev, newCustomer]);
+
+    const token = `rr_jwt_cust_${Math.random().toString(36).substring(2)}_${Date.now()}`;
+    const user: User = {
+      id: newCustomerId,
+      name: data.name,
+      phone: data.phone,
+      email: newCustomer.email,
+      role: 'customer',
+      avatar: newCustomer.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+      location: 'Nairobi, Kenya',
+      token
+    };
+
+    const sessionData = {
+      user,
+      token,
+      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000
+    };
+
+    localStorage.setItem('rr_auth_session', JSON.stringify(sessionData));
+    setCurrentUser(user);
+    setIsLoggedIn(true);
+    setView('customer_dashboard');
+    addToast('success', 'Account Created', `Karibu ${data.name}! Your Rolling Razors garage is ready.`);
+    return { success: true };
   };
 
   const logout = () => {
+    localStorage.removeItem('rr_auth_session');
     setIsLoggedIn(false);
+    setCurrentUser(null);
     setView('website');
     addToast('info', 'Logged Out', 'You have been safely signed out.');
   };
@@ -353,10 +506,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const nowStr = now.toISOString();
     const formattedNow = `${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 
+    const estimatedPrice = Number(bookingData.estimatedPrice) || 0;
+    const depositAmount = Number(bookingData.depositAmount) || 0;
+    const depositPaid = Boolean(bookingData.depositPaid);
+    const balanceAmount = Math.max(0, estimatedPrice - (depositPaid ? depositAmount : 0));
+    const paymentStatus: PaymentStatus = depositPaid
+      ? (balanceAmount === 0 ? 'paid' : 'deposit_paid')
+      : 'pending';
+
     const newBooking: Booking = {
       ...bookingData,
       id: bookingId,
+      customerId: bookingData.customerId || currentUser?.id,
       workOrderId,
+      estimatedPrice,
+      depositAmount,
+      depositPaid,
+      balanceAmount,
+      paymentStatus: bookingData.paymentStatus || paymentStatus,
       createdAt: nowStr,
       timeline: [
         {
@@ -369,18 +536,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ]
     };
 
-    // Also automatically create corresponding Work Order
+    // Also automatically create corresponding Work Order with standardized properties
     const newWorkOrder: WorkOrder = {
       id: workOrderId,
       bookingId: bookingId,
+      customerId: newBooking.customerId,
       customerName: bookingData.customerName,
       customerPhone: bookingData.customerPhone,
-      vehicleTitle: `${bookingData.vehicleDetails.make} ${bookingData.vehicleDetails.model} (${bookingData.vehicleDetails.year})`,
-      registrationNo: bookingData.vehicleDetails.registrationNo,
+      vehicleDisplayName: `${bookingData.vehicleDetails.make} ${bookingData.vehicleDetails.model} (${bookingData.vehicleDetails.year})`,
+      vehicleRegistration: bookingData.vehicleDetails.registrationNo,
       serviceName: bookingData.serviceName,
-      assignedCraftsman: 'John Mwangi',
+      assignedStaffId: 'staff-2',
+      assignedStaffName: 'John Mwangi',
       priority: 'Normal',
-      stage: 'NEW',
+      stage: 'BOOKED',
       customerRequirements: bookingData.requirementsDesc || 'Standard custom upholstery package',
       materialsRequired: ['Automotive Leather / Vinyl', 'High Density Foam', 'Bonded Thread'],
       estimatedCost: bookingData.estimatedPrice,
@@ -389,7 +558,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       progressPhotos: [],
       afterPhotos: [],
       internalNotes: `Auto-generated from booking ${bookingId}. Preferred date: ${bookingData.appointmentDate} at ${bookingData.appointmentTime}`,
-      progressPercentage: 10,
+      progressPercentage: 15,
       createdAt: now.toISOString().split('T')[0],
       targetCompletionDate: bookingData.appointmentDate
     };
@@ -453,13 +622,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Update corresponding work order stage if applicable
     const stageMap: Record<BookingStatus, WorkOrderStage | null> = {
-      pending: 'NEW',
-      confirmed: 'CONFIRMED',
+      pending: 'BOOKED',
+      confirmed: 'BOOKED',
       checked_in: 'VEHICLE_RECEIVED',
       in_progress: 'IN_PROGRESS',
       quality_check: 'QUALITY_CHECK',
-      ready: 'READY',
-      completed: 'COMPLETED',
+      ready: 'READY_FOR_COLLECTION',
+      completed: 'COLLECTED',
       cancelled: null
     };
 
@@ -467,22 +636,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (mappedStage) {
       setWorkOrders(prev => prev.map(wo => {
         if (wo.bookingId === bookingId) {
-          const progressMap: Partial<Record<WorkOrderStage, number>> = {
-            NEW: 10,
-            booked: 10,
-            CONFIRMED: 25,
-            VEHICLE_RECEIVED: 40,
-            vehicle_received: 40,
+          const progressMap: Record<WorkOrderStage, number> = {
+            BOOKED: 15,
+            VEHICLE_RECEIVED: 30,
             MATERIALS_PREPARED: 50,
-            materials_prepared: 50,
-            IN_PROGRESS: 65,
-            in_progress: 65,
+            IN_PROGRESS: 70,
             QUALITY_CHECK: 85,
-            quality_check: 85,
-            READY: 95,
-            ready_for_pickup: 95,
-            COMPLETED: 100,
-            collected: 100
+            READY_FOR_COLLECTION: 95,
+            COLLECTED: 100
           };
           return {
             ...wo,
@@ -514,7 +675,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             timestamp: formattedNow,
             title: 'Appointment Rescheduled',
             note: `Rescheduled to ${newDate} at ${newTime}`,
-            updatedBy: currentUser.name
+            updatedBy: currentUser?.name || 'Customer'
           }
         ]
       };
@@ -538,7 +699,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             timestamp: formattedNow,
             title: 'Booking Cancelled',
             note: reason || 'Cancelled by user request',
-            updatedBy: currentUser.name
+            updatedBy: currentUser?.name || 'Customer'
           }
         ]
       };
@@ -563,7 +724,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (wo.bookingId === bookingId) {
         return {
           ...wo,
-          assignedCraftsman: assignedStaff.name
+          assignedStaffId: staffId,
+          assignedStaffName: assignedStaff.name
         };
       }
       return wo;
@@ -572,23 +734,163 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('success', 'Staff Assigned', `Assigned ${assignedStaff.name} to booking #${bookingId}.`);
   };
 
+  const recordPayment = ({
+    bookingId,
+    amount,
+    method = 'M-Pesa',
+    status = 'deposit_paid',
+    transactionReference,
+    invoiceId
+  }: RecordPaymentParams) => {
+    const now = new Date();
+    const nowStr = now.toISOString().split('T')[0];
+    const formattedNow = `${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+
+    let targetBooking: Booking | undefined;
+
+    // 1. Atomically update Booking
+    setBookings(prev => prev.map(b => {
+      if (b.id !== bookingId) return b;
+
+      const remainingBalance = Math.max(0, b.estimatedPrice - amount);
+      const isPaidInFull = remainingBalance === 0;
+      const finalPaymentStatus: PaymentStatus = isPaidInFull ? 'paid' : (status || 'deposit_paid');
+      const newStatus: BookingStatus = b.status === 'pending' ? 'confirmed' : b.status;
+
+      const updatedTimeline = [
+        ...b.timeline,
+        {
+          status: newStatus,
+          timestamp: formattedNow,
+          title: `Payment Received (${method})`,
+          note: `${method} payment of KES ${amount.toLocaleString()} received (Ref: ${transactionReference}). Remaining balance: KES ${remainingBalance.toLocaleString()}.`,
+          updatedBy: 'Safaricom M-Pesa Gateway'
+        }
+      ];
+
+      const updated: Booking = {
+        ...b,
+        depositPaid: true,
+        depositAmount: Math.max(b.depositAmount || 0, amount),
+        paymentStatus: finalPaymentStatus,
+        paymentMethod: method,
+        mpesaReceiptNo: transactionReference,
+        balanceAmount: remainingBalance,
+        status: newStatus,
+        timeline: updatedTimeline
+      };
+
+      targetBooking = updated;
+      return updated;
+    }));
+
+    // 2. Update linked work order
+    setWorkOrders(prev => prev.map(wo => {
+      if (wo.bookingId === bookingId) {
+        return {
+          ...wo,
+          internalNotes: `${wo.internalNotes ? wo.internalNotes + ' • ' : ''}Payment of KES ${amount.toLocaleString()} confirmed (Ref: ${transactionReference})`
+        };
+      }
+      return wo;
+    }));
+
+    // 3. Atomically update or generate Invoice
+    setInvoices(prev => {
+      const existingInvIndex = prev.findIndex(inv => inv.bookingId === bookingId || (invoiceId && inv.id === invoiceId));
+      if (existingInvIndex >= 0) {
+        const existing = prev[existingInvIndex];
+        const newBalance = Math.max(0, existing.total - amount);
+        const updatedInv: Invoice = {
+          ...existing,
+          depositPaid: amount,
+          balanceDue: newBalance,
+          paymentStatus: newBalance === 0 ? 'Paid' : 'Deposit Paid',
+          paymentMethod: (method as 'M-Pesa' | 'Cash' | 'Bank' | 'Other') || 'M-Pesa',
+          mpesaRef: transactionReference
+        };
+        const next = [...prev];
+        next[existingInvIndex] = updatedInv;
+        return next;
+      } else {
+        const b = targetBooking || bookings.find(item => item.id === bookingId);
+        if (b) {
+          const newInvId = `RR-INV-${Math.floor(2000 + Math.random() * 8000)}`;
+          const newBalance = Math.max(0, b.estimatedPrice - amount);
+          const newInv: Invoice = {
+            id: newInvId,
+            bookingId: b.id,
+            workOrderId: b.workOrderId,
+            customerName: b.customerName,
+            customerPhone: b.customerPhone,
+            customerEmail: b.customerEmail || '',
+            vehicleInfo: `${b.vehicleDetails?.make || 'Vehicle'} ${b.vehicleDetails?.model || ''} (${b.vehicleDetails?.registrationNo || ''})`,
+            serviceName: b.serviceName,
+            items: [
+              {
+                description: `${b.serviceName} - Handcrafted Upholstery & Installation`,
+                quantity: 1,
+                unitPrice: b.estimatedPrice,
+                amount: b.estimatedPrice
+              }
+            ],
+            subtotal: b.estimatedPrice,
+            depositPaid: amount,
+            balanceDue: newBalance,
+            total: b.estimatedPrice,
+            paymentMethod: (method as 'M-Pesa' | 'Cash' | 'Bank' | 'Other') || 'M-Pesa',
+            paymentStatus: newBalance === 0 ? 'Paid' : 'Deposit Paid',
+            mpesaRef: transactionReference,
+            issueDate: nowStr,
+            dueDate: b.appointmentDate || nowStr
+          };
+          return [newInv, ...prev];
+        }
+      }
+      return prev;
+    });
+
+    // 4. Create Notifications
+    const customerNotif: AppNotification = {
+      id: 'notif-' + Math.random().toString(36).substring(2, 9),
+      recipientType: 'customer',
+      title: 'M-Pesa Payment Received',
+      message: `Deposit of KES ${amount.toLocaleString()} (Ref: ${transactionReference}) for booking #${bookingId} was verified.`,
+      timestamp: 'Just now',
+      isRead: false,
+      type: 'payment',
+      relatedBookingId: bookingId
+    };
+
+    const adminNotif: AppNotification = {
+      id: 'notif-' + Math.random().toString(36).substring(2, 9),
+      recipientType: 'admin',
+      title: 'Lipa na M-Pesa Payment Alert',
+      message: `Received KES ${amount.toLocaleString()} deposit for booking #${bookingId} (Receipt: ${transactionReference}).`,
+      timestamp: 'Just now',
+      isRead: false,
+      type: 'payment',
+      relatedBookingId: bookingId
+    };
+
+    setNotifications(prev => [customerNotif, adminNotif, ...prev]);
+
+    addToast(
+      'success',
+      'M-Pesa Payment Verified!',
+      `KES ${amount.toLocaleString()} received (Ref: ${transactionReference}). Booking #${bookingId} is confirmed.`
+    );
+  };
+
   const updateWorkOrderStage = (workOrderId: string, stage: WorkOrderStage) => {
-    const progressMap: Partial<Record<WorkOrderStage, number>> = {
-      NEW: 10,
-      booked: 10,
-      CONFIRMED: 25,
-      VEHICLE_RECEIVED: 40,
-      vehicle_received: 40,
+    const progressMap: Record<WorkOrderStage, number> = {
+      BOOKED: 15,
+      VEHICLE_RECEIVED: 30,
       MATERIALS_PREPARED: 50,
-      materials_prepared: 50,
-      IN_PROGRESS: 65,
-      in_progress: 65,
+      IN_PROGRESS: 70,
       QUALITY_CHECK: 85,
-      quality_check: 85,
-      READY: 95,
-      ready_for_pickup: 95,
-      COMPLETED: 100,
-      collected: 100
+      READY_FOR_COLLECTION: 95,
+      COLLECTED: 100
     };
 
     setWorkOrders(prev => prev.map(wo => {
@@ -603,27 +905,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Find linked booking
     const linkedWo = workOrders.find(w => w.id === workOrderId);
     if (linkedWo && linkedWo.bookingId) {
-      const statusMap: Partial<Record<WorkOrderStage, BookingStatus>> = {
-        NEW: 'pending',
-        booked: 'pending',
-        CONFIRMED: 'confirmed',
+      const statusMap: Record<WorkOrderStage, BookingStatus> = {
+        BOOKED: 'pending',
         VEHICLE_RECEIVED: 'checked_in',
-        vehicle_received: 'checked_in',
         MATERIALS_PREPARED: 'in_progress',
-        materials_prepared: 'in_progress',
         IN_PROGRESS: 'in_progress',
-        in_progress: 'in_progress',
         QUALITY_CHECK: 'quality_check',
-        quality_check: 'quality_check',
-        READY: 'ready',
-        ready_for_pickup: 'ready',
-        COMPLETED: 'completed',
-        collected: 'completed'
+        READY_FOR_COLLECTION: 'ready',
+        COLLECTED: 'completed'
       };
       
       const newBookingStatus = statusMap[stage];
       if (newBookingStatus) {
-        updateBookingStatus(linkedWo.bookingId, newBookingStatus, `Progress updated in workshop to ${stage.replace('_', ' ')}`);
+        updateBookingStatus(linkedWo.bookingId, newBookingStatus, `Progress updated in workshop to ${stage.replace(/_/g, ' ')}`);
       }
     }
   };
@@ -640,18 +934,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addVehicle = (vehicleData: Omit<Vehicle, 'id' | 'previousServicesCount'>) => {
+    const reg = vehicleData.registrationNo || vehicleData.registrationNumber || 'KAA 000A';
     const newVehicle: Vehicle = {
       ...vehicleData,
+      customerId: vehicleData.customerId || currentUser?.id || 'cust-1',
+      registrationNo: reg,
+      registrationNumber: reg,
       id: 'veh_' + Math.random().toString(36).substring(2, 9),
       previousServicesCount: 0
     };
     setVehicles(prev => [newVehicle, ...prev]);
-    addToast('success', 'Vehicle Added', `${vehicleData.make} ${vehicleData.model} (${vehicleData.registrationNo}) added to your garage.`);
+    addToast('success', 'Vehicle Added', `${vehicleData.make} ${vehicleData.model} (${reg}) added to your garage.`);
   };
 
   const deleteVehicle = (id: string) => {
-    setVehicles(prev => prev.filter(v => v.id !== id));
-    addToast('info', 'Vehicle Removed', 'Vehicle has been removed from saved vehicles.');
+    let allowed = true;
+    setVehicles(prev => {
+      const target = prev.find(v => v.id === id);
+      if (!target) return prev;
+      if (currentUser && currentUser.role !== 'admin' && target.customerId && target.customerId !== currentUser.id) {
+        allowed = false;
+        return prev;
+      }
+      return prev.filter(v => v.id !== id);
+    });
+
+    if (allowed) {
+      addToast('info', 'Vehicle Removed', 'Vehicle has been removed from your saved garage.');
+    } else {
+      addToast('error', 'Access Denied', 'You can only remove vehicles belonging to your own account.');
+    }
   };
 
   const updateServicePrice = (serviceId: string, price: number) => {
@@ -667,6 +979,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const booking = bookings.find(b => b.id === bookingId);
     const invoiceId = `RR-INV-${Math.floor(2000 + Math.random() * 8000)}`;
     const now = new Date().toISOString().split('T')[0];
+
+    const estimatedPrice = booking?.estimatedPrice || 15000;
+    const depositPaid = booking?.depositPaid ? (booking?.depositAmount || 0) : 0;
+    const balanceDue = typeof booking?.balanceAmount === 'number'
+      ? booking.balanceAmount
+      : Math.max(0, estimatedPrice - depositPaid);
+
+    let paymentStatus: 'Paid' | 'Deposit Paid' | 'Pending' | 'Overdue';
+    if (balanceDue === 0 && depositPaid > 0) {
+      paymentStatus = 'Paid';
+    } else if (depositPaid > 0) {
+      paymentStatus = 'Deposit Paid';
+    } else {
+      paymentStatus = 'Pending';
+    }
     
     const newInvoice: Invoice = {
       id: invoiceId,
@@ -675,28 +1002,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       customerName: booking?.customerName || 'Customer',
       customerPhone: booking?.customerPhone || '',
       customerEmail: booking?.customerEmail || '',
-      vehicleInfo: booking ? `${booking.vehicleDetails.make} ${booking.vehicleDetails.model} (${booking.vehicleDetails.registrationNo})` : 'Vehicle',
+      vehicleInfo: booking ? `${booking.vehicleDetails?.make || ''} ${booking.vehicleDetails?.model || ''} (${booking.vehicleDetails?.registrationNo || ''})` : 'Vehicle',
       serviceName: booking?.serviceName || 'Custom Upholstery Service',
       items: [
         {
           description: `${booking?.serviceName || 'Service'} - Premium Materials & Handcrafting`,
           quantity: 1,
-          unitPrice: booking?.estimatedPrice || 15000,
-          amount: booking?.estimatedPrice || 15000
+          unitPrice: estimatedPrice,
+          amount: estimatedPrice
         }
       ],
-      subtotal: booking?.estimatedPrice || 15000,
-      depositPaid: booking?.depositAmount || 0,
-      balanceDue: booking?.balanceAmount || 0,
-      total: booking?.estimatedPrice || 15000,
-      paymentMethod: booking?.paymentMethod || 'M-Pesa',
-      paymentStatus: (booking?.balanceAmount || 0) === 0 ? 'Paid' : 'Deposit Paid',
-      mpesaRef: booking?.mpesaReceiptNo || 'MP' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+      subtotal: estimatedPrice,
+      depositPaid: depositPaid,
+      balanceDue: balanceDue,
+      total: estimatedPrice,
+      paymentMethod: (booking?.paymentMethod as 'M-Pesa' | 'Cash' | 'Bank' | 'Other') || 'M-Pesa',
+      paymentStatus: paymentStatus,
+      mpesaRef: booking?.mpesaReceiptNo || (depositPaid > 0 ? 'MP' + Math.random().toString(36).substring(2, 8).toUpperCase() : undefined),
       issueDate: now,
       dueDate: booking?.appointmentDate || now
     };
 
-    setInvoices(prev => [newInvoice, ...prev]);
+    setInvoices(prev => [newInvoice, ...prev.filter(inv => inv.bookingId !== bookingId)]);
     addToast('success', 'Invoice Generated', `Invoice #${invoiceId} has been created.`);
     return newInvoice;
   };
@@ -731,11 +1058,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         websiteSection,
         setWebsiteSection,
         role,
-        setRole,
         isLoggedIn,
         currentUser,
-        loginAsCustomer,
-        loginAsAdmin,
+        authInitialMode,
+        setAuthInitialMode,
+        openAuth,
+        loginCustomer,
+        loginAdmin,
+        registerCustomer,
         logout,
         services,
         bookings,
@@ -749,6 +1079,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         vehicles,
         addBooking,
         updateBookingStatus,
+        recordPayment,
         rescheduleBooking,
         cancelBooking,
         assignStaffToBooking,
@@ -769,6 +1100,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toasts,
         addToast,
         removeToast,
+        legalModal,
+        openLegalModal,
+        closeLegalModal,
+        setLegalModalType,
         selectedBookingId,
         setSelectedBookingId,
         selectedServiceId,

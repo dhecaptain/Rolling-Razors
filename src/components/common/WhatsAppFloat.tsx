@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { MessageCircle, X, Send, PhoneCall, Clock, CheckCircle2 } from 'lucide-react';
+import { BUSINESS_CONFIG } from '../../config/business';
 
 interface WhatsAppFloatProps {
   defaultMessage?: string;
@@ -7,7 +8,7 @@ interface WhatsAppFloatProps {
 }
 
 export const WhatsAppFloat: React.FC<WhatsAppFloatProps> = ({ 
-  defaultMessage = "Hello Rolling Razors Customs! I'd like to make an inquiry about automotive upholstery and custom seats.",
+  defaultMessage = BUSINESS_CONFIG.whatsapp.defaultMessage,
   vehiclePlate
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -17,11 +18,9 @@ export const WhatsAppFloat: React.FC<WhatsAppFloatProps> = ({
       : defaultMessage
   );
 
-  const phoneNumber = '254712345678';
-
   const handleSend = () => {
     const encoded = encodeURIComponent(customMsg);
-    window.open(`https://wa.me/${phoneNumber}?text=${encoded}`, '_blank', 'noopener,noreferrer');
+    window.open(`https://wa.me/${BUSINESS_CONFIG.whatsapp.number}?text=${encoded}`, '_blank', 'noopener,noreferrer');
     setIsOpen(false);
   };
 
@@ -116,10 +115,10 @@ export const WhatsAppFloat: React.FC<WhatsAppFloatProps> = ({
                 <Send className="w-3.5 h-3.5" /> Start WhatsApp Chat
               </button>
               <a
-                href="tel:0712345678"
+                href={BUSINESS_CONFIG.phone.telLink}
                 id="direct-phone-call-btn"
                 className="flex items-center justify-center p-2 rounded-lg bg-[#0B4035] hover:bg-[#D6A62E] hover:text-[#073B32] text-[#F5F1E8] border border-[#D6A62E]/30 transition-colors"
-                title="Call 0712 345 678"
+                title={`Call ${BUSINESS_CONFIG.phone.formatted}`}
               >
                 <PhoneCall className="w-4 h-4" />
               </a>

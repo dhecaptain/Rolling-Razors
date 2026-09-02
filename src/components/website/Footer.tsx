@@ -1,6 +1,7 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { Logo } from '../common/Logo';
+import { BUSINESS_CONFIG } from '../../config/business';
 import { 
   Phone, 
   MapPin, 
@@ -8,11 +9,13 @@ import {
   MessageCircle, 
   ShieldCheck, 
   Calendar,
-  ArrowUp
+  ArrowUp,
+  Mail,
+  ExternalLink
 } from 'lucide-react';
 
 export const Footer: React.FC = () => {
-  const { setView, setBookingWizardInitialServiceId } = useApp();
+  const { setView, setBookingWizardInitialServiceId, openLegalModal } = useApp();
 
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
@@ -48,16 +51,24 @@ export const Footer: React.FC = () => {
 
             <div className="space-y-2 text-xs text-white/80 pt-2">
               <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-[#D6A62E]" />
-                <span>Industrial Area / Off Mombasa Road, Nairobi, Kenya</span>
+                <MapPin className="w-4 h-4 text-[#D6A62E] shrink-0" />
+                <span>{BUSINESS_CONFIG.location.fullAddress}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Phone className="w-4 h-4 text-[#D6A62E]" />
-                <span>0712 345 678</span>
+                <Phone className="w-4 h-4 text-[#D6A62E] shrink-0" />
+                <a href={BUSINESS_CONFIG.phone.telLink} className="hover:text-[#D6A62E] transition-colors">
+                  {BUSINESS_CONFIG.phone.formatted}
+                </a>
               </div>
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-[#D6A62E]" />
-                <span>Mon – Sat: 8:00 AM – 6:00 PM (Sunday Closed)</span>
+                <Mail className="w-4 h-4 text-[#D6A62E] shrink-0" />
+                <a href={`mailto:${BUSINESS_CONFIG.email.primary}`} className="hover:text-[#D6A62E] transition-colors">
+                  {BUSINESS_CONFIG.email.primary}
+                </a>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-[#D6A62E] shrink-0" />
+                <span>{BUSINESS_CONFIG.hours.summary}</span>
               </div>
             </div>
           </div>
@@ -69,32 +80,32 @@ export const Footer: React.FC = () => {
             </h4>
             <ul className="space-y-2 text-xs text-[#F5F1E8]/80">
               <li>
-                <button onClick={scrollToTop} className="hover:text-[#D6A62E] transition-colors">
+                <button onClick={scrollToTop} className="hover:text-[#D6A62E] transition-colors cursor-pointer">
                   Home
                 </button>
               </li>
               <li>
-                <button onClick={() => scrollToSection('services-section')} className="hover:text-[#D6A62E] transition-colors">
+                <button onClick={() => scrollToSection('services-section')} className="hover:text-[#D6A62E] transition-colors cursor-pointer">
                   Our Services
                 </button>
               </li>
               <li>
-                <button onClick={() => scrollToSection('portfolio-section')} className="hover:text-[#D6A62E] transition-colors">
+                <button onClick={() => scrollToSection('portfolio-section')} className="hover:text-[#D6A62E] transition-colors cursor-pointer">
                   Our Work & Portfolio
                 </button>
               </li>
               <li>
-                <button onClick={() => scrollToSection('how-it-works-section')} className="hover:text-[#D6A62E] transition-colors">
+                <button onClick={() => scrollToSection('how-it-works-section')} className="hover:text-[#D6A62E] transition-colors cursor-pointer">
                   How It Works
                 </button>
               </li>
               <li>
-                <button onClick={() => scrollToSection('why-choose-us-section')} className="hover:text-[#D6A62E] transition-colors">
+                <button onClick={() => scrollToSection('why-choose-us-section')} className="hover:text-[#D6A62E] transition-colors cursor-pointer">
                   About Us
                 </button>
               </li>
               <li>
-                <button onClick={() => scrollToSection('contact-location-section')} className="hover:text-[#D6A62E] transition-colors">
+                <button onClick={() => scrollToSection('contact-location-section')} className="hover:text-[#D6A62E] transition-colors cursor-pointer">
                   Contact & Map
                 </button>
               </li>
@@ -107,13 +118,13 @@ export const Footer: React.FC = () => {
               Services
             </h4>
             <ul className="space-y-2 text-xs text-[#F5F1E8]/80">
-              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-1'); setView('booking'); }} className="hover:text-[#D6A62E]">Car Interior Upholstery</button></li>
-              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-2'); setView('booking'); }} className="hover:text-[#D6A62E]">Custom Car Seats</button></li>
-              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-4'); setView('booking'); }} className="hover:text-[#D6A62E]">Genuine Leather Work</button></li>
-              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-5'); setView('booking'); }} className="hover:text-[#D6A62E]">Steering Wheel Stitching</button></li>
-              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-3'); setView('booking'); }} className="hover:text-[#D6A62E]">Cushion Customization</button></li>
-              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-10'); setView('booking'); }} className="hover:text-[#D6A62E]">Roofing & Headliner Repair</button></li>
-              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-7'); setView('booking'); }} className="hover:text-[#D6A62E]">Car Shades & Tents</button></li>
+              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-1'); setView('booking'); }} className="hover:text-[#D6A62E] cursor-pointer">Car Interior Upholstery</button></li>
+              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-2'); setView('booking'); }} className="hover:text-[#D6A62E] cursor-pointer">Custom Car Seats</button></li>
+              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-4'); setView('booking'); }} className="hover:text-[#D6A62E] cursor-pointer">Genuine Leather Work</button></li>
+              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-5'); setView('booking'); }} className="hover:text-[#D6A62E] cursor-pointer">Steering Wheel Stitching</button></li>
+              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-3'); setView('booking'); }} className="hover:text-[#D6A62E] cursor-pointer">Cushion Customization</button></li>
+              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-10'); setView('booking'); }} className="hover:text-[#D6A62E] cursor-pointer">Roofing & Headliner Repair</button></li>
+              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-7'); setView('booking'); }} className="hover:text-[#D6A62E] cursor-pointer">Car Shades & Tents</button></li>
             </ul>
           </div>
 
@@ -140,19 +151,43 @@ export const Footer: React.FC = () => {
               <span className="text-[11px] font-bold text-white/60 block mb-2 uppercase">Connect With Us</span>
               <div className="flex items-center gap-2 text-white">
                 {/* Facebook */}
-                <a href="https://facebook.com" target="_blank" rel="noreferrer" className="w-8 h-8 rounded-lg bg-[#0B4035] hover:bg-[#D6A62E] hover:text-[#073B32] flex items-center justify-center transition-colors text-xs font-bold">
+                <a 
+                  href={BUSINESS_CONFIG.socials.facebook} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="w-8 h-8 rounded-lg bg-[#0B4035] hover:bg-[#D6A62E] hover:text-[#073B32] flex items-center justify-center transition-colors text-xs font-bold"
+                  aria-label="Facebook"
+                >
                   FB
                 </a>
                 {/* Instagram */}
-                <a href="https://instagram.com" target="_blank" rel="noreferrer" className="w-8 h-8 rounded-lg bg-[#0B4035] hover:bg-[#D6A62E] hover:text-[#073B32] flex items-center justify-center transition-colors text-xs font-bold">
+                <a 
+                  href={BUSINESS_CONFIG.socials.instagram} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="w-8 h-8 rounded-lg bg-[#0B4035] hover:bg-[#D6A62E] hover:text-[#073B32] flex items-center justify-center transition-colors text-xs font-bold"
+                  aria-label="Instagram"
+                >
                   IG
                 </a>
                 {/* WhatsApp */}
-                <a href="https://wa.me/254712345678" target="_blank" rel="noreferrer" className="w-8 h-8 rounded-lg bg-[#25D366] text-white hover:opacity-90 flex items-center justify-center transition-opacity text-xs font-bold">
+                <a 
+                  href={BUSINESS_CONFIG.whatsapp.link} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="w-8 h-8 rounded-lg bg-[#25D366] text-white hover:opacity-90 flex items-center justify-center transition-opacity text-xs font-bold"
+                  aria-label="WhatsApp"
+                >
                   WA
                 </a>
                 {/* TikTok */}
-                <a href="https://tiktok.com" target="_blank" rel="noreferrer" className="w-8 h-8 rounded-lg bg-[#0B4035] hover:bg-[#D6A62E] hover:text-[#073B32] flex items-center justify-center transition-colors text-xs font-bold">
+                <a 
+                  href={BUSINESS_CONFIG.socials.tiktok} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="w-8 h-8 rounded-lg bg-[#0B4035] hover:bg-[#D6A62E] hover:text-[#073B32] flex items-center justify-center transition-colors text-xs font-bold"
+                  aria-label="TikTok"
+                >
                   TT
                 </a>
               </div>
@@ -165,21 +200,36 @@ export const Footer: React.FC = () => {
         {/* Bottom Bar */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-white/60">
           <div className="flex flex-wrap items-center gap-4 text-center sm:text-left">
-            <span>© 2026 Rolling Razors Customs. All rights reserved.</span>
+            <span>© {new Date().getFullYear()} {BUSINESS_CONFIG.name}. All rights reserved.</span>
             <span>•</span>
-            <span className="text-[#D6A62E]">Nairobi, Kenya</span>
+            <span className="text-[#D6A62E]">{BUSINESS_CONFIG.location.city}, {BUSINESS_CONFIG.location.country}</span>
           </div>
 
-          <div className="flex items-center gap-6">
-            <button onClick={() => alert("Privacy Policy: All customer and vehicle details are protected and confidential.")} className="hover:text-white">
+          <div className="flex items-center gap-4 sm:gap-6">
+            <button 
+              id="footer-privacy-policy-btn"
+              onClick={() => openLegalModal('privacy')} 
+              className="hover:text-white transition-colors cursor-pointer"
+            >
               Privacy Policy
             </button>
-            <button onClick={() => alert("Terms of Service: 1-year warranty on all stitchwork and structural foams.")} className="hover:text-white">
+            <button 
+              id="footer-terms-btn"
+              onClick={() => openLegalModal('terms')} 
+              className="hover:text-white transition-colors cursor-pointer"
+            >
               Terms of Service
             </button>
             <button 
+              id="footer-refund-btn"
+              onClick={() => openLegalModal('refund')} 
+              className="hover:text-white transition-colors cursor-pointer"
+            >
+              Refund Policy
+            </button>
+            <button 
               onClick={scrollToTop}
-              className="p-2 rounded-lg bg-[#0B4035] hover:bg-[#D6A62E] hover:text-[#073B32] text-white transition-colors"
+              className="p-2 rounded-lg bg-[#0B4035] hover:bg-[#D6A62E] hover:text-[#073B32] text-white transition-colors cursor-pointer"
               title="Back to Top"
             >
               <ArrowUp className="w-4 h-4" />
@@ -191,3 +241,4 @@ export const Footer: React.FC = () => {
     </footer>
   );
 };
+

@@ -11,18 +11,18 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { BUSINESS_CONFIG } from '../../config/business';
 
 export const LocationContact: React.FC = () => {
   const { setView } = useApp();
 
   const handleWhatsApp = () => {
-    const encoded = encodeURIComponent("Hello Rolling Razors Customs, I would like to visit your workshop for automotive upholstery inquiries.");
-    window.open(`https://wa.me/254712345678?text=${encoded}`, '_blank', 'noopener,noreferrer');
+    const encoded = encodeURIComponent(BUSINESS_CONFIG.whatsapp.defaultMessage);
+    window.open(`${BUSINESS_CONFIG.whatsapp.link}?text=${encoded}`, '_blank', 'noopener,noreferrer');
   };
 
   const handleDirections = () => {
-    // Open Google Maps coordinates in Kenya
-    window.open('https://maps.google.com/?q=Rolling+Razors+Customs+Nairobi+Kenya', '_blank', 'noopener,noreferrer');
+    window.open(BUSINESS_CONFIG.location.mapsUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -35,7 +35,7 @@ export const LocationContact: React.FC = () => {
             VISIT OUR WORKSHOP
           </span>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-black font-display tracking-tight text-[#F5F1E8]">
-            Find Us in Nairobi, Kenya
+            Find Us in {BUSINESS_CONFIG.location.city}, {BUSINESS_CONFIG.location.country}
           </h2>
           <p className="text-sm sm:text-base text-[#F5F1E8]/75">
             Drive in for a physical material inspection, leather swatch feeling, or sit-down ergonomics consultation.
@@ -55,12 +55,12 @@ export const LocationContact: React.FC = () => {
                   <MapPin className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg text-[#F5F1E8] font-display">Rolling Razors Workshop</h3>
-                  <p className="text-xs text-[#D6A62E]">Prime Automotive Customization Hub</p>
+                  <h3 className="font-bold text-lg text-[#F5F1E8] font-display">{BUSINESS_CONFIG.name} Workshop</h3>
+                  <p className="text-xs text-[#D6A62E]">{BUSINESS_CONFIG.shortTagline}</p>
                 </div>
               </div>
               <p className="text-sm text-white/80 leading-relaxed">
-                Enterprise Road / Off Commercial Street, Industrial Area, Nairobi, Kenya. (Easy access via Mombasa Road & Southern Bypass).
+                {BUSINESS_CONFIG.location.fullAddress}. ({BUSINESS_CONFIG.location.landmark}).
               </p>
             </div>
 
@@ -79,15 +79,15 @@ export const LocationContact: React.FC = () => {
               <div className="space-y-2 text-xs divide-y divide-white/10">
                 <div className="flex justify-between pt-1">
                   <span className="text-white/80">Monday – Friday</span>
-                  <span className="font-bold text-[#D6A62E]">8:00 AM – 6:00 PM</span>
+                  <span className="font-bold text-[#D6A62E]">{BUSINESS_CONFIG.hours.weekdays}</span>
                 </div>
                 <div className="flex justify-between pt-2">
                   <span className="text-white/80">Saturday</span>
-                  <span className="font-bold text-[#D6A62E]">8:00 AM – 6:00 PM</span>
+                  <span className="font-bold text-[#D6A62E]">{BUSINESS_CONFIG.hours.saturday}</span>
                 </div>
                 <div className="flex justify-between pt-2">
                   <span className="text-white/80">Sunday</span>
-                  <span className="font-bold text-rose-400">Closed (By Special Appointment)</span>
+                  <span className="font-bold text-rose-400">{BUSINESS_CONFIG.hours.sunday}</span>
                 </div>
               </div>
             </div>
@@ -95,12 +95,12 @@ export const LocationContact: React.FC = () => {
             {/* Direct Action Buttons */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <a
-                href="tel:0712345678"
+                href={BUSINESS_CONFIG.phone.telLink}
                 id="contact-call-btn"
                 className="py-3.5 px-4 rounded-xl bg-[#073B32] hover:bg-[#0e4e41] border border-[#D6A62E]/50 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md"
               >
                 <Phone className="w-4 h-4 text-[#D6A62E]" />
-                <span>Call 0712 345 678</span>
+                <span>Call {BUSINESS_CONFIG.phone.formatted}</span>
               </a>
 
               <button
@@ -143,13 +143,13 @@ export const LocationContact: React.FC = () => {
                   </div>
                 </div>
                 <div className="mt-2 bg-[#0B4035] border border-[#D6A62E] px-3 py-1 rounded-lg text-xs font-bold text-[#F5F1E8] shadow-xl whitespace-nowrap">
-                  ROLLING RAZORS CUSTOMS
+                  {BUSINESS_CONFIG.name.toUpperCase()}
                 </div>
               </div>
 
               {/* Quick Map Controls Overlay */}
               <div className="absolute top-4 left-4 bg-[#073B32]/90 border border-white/10 backdrop-blur-md px-3 py-1.5 rounded-lg text-[11px] text-white/90">
-                📍 Nairobi Workshop • GPS Verified
+                📍 {BUSINESS_CONFIG.location.city} Workshop • GPS Verified
               </div>
             </div>
 

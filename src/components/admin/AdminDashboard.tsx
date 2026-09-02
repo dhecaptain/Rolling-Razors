@@ -45,7 +45,8 @@ export const AdminDashboard: React.FC = () => {
     vehicles, 
     customers, 
     addToast,
-    setView
+    setView,
+    openAuth
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,18 +60,50 @@ export const AdminDashboard: React.FC = () => {
   const [newServiceDesc, setNewServiceDesc] = useState('');
   const [newServiceDuration, setNewServiceDuration] = useState('1 - 2 Days');
 
+  // Role Gate: Strictly prohibit non-admin users from accessing workshop management hub
+  if (!currentUser || currentUser.role !== 'admin') {
+    return (
+      <div className="min-h-screen pt-32 pb-20 flex items-center justify-center bg-[#073B32] text-[#F5F1E8] px-4">
+        <div className="max-w-md w-full bg-[#0B4035] border-2 border-rose-500/40 rounded-3xl p-8 text-center space-y-4 shadow-2xl">
+          <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500 text-rose-400 flex items-center justify-center mx-auto">
+            <ShieldAlert className="w-7 h-7" />
+          </div>
+          <h2 className="text-xl font-black text-white">Workshop Admin Access Restricted</h2>
+          <p className="text-xs text-white/70 leading-relaxed">
+            This operations hub is strictly restricted to authorized Rolling Razors workshop managers and master craftsmen.
+          </p>
+          <div className="pt-2 space-y-2">
+            <button
+              onClick={() => openAuth('admin')}
+              className="w-full py-3 rounded-xl bg-[#D6A62E] text-[#073B32] font-black text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <ShieldAlert className="w-4 h-4" />
+              <span>Authenticate as Workshop Staff</span>
+            </button>
+            <button
+              onClick={() => setView('website')}
+              className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 text-xs font-semibold cursor-pointer"
+            >
+              Return to Website
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Stats
   const totalRevenue = bookings.reduce((sum, b) => b.depositPaid ? sum + b.depositAmount : sum, 0);
   const pendingDepositCount = bookings.filter(b => b.status === 'pending').length;
-  const inWorkshopCount = workOrders.filter(w => w.stage !== 'collected').length;
+  const inWorkshopCount = workOrders.filter(w => w.stage !== 'COLLECTED').length;
 
   const kanbanStages: { id: WorkOrderStage; label: string; color: string }[] = [
-    { id: 'booked', label: '1. Booked', color: 'border-blue-500/40 bg-blue-500/10 text-blue-400' },
-    { id: 'vehicle_received', label: '2. Vehicle Received', color: 'border-amber-500/40 bg-amber-500/10 text-amber-400' },
-    { id: 'materials_prepared', label: '3. Materials Ready', color: 'border-purple-500/40 bg-purple-500/10 text-purple-400' },
-    { id: 'in_progress', label: '4. Stitching / Crafting', color: 'border-[#D6A62E]/40 bg-[#D6A62E]/10 text-[#D6A62E]' },
-    { id: 'quality_check', label: '5. Quality Check', color: 'border-cyan-500/40 bg-cyan-500/10 text-cyan-400' },
-    { id: 'ready_for_pickup', label: '6. Ready for Collection', color: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' }
+    { id: 'BOOKED', label: '1. Booked', color: 'border-blue-500/40 bg-blue-500/10 text-blue-400' },
+    { id: 'VEHICLE_RECEIVED', label: '2. Vehicle Received', color: 'border-amber-500/40 bg-amber-500/10 text-amber-400' },
+    { id: 'MATERIALS_PREPARED', label: '3. Materials Ready', color: 'border-purple-500/40 bg-purple-500/10 text-purple-400' },
+    { id: 'IN_PROGRESS', label: '4. Stitching / Crafting', color: 'border-[#D6A62E]/40 bg-[#D6A62E]/10 text-[#D6A62E]' },
+    { id: 'QUALITY_CHECK', label: '5. Quality Check', color: 'border-cyan-500/40 bg-cyan-500/10 text-cyan-400' },
+    { id: 'READY_FOR_COLLECTION', label: '6. Ready for Collection', color: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' }
   ];
 
   const handleStageChange = (orderId: string, newStage: WorkOrderStage) => {
@@ -220,7 +253,7 @@ export const AdminDashboard: React.FC = () => {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <span className="font-mono font-bold text-[#D6A62E]">{wo.id}</span>
-                          <span className="text-white font-bold">{wo.vehicle}</span>
+                          <span className="text-white font-bold">{wo.vehicleDisplayName}</span>
                         </div>
                         <p className="text-white/70">{wo.serviceName} • Craftsman: {wo.assignedStaffName}</p>
                       </div>
@@ -247,9 +280,9 @@ export const AdminDashboard: React.FC = () => {
                     <div key={b.id} className="p-3.5 rounded-xl bg-[#073B32] border border-white/5 space-y-2 text-xs">
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-white">{b.customerName}</span>
-                        <span className="text-[#D6A62E] font-mono">{b.vehicleRegistration}</span>
+                        <span className="text-[#D6A62E] font-mono">{b.vehicleDetails?.registrationNo}</span>
                       </div>
-                      <p className="text-white/70">{b.serviceName} on {b.preferredDate}</p>
+                      <p className="text-white/70">{b.serviceName} on {b.appointmentDate}</p>
                       <div className="flex items-center justify-between pt-1">
                         <span className="text-[10px] text-white/50">{b.paymentMethod === 'mpesa' ? 'Lipa na M-Pesa' : 'Pay at Shop'}</span>
                         <button
@@ -310,7 +343,7 @@ export const AdminDashboard: React.FC = () => {
                             <span className="font-mono text-[10px] text-white/60">{order.vehicleRegistration}</span>
                           </div>
 
-                          <h5 className="font-bold text-white text-xs leading-tight">{order.vehicle}</h5>
+                          <h5 className="font-bold text-white text-xs leading-tight">{order.vehicleDisplayName}</h5>
                           <p className="text-[11px] text-white/70">{order.serviceName}</p>
 
                           <div className="text-[10px] text-[#D6A62E] font-medium bg-[#0B4035] p-1.5 rounded-lg border border-white/5">
@@ -325,13 +358,13 @@ export const AdminDashboard: React.FC = () => {
                               onChange={(e) => handleStageChange(order.id, e.target.value as WorkOrderStage)}
                               className="bg-[#0B4035] border border-white/20 text-white text-[10px] rounded px-1.5 py-0.5 font-bold"
                             >
-                              <option value="booked">1. Booked</option>
-                              <option value="vehicle_received">2. Received</option>
-                              <option value="materials_prepared">3. Prepped</option>
-                              <option value="in_progress">4. Stitching</option>
-                              <option value="quality_check">5. QC Check</option>
-                              <option value="ready_for_pickup">6. Ready</option>
-                              <option value="collected">7. Collected</option>
+                              <option value="BOOKED">1. Booked</option>
+                              <option value="VEHICLE_RECEIVED">2. Received</option>
+                              <option value="MATERIALS_PREPARED">3. Prepped</option>
+                              <option value="IN_PROGRESS">4. Stitching</option>
+                              <option value="QUALITY_CHECK">5. QC Check</option>
+                              <option value="READY_FOR_COLLECTION">6. Ready</option>
+                              <option value="COLLECTED">7. Collected</option>
                             </select>
                           </div>
                         </div>
@@ -404,13 +437,13 @@ export const AdminDashboard: React.FC = () => {
                             <div className="text-[11px] text-white/60">{booking.customerPhone}</div>
                           </td>
                           <td className="py-3.5 px-4">
-                            <div className="font-bold">{booking.vehicleMake} {booking.vehicleModel}</div>
-                            <div className="font-mono text-[11px] text-[#D6A62E]">{booking.vehicleRegistration}</div>
+                            <div className="font-bold">{booking.vehicleDetails?.make} {booking.vehicleDetails?.model}</div>
+                            <div className="font-mono text-[11px] text-[#D6A62E]">{booking.vehicleDetails?.registrationNo}</div>
                           </td>
                           <td className="py-3.5 px-4">{booking.serviceName}</td>
                           <td className="py-3.5 px-4">
-                            <div>{booking.preferredDate}</div>
-                            <div className="text-[10px] text-white/60">{booking.preferredTime}</div>
+                            <div>{booking.appointmentDate}</div>
+                            <div className="text-[10px] text-white/60">{booking.appointmentTime}</div>
                           </td>
                           <td className="py-3.5 px-4">
                             <span className={booking.depositPaid ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>
@@ -477,8 +510,8 @@ export const AdminDashboard: React.FC = () => {
                       {dayBookings.map(b => (
                         <div key={b.id} className="p-2.5 rounded-xl bg-[#0B4035] border border-[#D6A62E]/20 text-xs space-y-1">
                           <div className="flex items-center justify-between">
-                            <span className="font-bold text-white truncate">{b.vehicleMake} {b.vehicleModel}</span>
-                            <span className="font-mono text-[10px] text-[#D6A62E]">{b.preferredTime.split(' ')[0]}</span>
+                            <span className="font-bold text-white truncate">{b.vehicleDetails?.make} {b.vehicleDetails?.model}</span>
+                            <span className="font-mono text-[10px] text-[#D6A62E]">{b.appointmentTime ? b.appointmentTime.split(' ')[0] : 'Slot'}</span>
                           </div>
                           <p className="text-[11px] text-white/70">{b.serviceName}</p>
                           <span className="text-[10px] text-emerald-400 font-medium block">Driver: {b.customerName}</span>
@@ -627,15 +660,17 @@ export const AdminDashboard: React.FC = () => {
                   <div key={b.id} className="p-3 rounded-xl bg-[#073B32] border border-white/5 flex items-center justify-between">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-emerald-400">RR{89201 + i}K9</span>
+                        <span className="font-mono font-bold text-emerald-400">{b.mpesaReceiptNo || `RR${89201 + i}K9`}</span>
                         <span className="text-white font-bold">{b.customerName}</span>
                       </div>
-                      <span className="text-[10px] text-white/60">{b.preferredDate} • Acc: {b.id}</span>
+                      <span className="text-[10px] text-white/60">{b.appointmentDate} • Acc: {b.id}</span>
                     </div>
 
                     <div className="text-right">
                       <span className="font-bold text-white block">KES {b.depositAmount.toLocaleString()}</span>
-                      <span className="text-[10px] text-emerald-400 font-bold">STK Verified</span>
+                      <span className={`text-[10px] font-bold ${b.depositPaid ? 'text-emerald-400' : 'text-amber-400'}`}>
+                        {b.depositPaid ? 'STK Verified' : 'Pending Deposit'}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -659,10 +694,10 @@ export const AdminDashboard: React.FC = () => {
 
             <div className="space-y-2 text-xs">
               <p><strong>Customer:</strong> {selectedBookingForAdmin.customerName} ({selectedBookingForAdmin.customerPhone})</p>
-              <p><strong>Vehicle:</strong> {selectedBookingForAdmin.vehicleMake} {selectedBookingForAdmin.vehicleModel} ({selectedBookingForAdmin.vehicleRegistration})</p>
+              <p><strong>Vehicle:</strong> {selectedBookingForAdmin.vehicleDetails?.make} {selectedBookingForAdmin.vehicleDetails?.model} ({selectedBookingForAdmin.vehicleDetails?.registrationNo})</p>
               <p><strong>Service:</strong> {selectedBookingForAdmin.serviceName}</p>
-              <p><strong>Material:</strong> {selectedBookingForAdmin.customOptions?.material} ({selectedBookingForAdmin.customOptions?.color})</p>
-              <p><strong>Customer Notes:</strong> {selectedBookingForAdmin.notes || 'None'}</p>
+              <p><strong>Material:</strong> {selectedBookingForAdmin.customOptions?.material || selectedBookingForAdmin.selectedMaterial || 'Standard'} ({selectedBookingForAdmin.customOptions?.color || 'Selected'})</p>
+              <p><strong>Customer Notes:</strong> {selectedBookingForAdmin.notes || selectedBookingForAdmin.requirementsDesc || 'None'}</p>
             </div>
 
             <div className="pt-3 border-t border-white/10 flex justify-end gap-2">

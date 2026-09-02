@@ -43,6 +43,7 @@ export const BookingWizard: React.FC = () => {
   );
   const [vehicleMake, setVehicleMake] = useState<string>('Toyota');
   const [vehicleModel, setVehicleModel] = useState<string>('Land Cruiser Prado TX');
+  const [vehicleYear, setVehicleYear] = useState<number>(2021);
   const [vehicleReg, setVehicleReg] = useState<string>('KDF 892J');
   const [vehicleType, setVehicleType] = useState<VehicleType>('SUV');
   const [material, setMaterial] = useState<string>('Genuine Nappa Leather');
@@ -59,9 +60,9 @@ export const BookingWizard: React.FC = () => {
   const [customerLocationAddress, setCustomerLocationAddress] = useState<string>('Kilimani, Nairobi');
 
   // Customer Details
-  const [customerName, setCustomerName] = useState<string>(currentUser.name || 'Brian Mwangi');
-  const [customerPhone, setCustomerPhone] = useState<string>(currentUser.phone || '0712901234');
-  const [customerEmail, setCustomerEmail] = useState<string>(currentUser.email || 'brian.mwangi@gmail.com');
+  const [customerName, setCustomerName] = useState<string>(currentUser?.name || 'Brian Mwangi');
+  const [customerPhone, setCustomerPhone] = useState<string>(currentUser?.phone || '0712 901 234');
+  const [customerEmail, setCustomerEmail] = useState<string>(currentUser?.email || 'brian.mwangi@gmail.com');
 
   // Confirmed booking state
   const [confirmedBookingId, setConfirmedBookingId] = useState<string | null>(null);
@@ -137,19 +138,23 @@ export const BookingWizard: React.FC = () => {
   };
 
   const handleCompleteBookingWithMpesa = () => {
-    // 1. Create booking object
+    // 1. Create booking object with standardized vehicleDetails and authenticated customerId
     const newBooking = addBooking({
+      customerId: currentUser?.id,
       serviceId: selectedService.id,
       serviceName: selectedService.name,
       customerName,
       customerPhone,
       customerEmail,
-      vehicleType,
-      vehicleMake,
-      vehicleModel,
-      vehicleRegistration: vehicleReg.toUpperCase(),
-      preferredDate: selectedDate,
-      preferredTime: selectedTime,
+      vehicleDetails: {
+        type: vehicleType,
+        make: vehicleMake,
+        model: vehicleModel,
+        year: Number(vehicleYear) || 2022,
+        registrationNo: vehicleReg.toUpperCase()
+      },
+      appointmentDate: selectedDate,
+      appointmentTime: selectedTime,
       locationType,
       customerLocation: locationType === 'customer_location' ? customerLocationAddress : undefined,
       notes,
@@ -188,17 +193,21 @@ export const BookingWizard: React.FC = () => {
 
   const handleCompleteBookingPayLater = () => {
     const newBooking = addBooking({
+      customerId: currentUser?.id,
       serviceId: selectedService.id,
       serviceName: selectedService.name,
       customerName,
       customerPhone,
       customerEmail,
-      vehicleType,
-      vehicleMake,
-      vehicleModel,
-      vehicleRegistration: vehicleReg.toUpperCase(),
-      preferredDate: selectedDate,
-      preferredTime: selectedTime,
+      vehicleDetails: {
+        type: vehicleType,
+        make: vehicleMake,
+        model: vehicleModel,
+        year: Number(vehicleYear) || 2022,
+        registrationNo: vehicleReg.toUpperCase()
+      },
+      appointmentDate: selectedDate,
+      appointmentTime: selectedTime,
       locationType,
       customerLocation: locationType === 'customer_location' ? customerLocationAddress : undefined,
       notes,
@@ -375,8 +384,8 @@ export const BookingWizard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Make, Model, Plate */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Make, Model, Year, Plate */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-[#D6A62E] uppercase mb-1.5">Vehicle Make</label>
                   <input
@@ -384,7 +393,7 @@ export const BookingWizard: React.FC = () => {
                     type="text"
                     value={vehicleMake}
                     onChange={(e) => setVehicleMake(e.target.value)}
-                    placeholder="e.g. Toyota, Nissan, Land Rover"
+                    placeholder="e.g. Toyota, Nissan"
                     className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-[#F5F1E8] text-xs font-semibold focus:outline-none focus:border-[#D6A62E]"
                   />
                 </div>
@@ -395,7 +404,18 @@ export const BookingWizard: React.FC = () => {
                     type="text"
                     value={vehicleModel}
                     onChange={(e) => setVehicleModel(e.target.value)}
-                    placeholder="e.g. Prado TX, Axio, Demio, Isuzu"
+                    placeholder="e.g. Prado TX, Axio"
+                    className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-[#F5F1E8] text-xs font-semibold focus:outline-none focus:border-[#D6A62E]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#D6A62E] uppercase mb-1.5">Model Year</label>
+                  <input
+                    id="wizard-vehicle-year"
+                    type="number"
+                    value={vehicleYear}
+                    onChange={(e) => setVehicleYear(Number(e.target.value))}
+                    placeholder="e.g. 2021"
                     className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-[#F5F1E8] text-xs font-semibold focus:outline-none focus:border-[#D6A62E]"
                   />
                 </div>

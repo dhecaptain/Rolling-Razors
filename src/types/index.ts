@@ -1,5 +1,16 @@
 export type UserRole = 'customer' | 'admin';
 
+export interface User {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  role: UserRole;
+  avatar: string;
+  location?: string;
+  token?: string;
+}
+
 export type ServiceCategory = 
   | 'automotive' 
   | 'cushions' 
@@ -68,6 +79,15 @@ export interface BookingTimelineEvent {
   updatedBy: string;
 }
 
+export interface VehicleDetails {
+  type: VehicleType;
+  make: string;
+  model: string;
+  year: number;
+  registrationNo: string;
+  photoUrl?: string;
+}
+
 export interface Booking {
   id: string; // e.g. RR-1048
   customerId?: string;
@@ -77,19 +97,8 @@ export interface Booking {
   serviceId: string;
   serviceName: string;
   
-  // Flexible vehicle properties
-  vehicleType?: VehicleType;
-  vehicleMake?: string;
-  vehicleModel?: string;
-  vehicleRegistration?: string;
-  vehicleDetails?: {
-    type: VehicleType;
-    make: string;
-    model: string;
-    year: number;
-    registrationNo: string;
-    photoUrl?: string;
-  };
+  // Standardized vehicle details model
+  vehicleDetails: VehicleDetails;
 
   requirementsDesc?: string;
   notes?: string;
@@ -102,10 +111,8 @@ export interface Booking {
   selectedMaterial?: string;
   stitchingStyle?: string;
   
-  preferredDate?: string;
-  preferredTime?: string;
-  appointmentDate?: string; // YYYY-MM-DD
-  appointmentTime?: string; // e.g. 10:00 AM
+  appointmentDate: string; // YYYY-MM-DD
+  appointmentTime: string; // e.g. 10:00 AM
   
   locationType: 'workshop' | 'customer_location';
   customerLocation?: string;
@@ -129,35 +136,27 @@ export interface Booking {
 }
 
 export type WorkOrderStage = 
-  | 'NEW'
-  | 'CONFIRMED'
+  | 'BOOKED'
   | 'VEHICLE_RECEIVED'
   | 'MATERIALS_PREPARED'
   | 'IN_PROGRESS'
   | 'QUALITY_CHECK'
-  | 'READY'
-  | 'COMPLETED'
-  | 'booked'
-  | 'vehicle_received'
-  | 'materials_prepared'
-  | 'in_progress'
-  | 'quality_check'
-  | 'ready_for_pickup'
-  | 'collected';
+  | 'READY_FOR_COLLECTION'
+  | 'COLLECTED';
 
 export interface WorkOrder {
   id: string; // e.g. RR-WO-2045
   bookingId: string;
+  customerId?: string;
   customerName: string;
   customerPhone: string;
-  vehicleTitle?: string;
-  vehicle?: string;
-  registrationNo?: string;
-  vehicleRegistration?: string;
+  vehicleId?: string;
+  vehicleDisplayName: string;
+  vehicleRegistration: string;
   serviceName: string;
-  assignedCraftsman?: string;
-  assignedStaffName?: string;
-  priority?: 'Low' | 'Normal' | 'High' | 'Urgent';
+  assignedStaffId?: string;
+  assignedStaffName: string;
+  priority: 'Low' | 'Normal' | 'High' | 'Urgent';
   stage: WorkOrderStage;
   customerRequirements?: string;
   materialsRequired?: string[];
@@ -272,4 +271,13 @@ export interface MpesaPaymentRequest {
   accountReference: string;
   description: string;
   bookingId?: string;
+}
+
+export interface RecordPaymentParams {
+  bookingId: string;
+  amount: number;
+  method?: string;
+  status?: PaymentStatus;
+  transactionReference: string;
+  invoiceId?: string;
 }

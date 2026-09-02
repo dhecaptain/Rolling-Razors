@@ -36,6 +36,7 @@ export const CustomerDashboard: React.FC = () => {
     openMpesaPayment, 
     updateBookingStatus, 
     setView,
+    openAuth,
     setBookingWizardInitialServiceId,
     addToast
   } = useApp();
@@ -51,16 +52,43 @@ export const CustomerDashboard: React.FC = () => {
   const [newType, setNewType] = useState<'Car' | 'SUV' | 'Van' | 'Truck' | 'Matatu' | 'Other'>('SUV');
   const [newColor, setNewColor] = useState('Pearl White');
 
-  // Filter bookings for the current customer
+  // If user is somehow not logged in, show auth gate
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen pt-32 pb-20 flex items-center justify-center bg-[#073B32] text-[#F5F1E8] px-4">
+        <div className="max-w-md w-full bg-[#0B4035] border border-[#D6A62E]/30 rounded-3xl p-8 text-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-[#D6A62E]/10 border border-[#D6A62E] text-[#D6A62E] flex items-center justify-center mx-auto">
+            <User className="w-6 h-6" />
+          </div>
+          <h2 className="text-xl font-black text-white">Driver Authentication Required</h2>
+          <p className="text-xs text-white/70">
+            Please log in with your Kenyan phone number to view and manage your booked vehicles, stitching progress, and invoices.
+          </p>
+          <button
+            onClick={() => openAuth('customer')}
+            className="w-full py-3 rounded-xl bg-[#D6A62E] text-[#073B32] font-black text-xs uppercase tracking-wider shadow-lg"
+          >
+            Sign In to Driver Portal
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Strictly filter bookings for the authenticated customer only
   const myBookings = bookings.filter(b => 
-    b.customerPhone === currentUser.phone || 
-    b.customerEmail === currentUser.email || 
-    b.customerName === currentUser.name ||
-    true // show demo bookings in interactive prototype
+    b.customerId === currentUser.id ||
+    (currentUser.phone && b.customerPhone?.replace(/\s+/g, '') === currentUser.phone.replace(/\s+/g, '')) ||
+    (currentUser.email && b.customerEmail && b.customerEmail.toLowerCase() === currentUser.email.toLowerCase())
   );
 
-  const activeBookings = myBookings.filter(b => b.status === 'pending' || b.status === 'confirmed' || b.status === 'in_progress');
+  // Strictly filter vehicles for the authenticated customer only
+  const myVehicles = vehicles.filter(v => v.customerId === currentUser.id);
+
+  const activeBookings = myBookings.filter(b => b.status === 'pending' || b.status === 'confirmed' || b.status === 'checked_in' || b.status === 'in_progress' || b.status === 'quality_check' || b.status === 'ready');
   const completedBookings = myBookings.filter(b => b.status === 'completed');
+  const latestActiveBooking = activeBookings[0];
+  const activeWorkOrder = latestActiveBooking ? workOrders.find(wo => wo.bookingId === latestActiveBooking.id) : null;
 
   const handleCreateVehicle = (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,14 +102,15 @@ export const CustomerDashboard: React.FC = () => {
       make: newMake,
       model: newModel,
       year: newYear,
+      registrationNo: newReg.toUpperCase(),
       registrationNumber: newReg.toUpperCase(),
+      type: newType,
       vehicleType: newType,
       color: newColor,
       upholsteryHistory: ['Initial Factory Seats']
     });
 
     setShowAddVehicleModal(false);
-    addToast('success', 'Vehicle Added', `${newMake} ${newModel} (${newReg}) saved to your garage.`);
   };
 
   const handlePayBookingDeposit = (booking: Booking) => {
@@ -189,7 +218,7 @@ export const CustomerDashboard: React.FC = () => {
                 : 'text-white/70 hover:text-white hover:bg-white/5'
             }`}
           >
-            <Car className="w-4 h-4" /> My Garage ({vehicles.length})
+            <Car className="w-4 h-4" /> My Garage ({myVehicles.length})
           </button>
 
           <button
@@ -217,11 +246,11 @@ export const CustomerDashboard: React.FC = () => {
               </div>
               <div className="p-5 rounded-2xl bg-[#0B4035] border border-[#D6A62E]/20 space-y-1">
                 <span className="text-[11px] text-white/60 block uppercase font-bold">Garage Vehicles</span>
-                <span className="text-3xl font-black text-white">{vehicles.length}</span>
+                <span className="text-3xl font-black text-white">{myVehicles.length}</span>
               </div>
               <div className="p-5 rounded-2xl bg-[#0B4035] border border-[#D6A62E]/20 space-y-1">
                 <span className="text-[11px] text-white/60 block uppercase font-bold">Completed Jobs</span>
-                <span className="text-3xl font-black text-emerald-400">{completedBookings.length + 1}</span>
+                <span className="text-3xl font-black text-emerald-400">{completedBookings.length}</span>
               </div>
               <div className="p-5 rounded-2xl bg-[#0B4035] border border-[#D6A62E]/20 space-y-1">
                 <span className="text-[11px] text-white/60 block uppercase font-bold">Craftsmanship Warranty</span>
@@ -232,52 +261,77 @@ export const CustomerDashboard: React.FC = () => {
             </div>
 
             {/* Live Workshop Progress Tracker (If active work order exists) */}
-            <div className="p-6 sm:p-8 rounded-3xl bg-[#0B4035] border-2 border-[#D6A62E]/40 shadow-2xl space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-4">
-                <div>
-                  <span className="text-xs font-bold text-[#D6A62E] uppercase tracking-wider flex items-center gap-1.5">
-                    <Scissors className="w-3.5 h-3.5" /> LIVE WORKSHOP STAGE TRACKER
-                  </span>
-                  <h3 className="text-xl font-black text-white font-display mt-0.5">
-                    Toyota Land Cruiser Prado TX (KDF 782G)
-                  </h3>
-                  <p className="text-xs text-white/70">Full Upholstery & Cushion Customization • Lead Craftsman: Kiprono</p>
-                </div>
-                <div className="text-right">
-                  <span className="px-3 py-1 rounded-full bg-[#D6A62E]/20 text-[#D6A62E] border border-[#D6A62E]/40 text-xs font-bold">
-                    Stage: In Progress (Stitching Seams)
-                  </span>
-                </div>
-              </div>
-
-              {/* Multi-step Status Timeline Bar */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2">
-                {[
-                  { stage: '1. Booked', done: true, current: false },
-                  { stage: '2. Deposit Paid', done: true, current: false },
-                  { stage: '3. Materials Prepped', done: true, current: false },
-                  { stage: '4. Seat Stitching', done: false, current: true },
-                  { stage: '5. Ready for Pickup', done: false, current: false },
-                ].map((st, i) => (
-                  <div key={i} className="space-y-2">
-                    <div className={`h-2 rounded-full ${
-                      st.done 
-                        ? 'bg-[#25D366]' 
-                        : st.current 
-                          ? 'bg-[#D6A62E] animate-pulse' 
-                          : 'bg-white/10'
-                    }`} />
-                    <div className="flex items-center gap-1 text-[11px]">
-                      {st.done && <CheckCircle2 className="w-3 h-3 text-[#25D366]" />}
-                      {st.current && <span className="w-2 h-2 rounded-full bg-[#D6A62E] animate-ping" />}
-                      <span className={`font-semibold ${st.current ? 'text-[#D6A62E]' : st.done ? 'text-white' : 'text-white/40'}`}>
-                        {st.stage}
-                      </span>
-                    </div>
+            {latestActiveBooking ? (
+              <div className="p-6 sm:p-8 rounded-3xl bg-[#0B4035] border-2 border-[#D6A62E]/40 shadow-2xl space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-4">
+                  <div>
+                    <span className="text-xs font-bold text-[#D6A62E] uppercase tracking-wider flex items-center gap-1.5">
+                      <Scissors className="w-3.5 h-3.5" /> LIVE WORKSHOP STAGE TRACKER
+                    </span>
+                    <h3 className="text-xl font-black text-white font-display mt-0.5">
+                      {latestActiveBooking.vehicleDetails?.make} {latestActiveBooking.vehicleDetails?.model} ({latestActiveBooking.vehicleDetails?.registrationNo})
+                    </h3>
+                    <p className="text-xs text-white/70">
+                      {latestActiveBooking.serviceName} • Craftsman: {latestActiveBooking.assignedStaffName || 'Master Upholsterer'}
+                    </p>
                   </div>
-                ))}
+                  <div className="text-right">
+                    <span className="px-3 py-1 rounded-full bg-[#D6A62E]/20 text-[#D6A62E] border border-[#D6A62E]/40 text-xs font-bold">
+                      Stage: {activeWorkOrder?.stage ? activeWorkOrder.stage.replace(/_/g, ' ') : latestActiveBooking.status.replace(/_/g, ' ').toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Multi-step Status Timeline Bar */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2">
+                  {[
+                    { stage: '1. Booked', done: true, current: latestActiveBooking.status === 'pending' },
+                    { stage: '2. Deposit Settled', done: Boolean(latestActiveBooking.depositPaid), current: latestActiveBooking.status === 'confirmed' },
+                    { stage: '3. Vehicle Received', done: activeWorkOrder?.stage === 'VEHICLE_RECEIVED' || activeWorkOrder?.stage === 'MATERIALS_PREPARED' || activeWorkOrder?.stage === 'IN_PROGRESS' || activeWorkOrder?.stage === 'QUALITY_CHECK' || activeWorkOrder?.stage === 'READY_FOR_COLLECTION' || activeWorkOrder?.stage === 'COLLECTED', current: latestActiveBooking.status === 'checked_in' },
+                    { stage: '4. Stitching & Tailoring', done: activeWorkOrder?.stage === 'QUALITY_CHECK' || activeWorkOrder?.stage === 'READY_FOR_COLLECTION' || activeWorkOrder?.stage === 'COLLECTED', current: latestActiveBooking.status === 'in_progress' },
+                    { stage: '5. Ready for Pickup', done: activeWorkOrder?.stage === 'COLLECTED' || latestActiveBooking.status === 'completed', current: latestActiveBooking.status === 'ready' },
+                  ].map((st, i) => (
+                    <div key={i} className="space-y-2">
+                      <div className={`h-2 rounded-full ${
+                        st.done 
+                          ? 'bg-[#25D366]' 
+                          : st.current 
+                            ? 'bg-[#D6A62E] animate-pulse' 
+                            : 'bg-white/10'
+                      }`} />
+                      <div className="flex items-center gap-1 text-[11px]">
+                        {st.done && <CheckCircle2 className="w-3 h-3 text-[#25D366]" />}
+                        {st.current && <span className="w-2 h-2 rounded-full bg-[#D6A62E] animate-ping" />}
+                        <span className={`font-semibold ${st.current ? 'text-[#D6A62E]' : st.done ? 'text-white' : 'text-white/40'}`}>
+                          {st.stage}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="p-6 rounded-3xl bg-[#0B4035] border border-[#D6A62E]/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#D6A62E]/10 border border-[#D6A62E]/40 flex items-center justify-center text-[#D6A62E]">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white">No Active Workshop Jobs in Progress</h4>
+                    <p className="text-xs text-white/60">Schedule an upholstery upgrade, custom seat refit, or car shade canopy anytime.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setBookingWizardInitialServiceId(null);
+                    setView('booking');
+                  }}
+                  className="py-2.5 px-4 rounded-xl bg-[#D6A62E] text-[#073B32] font-black text-xs uppercase tracking-wider whitespace-nowrap shadow"
+                >
+                  Book New Service
+                </button>
+              </div>
+            )}
 
             {/* Upcoming Appointments */}
             <div className="space-y-4">
@@ -304,14 +358,14 @@ export const CustomerDashboard: React.FC = () => {
                       </div>
                       <h4 className="font-bold text-base text-white">{booking.serviceName}</h4>
                       <p className="text-xs text-white/70">
-                        {booking.vehicleMake} {booking.vehicleModel} • <span className="text-[#D6A62E] font-mono">{booking.vehicleRegistration}</span>
+                        {booking.vehicleDetails?.make} {booking.vehicleDetails?.model} • <span className="text-[#D6A62E] font-mono">{booking.vehicleDetails?.registrationNo}</span>
                       </p>
                     </div>
 
                     <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs">
                       <div>
                         <span className="text-white/50 block text-[10px]">APPOINTMENT</span>
-                        <span className="font-bold text-white">{booking.preferredDate} ({booking.preferredTime})</span>
+                        <span className="font-bold text-white">{booking.appointmentDate} ({booking.appointmentTime})</span>
                       </div>
 
                       <div className="flex items-center gap-2">
@@ -368,7 +422,7 @@ export const CustomerDashboard: React.FC = () => {
 
                     <h4 className="font-bold text-base text-white">{booking.serviceName}</h4>
                     <p className="text-xs text-white/70">
-                      Vehicle: <strong>{booking.vehicleMake} {booking.vehicleModel}</strong> ({booking.vehicleRegistration}) • Date: <strong>{booking.preferredDate}</strong> ({booking.preferredTime})
+                      Vehicle: <strong>{booking.vehicleDetails?.make} {booking.vehicleDetails?.model}</strong> ({booking.vehicleDetails?.registrationNo}) • Date: <strong>{booking.appointmentDate}</strong> ({booking.appointmentTime})
                     </p>
                   </div>
 
@@ -407,7 +461,7 @@ export const CustomerDashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-xl font-bold text-white font-display">My Registered Vehicles</h3>
-                <p className="text-xs text-white/70">Save your vehicles for fast 1-click booking and tailoring logs.</p>
+                <p className="text-xs text-white/70">Manage saved vehicles in your garage for fast 1-click booking and tailoring history.</p>
               </div>
               <button
                 id="add-vehicle-to-garage-btn"
@@ -418,58 +472,86 @@ export const CustomerDashboard: React.FC = () => {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {vehicles.map((v) => (
-                <div
-                  key={v.id}
-                  className="p-6 rounded-2xl bg-[#0B4035] border border-[#D6A62E]/30 shadow-xl space-y-4 flex flex-col justify-between"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="p-2.5 rounded-xl bg-[#073B32] text-[#D6A62E] border border-[#D6A62E]/30">
-                        <Car className="w-5 h-5" />
-                      </div>
-                      <span className="font-mono font-bold text-xs text-[#D6A62E] bg-[#073B32] px-2.5 py-1 rounded-lg border border-white/10">
-                        {v.registrationNumber}
-                      </span>
-                    </div>
-
-                    <div>
-                      <h4 className="font-bold text-lg text-white font-display">{v.make} {v.model}</h4>
-                      <p className="text-xs text-white/70">{v.year} • {v.color} • {v.vehicleType}</p>
-                    </div>
-
-                    <div className="space-y-1 text-xs text-white/70 bg-[#073B32] p-3 rounded-xl border border-white/5">
-                      <span className="text-[10px] text-[#D6A62E] uppercase font-bold block">Upholstery History</span>
-                      {v.upholsteryHistory.map((h, i) => (
-                        <div key={i} className="flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3 text-[#25D366]" /> {h}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="pt-3 border-t border-white/10 flex items-center justify-between">
-                    <button
-                      onClick={() => deleteVehicle(v.id)}
-                      className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" /> Remove
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setBookingWizardInitialServiceId('srv-1');
-                        setView('booking');
-                      }}
-                      className="py-2 px-3 rounded-xl bg-[#D6A62E] hover:bg-[#c39626] text-[#073B32] font-black text-xs uppercase"
-                    >
-                      Book Service
-                    </button>
-                  </div>
+            {myVehicles.length === 0 ? (
+              <div className="p-12 rounded-3xl bg-[#0B4035] border border-dashed border-[#D6A62E]/30 text-center space-y-4 shadow-xl">
+                <div className="w-14 h-14 rounded-2xl bg-[#D6A62E]/10 border border-[#D6A62E]/40 flex items-center justify-center mx-auto text-[#D6A62E]">
+                  <Car className="w-7 h-7" />
                 </div>
-              ))}
-            </div>
+                <div className="space-y-1">
+                  <h4 className="font-bold text-base text-white">Your Garage is Empty</h4>
+                  <p className="text-xs text-white/70 max-w-md mx-auto">
+                    You haven't added any vehicles to your driver profile yet. Register your vehicle to easily track custom tailoring progress and book maintenance services.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowAddVehicleModal(true)}
+                  className="inline-flex items-center gap-2 py-2.5 px-5 rounded-xl bg-[#D6A62E] hover:bg-[#c39626] text-[#073B32] font-black text-xs uppercase tracking-wider shadow-lg"
+                >
+                  <Plus className="w-4 h-4" /> Add Your Vehicle Now
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {myVehicles.map((v) => {
+                  const regDisplay = v.registrationNo || v.registrationNumber || 'NO PLATE';
+                  const typeDisplay = v.type || v.vehicleType || 'Car';
+                  return (
+                    <div
+                      key={v.id}
+                      className="p-6 rounded-2xl bg-[#0B4035] border border-[#D6A62E]/30 shadow-xl space-y-4 flex flex-col justify-between"
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="p-2.5 rounded-xl bg-[#073B32] text-[#D6A62E] border border-[#D6A62E]/30">
+                            <Car className="w-5 h-5" />
+                          </div>
+                          <span className="font-mono font-bold text-xs text-[#D6A62E] bg-[#073B32] px-2.5 py-1 rounded-lg border border-white/10">
+                            {regDisplay}
+                          </span>
+                        </div>
+
+                        <div>
+                          <h4 className="font-bold text-lg text-white font-display">{v.make} {v.model}</h4>
+                          <p className="text-xs text-white/70">{v.year} • {v.color || 'Custom'} • {typeDisplay}</p>
+                        </div>
+
+                        <div className="space-y-1 text-xs text-white/70 bg-[#073B32] p-3 rounded-xl border border-white/5">
+                          <span className="text-[10px] text-[#D6A62E] uppercase font-bold block">Upholstery History</span>
+                          {v.upholsteryHistory && v.upholsteryHistory.length > 0 ? (
+                            v.upholsteryHistory.map((h, i) => (
+                              <div key={i} className="flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3 text-[#25D366]" /> {h}
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-white/40 italic">Factory Standard Interior</div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t border-white/10 flex items-center justify-between">
+                        <button
+                          onClick={() => deleteVehicle(v.id)}
+                          className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Remove
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setBookingWizardInitialServiceId('srv-1');
+                            setView('booking');
+                          }}
+                          className="py-2 px-3 rounded-xl bg-[#D6A62E] hover:bg-[#c39626] text-[#073B32] font-black text-xs uppercase"
+                        >
+                          Book Service
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -565,11 +647,11 @@ export const CustomerDashboard: React.FC = () => {
               </div>
               <div className="flex justify-between pt-2">
                 <span className="text-white/60">Vehicle:</span>
-                <span className="font-bold text-white">{selectedBooking.vehicleMake} {selectedBooking.vehicleModel} ({selectedBooking.vehicleRegistration})</span>
+                <span className="font-bold text-white">{selectedBooking.vehicleDetails?.make} {selectedBooking.vehicleDetails?.model} ({selectedBooking.vehicleDetails?.registrationNo})</span>
               </div>
               <div className="flex justify-between pt-2">
                 <span className="text-white/60">Date & Slot:</span>
-                <span className="text-white">{selectedBooking.preferredDate} ({selectedBooking.preferredTime})</span>
+                <span className="text-white">{selectedBooking.appointmentDate} ({selectedBooking.appointmentTime})</span>
               </div>
               <div className="flex justify-between pt-2">
                 <span className="text-white/60">Material / Color:</span>
