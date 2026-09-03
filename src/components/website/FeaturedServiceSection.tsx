@@ -17,6 +17,7 @@ export const FeaturedServiceSection: React.FC = () => {
   const [activeMaterial, setActiveMaterial] = useState('Genuine Nappa Leather');
   const [activeColor, setActiveColor] = useState('Saddle Brown & Black');
   const [activePattern, setActivePattern] = useState('Diamond Quilted');
+  const [isSeatsFocused, setIsSeatsFocused] = useState(false);
 
   const materials = [
     { name: 'Genuine Nappa Leather', desc: 'Silky smooth, high durability', image: 'https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=1200&q=80' },
@@ -79,54 +80,77 @@ export const FeaturedServiceSection: React.FC = () => {
         {/* Split Editorial Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
           
-          {/* Left Column: Live Visualizer — updates on material/color/pattern */}
+          {/* Left Column: Realistic Seat-Only Visualizer — zoom to seats, tint only seats */}
           <div className="lg:col-span-6 space-y-4">
-            <div className="relative rounded-2xl overflow-hidden border-2 border-[#D6A62E]/40 shadow-2xl group bg-[#052822]">
-              <motion.img
-                key={activeMaterialData.image}
-                src={cdnUrl(activeMaterialData.image, { w: 1200 })}
-                alt={`Rolling Razors ${activeMaterial} interior in ${activeColor}`}
-                initial={{ opacity: 0, scale: 1.02 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-                className="w-full h-[400px] sm:h-[480px] object-cover"
-                loading="eager"
+            <div className="relative rounded-2xl overflow-hidden border-2 border-[#D6A62E]/40 shadow-2xl group bg-[#052822] h-[400px] sm:h-[480px]">
+              <img
+                src={cdnUrl('https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=1200&q=80', { w: 1200 })}
+                alt="Vehicle cabin background"
+                className="absolute inset-0 w-full h-full object-cover opacity-40"
+                loading="lazy"
                 decoding="async"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#073B32] via-transparent to-black/20 pointer-events-none" />
-              <motion.div
-                key={activeColor}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5 }}
-                className="absolute inset-0 pointer-events-none"
-                style={{ backgroundColor: activeColorData.hex, opacity: 0.32, mixBlendMode: 'multiply' } as any}
-              />
-              <motion.div
-                key={activePattern}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.4 }}
-                className="absolute inset-0 pointer-events-none"
+              <div className="absolute inset-0 bg-gradient-to-t from-[#073B32] via-transparent to-black/10 pointer-events-none" />
+              <div
+                className="absolute inset-0 overflow-hidden"
                 style={{
-                  opacity: activePatternData.overlay === 'perforated' ? 0.18 : 0.14,
-                  backgroundImage:
-                    activePatternData.overlay === 'diamond'
-                      ? `repeating-linear-gradient(45deg, transparent 0 14px, rgba(214,166,46,0.18) 14px 15px), repeating-linear-gradient(-45deg, transparent 0 14px, rgba(214,166,46,0.18) 14px 15px)`
-                      : activePatternData.overlay === 'hex'
-                      ? `radial-gradient(circle at 1px 1px, rgba(214,166,46,0.22) 1.5px, transparent 0)`
-                      : activePatternData.overlay === 'french'
-                      ? `repeating-linear-gradient(90deg, transparent 0 32px, rgba(214,166,46,0.15) 32px 33px)`
-                      : activePatternData.overlay === 'perforated'
-                      ? `radial-gradient(circle, rgba(0,0,0,0.35) 1.2px, transparent 1.6px)`
-                      : `repeating-linear-gradient(0deg, transparent 0 18px, rgba(214,166,46,0.12) 18px 19px)`,
-                  backgroundSize: activePatternData.overlay === 'hex' || activePatternData.overlay === 'perforated' ? '14px 14px' : 'auto',
-                }}
-              />
-              <div className="absolute top-3 left-3 bg-[#073B32]/90 backdrop-blur-md border border-[#D6A62E]/30 px-2.5 py-1 rounded-full text-[10px] font-bold text-[#D6A62E] flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: activeColorData.hex }} />
-                {activeMaterial} • {activeColor}
+                  clipPath: 'polygon(8% 32%, 48% 32%, 48% 92%, 8% 92%, 52% 32%, 92% 32%, 92% 92%, 52% 92%)',
+                  WebkitClipPath: 'polygon(8% 32%, 48% 32%, 48% 92%, 8% 92%, 52% 32%, 92% 32%, 92% 92%, 52% 92%)',
+                } as any}
+              >
+                <motion.img
+                  key={activeMaterialData.image}
+                  src={cdnUrl(activeMaterialData.image, { w: 1200 })}
+                  alt={`Seats in ${activeMaterial} ${activeColor} ${activePattern}`}
+                  initial={{ opacity: 0, scale: 1.05 }}
+                  animate={{ opacity: 1, scale: isSeatsFocused ? 1.35 : 1.08, x: isSeatsFocused ? 0 : 0, y: isSeatsFocused ? -8 : 0 }}
+                  transition={{ duration: 0.7, ease: "easeOut" }}
+                  className="w-full h-full object-cover"
+                  style={{ objectPosition: '50% 55%' }}
+                  loading="eager"
+                  decoding="async"
+                />
+                <motion.div
+                  key={activeColor}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
+                  className="absolute inset-0 pointer-events-none"
+                  style={{ backgroundColor: activeColorData.hex, opacity: 0.42, mixBlendMode: 'multiply' } as any}
+                />
+                <motion.div
+                  key={activePattern}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.4 }}
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    opacity: activePatternData.overlay === 'perforated' ? 0.22 : 0.16,
+                    backgroundImage:
+                      activePatternData.overlay === 'diamond'
+                        ? `repeating-linear-gradient(45deg, transparent 0 13px, rgba(255,255,255,0.18) 13px 14px), repeating-linear-gradient(-45deg, transparent 0 13px, rgba(255,255,255,0.18) 13px 14px)`
+                        : activePatternData.overlay === 'hex'
+                        ? `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.28) 1.4px, transparent 0)`
+                        : activePatternData.overlay === 'french'
+                        ? `repeating-linear-gradient(90deg, transparent 0 28px, rgba(255,255,255,0.18) 28px 29px)`
+                        : activePatternData.overlay === 'perforated'
+                        ? `radial-gradient(circle, rgba(0,0,0,0.45) 1.1px, transparent 1.5px)`
+                        : `repeating-linear-gradient(0deg, transparent 0 16px, rgba(255,255,255,0.14) 16px 17px)`,
+                    backgroundSize: activePatternData.overlay === 'hex' || activePatternData.overlay === 'perforated' ? '13px 13px' : 'auto',
+                  }}
+                />
+                <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: 'inset 0 0 40px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(214,166,46,0.18)' }} />
               </div>
+              <div className="absolute top-3 left-3 bg-[#073B32]/92 backdrop-blur-md border border-[#D6A62E]/30 px-2.5 py-1 rounded-full text-[10px] font-bold text-[#D6A62E] flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: activeColorData.hex }} />
+                {isSeatsFocused ? 'Seats Close-Up' : 'Full Interior'} • {activeMaterial}
+              </div>
+              <button
+                onClick={() => setIsSeatsFocused(v => !v)}
+                className="absolute top-3 right-3 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1"
+              >
+                {isSeatsFocused ? '↗ Full View' : '◉ Zoom to Seats'}
+              </button>
               
               {/* Dynamic Floating Spec Card */}
               <div className="absolute bottom-4 left-4 right-4 bg-[#0B4035]/95 backdrop-blur-md p-4 rounded-xl border border-[#D6A62E]/40 shadow-xl space-y-2">
@@ -175,7 +199,7 @@ export const FeaturedServiceSection: React.FC = () => {
                   {materials.map((mat) => (
                     <button
                       key={mat.name}
-                      onClick={() => setActiveMaterial(mat.name)}
+                      onClick={() => { setActiveMaterial(mat.name); setIsSeatsFocused(true); }}
                       className={`p-2.5 rounded-xl text-left border transition-all ${
                         activeMaterial === mat.name
                           ? 'bg-[#073B32] border-[#D6A62E] text-white ring-1 ring-[#D6A62E]'
@@ -198,7 +222,7 @@ export const FeaturedServiceSection: React.FC = () => {
                   {colors.map((c) => (
                     <button
                       key={c.name}
-                      onClick={() => setActiveColor(c.name)}
+                      onClick={() => { setActiveColor(c.name); setIsSeatsFocused(true); }}
                       className={`flex items-center gap-2 py-1.5 px-3 rounded-xl border text-xs font-semibold transition-all ${
                         activeColor === c.name
                           ? 'bg-[#073B32] border-[#D6A62E] text-white ring-1 ring-[#D6A62E]'
@@ -221,7 +245,7 @@ export const FeaturedServiceSection: React.FC = () => {
                   {patterns.map((pat) => (
                     <button
                       key={pat.name}
-                      onClick={() => setActivePattern(pat.name)}
+                      onClick={() => { setActivePattern(pat.name); setIsSeatsFocused(true); }}
                       className={`py-1 px-2.5 rounded-lg text-xs font-medium border transition-all ${
                         activePattern === pat.name
                           ? 'bg-[#D6A62E] text-[#073B32] border-[#D6A62E] font-bold'
