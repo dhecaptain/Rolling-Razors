@@ -18,6 +18,7 @@ import { WhatsAppFloat } from './components/common/WhatsAppFloat';
 import { MpesaModal } from './components/common/MpesaModal';
 import { ToastContainer } from './components/common/ToastContainer';
 import { LegalModal } from './components/common/LegalModal';
+const AdminAuthView = lazy(() => import('./components/auth/AdminAuthView').then(m => ({ default: m.AdminAuthView })));
 
 const MainContent: React.FC = () => {
   const { view, legalModal, closeLegalModal, setLegalModalType } = useApp();
@@ -48,6 +49,7 @@ const MainContent: React.FC = () => {
           {view === 'customer_dashboard' && <CustomerDashboard />}
           {view === 'admin_dashboard' && <AdminDashboard />}
           {view === 'auth' && <AuthView />}
+          {view === 'admin_auth' && <AdminAuthView />}
         </Suspense>
       </main>
 

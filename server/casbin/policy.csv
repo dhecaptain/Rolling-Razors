@@ -1,0 +1,18 @@
+p, admin, bookings, confirm
+p, admin, bookings, read
+p, admin, bookings, update
+p, admin, work-orders, update
+p, admin, invoices, read
+p, admin, invoices, update
+p, admin, customers, read
+p, admin, inventory, read
+p, admin, inventory, update
+p, admin, audit-logs, read
+p, admin, mpesa, read
+p, admin, mpesa, reconcile
+# Future roles — pending client confirmation
+# p, manager, bookings, read
+# p, manager, work-orders, update
+# p, reception, bookings, read
+# p, craftsman, work-orders, update
+g, admin, admin

@@ -35,6 +35,8 @@ export const env = {
   SENTRY_ENV: (process.env.SENTRY_ENV || process.env.NODE_ENV || "development").trim(),
   IMAGE_CDN: (process.env.IMAGE_CDN || "unsplash").trim(),
   IMAGE_CDN_URL: (process.env.IMAGE_CDN_URL || "").trim(),
+  ADMIN_IP_ALLOWLIST: (process.env.ADMIN_IP_ALLOWLIST || "").trim(),
+  ADMIN_REQUIRE_2FA: (process.env.ADMIN_REQUIRE_2FA || "false").trim().toLowerCase() === "true",
 };
 
 if (!env.AUTH_SECRET || env.AUTH_SECRET.length < 32 || env.AUTH_SECRET === "rolling-razors-kenya-customs-secret-key-2026") {

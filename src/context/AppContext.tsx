@@ -32,7 +32,7 @@ import {
 } from '../data/mockData';
 import { phoneKey, phonesMatch, normalizePhoneKe } from '../utils/phone';
 
-export type AppView = 'website' | 'booking' | 'customer_dashboard' | 'admin_dashboard' | 'auth';
+export type AppView = 'website' | 'booking' | 'customer_dashboard' | 'admin_dashboard' | 'auth' | 'admin_auth';
 
 export interface ToastItem {
   id: string;
@@ -375,7 +375,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const openAuth = (mode: 'customer' | 'admin' | 'register' = 'customer') => {
     setAuthInitialMode(mode);
-    setView('auth');
+    if (mode === 'admin') setView('admin_auth');
+    else setView('auth');
   };
 
   const loginCustomer = async (phone: string, password?: string): Promise<{ success: boolean; error?: string }> => {
@@ -418,31 +419,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const loginAdmin = async (identifier: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const loginAdmin = async (identifier: string, password: string): Promise<{ success: boolean; error?: string; requiresOtp?: boolean }> => {
     const cleanIdent = identifier.trim();
     const cleanPass = password.trim();
-
     if (!cleanIdent || !cleanPass) {
       addToast('error', 'Missing Information', 'Please provide administrator email/phone and security passcode.');
       return { success: false, error: 'Identifier and passcode required' };
     }
-
     try {
-      // Authenticate strictly on the backend API
       const response = await fetch('/api/auth/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ identifier: cleanIdent, password: cleanPass })
       });
-
       const data = await response.json();
+      if (data.requiresOtp) {
+        return { success: false, requiresOtp: true, error: data.message };
+      }
       if (data.success && data.user) {
-        const sessionData = {
-          user: data.user,
-          token: data.token,
-          expiresAt: Date.now() + 24 * 60 * 60 * 1000 // 24-hour admin session
-        };
-
+        const sessionData = { user: data.user, token: data.token, expiresAt: Date.now() + 8 * 60 * 60 * 1000 };
         localStorage.setItem('rr_auth_session', JSON.stringify(sessionData));
         setCurrentUser(data.user);
         setIsLoggedIn(true);

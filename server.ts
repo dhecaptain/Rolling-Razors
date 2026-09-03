@@ -7,12 +7,14 @@ import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import pinoHttp from "pino-http";
+import cookieParser from "cookie-parser";
 import { createServer as createViteServer } from "vite";
 import { env } from "./server/env";
 import { logger } from "./server/logger";
 import { serverDb } from "./server/db";
 import { prisma } from "./server/prisma";
 import { initSentry, Sentry } from "./server/sentry";
+import { requireCasbin } from "./server/casbin/enforcer";
 import { normalizePhoneKe, toDarajaPhone, phoneKey, phonesMatch, isValidKePhone } from "./server/phone";
 import { validate, adminLoginSchema, customerLoginSchema, customerRegisterSchema, stkPushSchema, bookingCreateSchema, vehicleCreateSchema } from "./server/validators";
 import { Booking, Customer, User, Vehicle, WorkOrder } from "./src/types";
@@ -21,6 +23,7 @@ initSentry();
 const app = express();
 const PORT = env.PORT;
 
+app.use(cookieParser());
 app.use((req, _res, next) => { (req as any).id = crypto.randomUUID(); next(); });
 
 app.use(helmet({
@@ -58,7 +61,8 @@ app.use(pinoHttp({
 app.set("trust proxy", 1);
 
 const generalLimiter = rateLimit({ windowMs: 60_000, max: 120, standardHeaders: true, legacyHeaders: false });
-const authLimiter = rateLimit({ windowMs: 60_000, max: 10, standardHeaders: true, legacyHeaders: false, message: { success:false, error:"Too many attempts. Try again shortly." } });
+const customerAuthLimiter = rateLimit({ windowMs: 60_000, max: 10, standardHeaders: true, legacyHeaders: false, message: { success:false, error:"Too many customer attempts. Try again shortly." } });
+const adminAuthLimiter = rateLimit({ windowMs: 60_000, max: 5, standardHeaders: true, legacyHeaders: false, message: { success:false, error:"Too many admin attempts. Try again in 5 minutes." } });
 const mpesaLimiter = rateLimit({ windowMs: 60_000, max: 6, standardHeaders: true, legacyHeaders: false, message: { success:false, error:"M-Pesa rate limit: please wait." } });
 const otpLimiter = rateLimit({ windowMs: 60_000, max: 5, standardHeaders: true, legacyHeaders: false });
 const callbackLimiter = rateLimit({ windowMs: 60_000, max: 60, standardHeaders: true, legacyHeaders: false });
@@ -78,13 +82,34 @@ async function comparePassword(p:string, hash:string): Promise<boolean> { try{ r
 function hashOtp(otp:string): string { return crypto.createHmac("sha256", env.OTP_HASH_SECRET).update(otp).digest("hex"); }
 
 const tokenDenylist = new Set<string>();
-function authenticateToken(req: express.Request,res: express.Response,next: express.NextFunction){ const h=req.headers.authorization; if(!h||!h.startsWith("Bearer ")) return res.status(401).json({ success:false, error:"Authorization token required." }); const token=h.split(" ")[1]; const d=verifyToken(token); if(!d) return res.status(401).json({ success:false, error:"Invalid or expired session token." }); if(d.jti && tokenDenylist.has(d.jti)) return res.status(401).json({ success:false, error:"Token revoked." }); (req as any).user=d; (req as any).token=token; next(); }
-function authenticateOptional(req: express.Request,_res: express.Response,next: express.NextFunction){ const h=req.headers.authorization; if(h?.startsWith("Bearer ")){ const d=verifyToken(h.split(" ")[1]); if(d && !(d.jti && tokenDenylist.has(d.jti))) (req as any).user=d; } next(); }
+function authenticateToken(req: express.Request,res: express.Response,next: express.NextFunction){
+  let token: string | undefined;
+  const h=req.headers.authorization;
+  if(h?.startsWith("Bearer ")) token=h.split(" ")[1];
+  else if((req as any).cookies?.admin_token) token=(req as any).cookies.admin_token;
+  if(!token) return res.status(401).json({ success:false, error:"Authorization token required." });
+  const d=verifyToken(token); if(!d) return res.status(401).json({ success:false, error:"Invalid or expired session token." }); if(d.jti && tokenDenylist.has(d.jti)) return res.status(401).json({ success:false, error:"Token revoked." }); (req as any).user=d; (req as any).token=token; next();
+}
+function authenticateOptional(req: express.Request,_res: express.Response,next: express.NextFunction){
+  let token: string | undefined;
+  const h=req.headers.authorization;
+  if(h?.startsWith("Bearer ")) token=h.split(" ")[1];
+  else if((req as any).cookies?.admin_token) token=(req as any).cookies.admin_token;
+  if(token){ const d=verifyToken(token); if(d && !(d.jti && tokenDenylist.has(d.jti))) (req as any).user=d; } next();
+}
 function requireAdmin(req: express.Request,res: express.Response,next: express.NextFunction){ const u=(req as any).user; if(!u||u.role!=="admin") return res.status(403).json({ success:false, error:"Admin access required." }); next(); }
+function checkAdminIpAllowlist(req: express.Request,res: express.Response,next: express.NextFunction){
+  if(!env.ADMIN_IP_ALLOWLIST) return next();
+  const allowlist=env.ADMIN_IP_ALLOWLIST.split(",").map(s=>s.trim()).filter(Boolean);
+  const ip=(req.ip || req.headers["x-forwarded-for"] as string || "").split(",")[0].trim();
+  if(allowlist.includes(ip) || allowlist.includes("*")) return next();
+  logger.warn({ ip, path:req.path }, "[Admin] IP not in allowlist");
+  return res.status(403).json({ success:false, error:"Admin access denied from this network." });
+}
 
 function getPagination(req: express.Request){ const page=Math.max(1, parseInt(req.query.page as string)||1); const limit=Math.min(100, Math.max(1, parseInt(req.query.limit as string)||20)); const offset=(page-1)*limit; return { page, limit, offset }; }
 
-app.post("/api/auth/admin/login", authLimiter, async (req,res)=>{
+app.post("/api/auth/admin/login", adminAuthLimiter, checkAdminIpAllowlist, async (req,res)=>{
   const v=validate(adminLoginSchema, req.body); if(!v.success) return res.status(400).json({ success:false, error:v.error });
   const { identifier, password }=v.data as any; const cleanIdent=String(identifier).trim().toLowerCase(); const cleanPass=String(password).trim();
   const adminEmail=env.ADMIN_EMAIL; const adminPhone=env.ADMIN_PHONE; const adminPass=env.ADMIN_PASSWORD;
@@ -93,14 +118,50 @@ app.post("/api/auth/admin/login", authLimiter, async (req,res)=>{
   let isPassMatch=false;
   if (adminPass.startsWith("$2a$") || adminPass.startsWith("$2b$")) isPassMatch=await comparePassword(cleanPass, adminPass);
   else isPassMatch=cleanPass===adminPass;
-  if((!matchesEmail && !matchesPhone) || !isPassMatch) return res.status(401).json({ success:false, error:"Access Denied: Invalid workshop staff credentials." });
+  if((!matchesEmail && !matchesPhone) || !isPassMatch) {
+    await serverDb.createAuditLog({ actorId: cleanIdent, actorName: cleanIdent, actorRole: "admin", action: "admin:login:failed", entityType: "User", entityId: cleanIdent, ip: req.ip, requestId: (req as any).id }).catch(()=>{});
+    return res.status(401).json({ success:false, error:"Access Denied: Invalid workshop staff credentials." });
+  }
   const adminName=env.ADMIN_NAME || (adminEmail?adminEmail.split("@")[0]:"Workshop Administrator");
-  const adminUser: User={ id:"staff-admin", name:adminName, phone:adminPhone||"+254 712 345 678", email:adminEmail||"admin@rollingrazors.co.ke", role:"admin", avatar:"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80", location:"Workshop HQ, Industrial Area, Nairobi" };
-  await serverDb.upsertUser(adminUser); const token=generateToken(adminUser,8);
+  let adminUser: User={ id:"staff-admin", name:adminName, phone:adminPhone||"+254 712 345 678", email:adminEmail||"admin@rollingrazors.co.ke", role:"admin", avatar:"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80", location:"Workshop HQ, Industrial Area, Nairobi" };
+  try {
+    const existingByEmail = adminEmail ? await prisma.user.findUnique({ where: { email: adminEmail } }) : null;
+    if (existingByEmail && existingByEmail.id !== adminUser.id) adminUser.id = existingByEmail.id;
+  } catch {}
+  await serverDb.upsertUser(adminUser);
+  if(env.ADMIN_REQUIRE_2FA){
+    const otp=Math.floor(100000+Math.random()*900000).toString(); const expiresAt=Date.now()+5*60*1000;
+    await serverDb.saveOtp(`admin:${cleanIdent}`, hashOtp(otp), expiresAt);
+    logger.info({ identifier: cleanIdent, requestId:(req as any).id }, "[Admin] 2FA OTP sent");
+    return res.json({ success:false, requiresOtp:true, message:"OTP sent to workshop phone.", debugOtp: env.NODE_ENV!=="production"?otp:undefined });
+  }
+  const token=generateToken(adminUser,8);
+  res.cookie("admin_token", token, { httpOnly:true, secure: env.NODE_ENV==="production", sameSite:"strict", maxAge: 8*60*60*1000, path:"/" });
+  await serverDb.createAuditLog({ actorId: adminUser.id, actorName: adminUser.name, actorRole: "admin", action: "admin:login:success", entityType: "User", entityId: adminUser.id, ip: req.ip, requestId: (req as any).id }).catch(()=>{});
   return res.json({ success:true, user:{ ...adminUser, token }, token });
 });
 
-app.post("/api/auth/customer/login", authLimiter, async (req,res)=>{
+app.post("/api/auth/admin/verify-otp", adminAuthLimiter, checkAdminIpAllowlist, async (req,res)=>{
+  const { identifier, otp }=req.body; if(!identifier || !otp) return res.status(400).json({ success:false, error:"Identifier and OTP required." });
+  const key=`admin:${String(identifier).trim().toLowerCase()}`;
+  const record=await serverDb.getOtp(key);
+  const hashed=hashOtp(String(otp).trim());
+  if(!record || record.expiresAt < Date.now() || (record.otp!==hashed && record.otp!==String(otp).trim())) return res.status(401).json({ success:false, error:"Invalid or expired OTP." });
+  await serverDb.deleteOtp(key);
+  const adminEmail=env.ADMIN_EMAIL; const adminPhone=env.ADMIN_PHONE;
+  const adminName2=env.ADMIN_NAME || (adminEmail?adminEmail.split("@")[0]:"Workshop Administrator");
+  let adminUser2: User={ id:"staff-admin", name:adminName2, phone:adminPhone||"+254 712 345 678", email:adminEmail||"admin@rollingrazors.co.ke", role:"admin", avatar:"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80", location:"Workshop HQ, Industrial Area, Nairobi" };
+  try {
+    const existingByEmail2 = adminEmail ? await prisma.user.findUnique({ where: { email: adminEmail } }) : null;
+    if (existingByEmail2 && existingByEmail2.id !== adminUser2.id) adminUser2.id = existingByEmail2.id;
+  } catch {}
+  await serverDb.upsertUser(adminUser2); const token=generateToken(adminUser2,8);
+  res.cookie("admin_token", token, { httpOnly:true, secure: env.NODE_ENV==="production", sameSite:"strict", maxAge: 8*60*60*1000, path:"/" });
+  await serverDb.createAuditLog({ actorId: adminUser2.id, actorName: adminUser2.name, actorRole: "admin", action: "admin:login:success:2fa", entityType: "User", entityId: adminUser2.id, ip: req.ip, requestId: (req as any).id }).catch(()=>{});
+  return res.json({ success:true, user:{ ...adminUser2, token }, token });
+});
+
+app.post("/api/auth/customer/login", customerAuthLimiter, async (req,res)=>{
   const v=validate(customerLoginSchema, req.body); if(!v.success) return res.status(400).json({ success:false, error:v.error });
   const { phone, otp }=v.data as any; const key=phoneKey(String(phone));
   if(otp){
@@ -115,7 +176,7 @@ app.post("/api/auth/customer/login", authLimiter, async (req,res)=>{
   const token=generateToken(customer, 24*7); return res.json({ success:true, user:{ ...customer, token }, token });
 });
 
-app.post("/api/auth/customer/register", authLimiter, async (req,res)=>{
+app.post("/api/auth/customer/register", customerAuthLimiter, async (req,res)=>{
   const v=validate(customerRegisterSchema, req.body); if(!v.success) return res.status(400).json({ success:false, error:v.error });
   const { name, phone, email }=v.data as any; const formattedPhone=normalizePhoneKe(String(phone));
   if(!isValidKePhone(String(phone))) return res.status(400).json({ success:false, error:"Invalid Kenyan phone number. Must be Safaricom 07... format." });
@@ -142,12 +203,17 @@ app.post("/api/auth/customer/send-otp", otpLimiter, async (req,res)=>{
 
 app.post("/api/auth/logout", authenticateToken, async (req,res)=>{
   const user=(req as any).user; if(user?.jti) tokenDenylist.add(user.jti);
+  res.clearCookie("admin_token", { httpOnly:true, secure: env.NODE_ENV==="production", sameSite:"strict", path:"/" });
   return res.json({ success:true, message:"Logged out." });
 });
 
 app.get("/api/auth/verify", (req,res)=>{
-  const h=req.headers.authorization; if(!h||!h.startsWith("Bearer ")) return res.status(401).json({ valid:false, error:"Missing Bearer token." });
-  const d=verifyToken(h.split(" ")[1]); if(!d) return res.status(401).json({ valid:false, error:"Token signature invalid or expired." });
+  let token: string | undefined;
+  const h=req.headers.authorization;
+  if(h?.startsWith("Bearer ")) token=h.split(" ")[1];
+  else if((req as any).cookies?.admin_token) token=(req as any).cookies.admin_token;
+  if(!token) return res.status(401).json({ valid:false, error:"Missing Bearer token." });
+  const d=verifyToken(token); if(!d) return res.status(401).json({ valid:false, error:"Token signature invalid or expired." });
   if(d.jti && tokenDenylist.has(d.jti)) return res.status(401).json({ valid:false, error:"Token revoked." });
   return res.json({ valid:true, user:d });
 });
@@ -182,7 +248,7 @@ app.post("/api/bookings", authenticateOptional, async (req,res)=>{
   res.status(201).json({ success:true, booking:savedBooking, workOrder:savedWorkOrder });
 });
 
-app.patch("/api/bookings/:id", authenticateToken, async (req,res)=>{
+app.patch("/api/bookings/:id", authenticateToken, requireAdmin, requireCasbin("bookings","update"), async (req,res)=>{
   const { id }=req.params; const existing=await serverDb.getBooking(id); if(!existing) return res.status(404).json({ success:false, error:"Booking not found." });
   const user=(req as any).user; if(user.role!=="admin" && existing.customerId && existing.customerId!==user.id && !phonesMatch(existing.customerPhone, user.phone||"")) return res.status(403).json({ success:false, error:"Forbidden." });
   const allowed=["status","assignedStaffId","assignedStaffName","paymentStatus","paymentMethod","mpesaReceiptNo","depositPaid","depositAmount","balanceAmount","internalNotes"];
@@ -241,7 +307,7 @@ app.get("/api/work-orders", authenticateOptional, async (req,res)=>{
   res.json({ success:true, workOrders, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
 });
 
-app.patch("/api/work-orders/:id", authenticateToken, requireAdmin, async (req,res)=>{
+app.patch("/api/work-orders/:id", authenticateToken, requireAdmin, requireCasbin("work-orders","update"), async (req,res)=>{
   const { id }=req.params; const allowed=["stage","progressPercentage","assignedStaffId","assignedStaffName","priority","internalNotes","actualCost","version"]; const patch:any={}; for(const k of allowed) if(k in req.body) patch[k]=req.body[k];
   const user=(req as any).user;
   const result=await serverDb.updateWorkOrderWithVersion(id, patch, { id:user.id, name:user.name, role:user.role, ip:req.ip, requestId:(req as any).id });
@@ -261,7 +327,7 @@ app.get("/api/invoices", authenticateOptional, async (req,res)=>{
   res.json({ success:true, invoices, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
 });
 
-app.patch("/api/invoices/:id", authenticateToken, requireAdmin, async (req,res)=>{
+app.patch("/api/invoices/:id", authenticateToken, requireAdmin, requireCasbin("invoices","update"), async (req,res)=>{
   const { id }=req.params; const updated=await serverDb.updateInvoice(id, req.body); if(!updated) return res.status(404).json({ success:false, error:"Invoice not found." }); res.json({ success:true, invoice:updated });
 });
 
@@ -270,17 +336,17 @@ app.get("/api/customers", authenticateToken, requireAdmin, async (req,res)=>{
   const { data: customers, total }=await serverDb.getCustomersPaginated(page, limit);
   res.json({ success:true, customers, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
 });
-app.get("/api/audit-logs", authenticateToken, requireAdmin, async (req,res)=>{
+app.get("/api/audit-logs", authenticateToken, requireAdmin, requireCasbin("audit-logs","read"), async (req,res)=>{
   const entityType=req.query.entityType as string|undefined; const entityId=req.query.entityId as string|undefined; const limit=Math.min(100, parseInt(req.query.limit as string)||20);
   const logs=await serverDb.getAuditLogs(entityType, entityId, limit);
   res.json({ success:true, logs });
 });
-app.get("/api/inventory", authenticateToken, requireAdmin, async (_req,res)=>{
+app.get("/api/inventory", authenticateToken, requireAdmin, requireCasbin("inventory","read"), async (_req,res)=>{
   const items=await serverDb.getInventory();
   const low=await serverDb.getLowStock();
   res.json({ success:true, inventory:items, lowStock:low });
 });
-app.get("/api/inventory/low", authenticateToken, requireAdmin, async (_req,res)=>{
+app.get("/api/inventory/low", authenticateToken, requireAdmin, requireCasbin("inventory","read"), async (_req,res)=>{
   const low=await serverDb.getLowStock();
   res.json({ success:true, lowStock:low });
 });
