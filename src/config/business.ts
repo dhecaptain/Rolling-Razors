@@ -33,6 +33,7 @@ export interface BusinessConfig {
     landmark: string;
     fullAddress: string;
     mapsUrl: string;
+    mapsEmbedUrl: string;
     coordinates: {
       lat: number;
       lng: number;
@@ -90,7 +91,8 @@ export const BUSINESS_CONFIG: BusinessConfig = {
     country: "Kenya",
     landmark: "Close to Mombasa Road & Southern Bypass Interchange",
     fullAddress: "Enterprise Road / Off Commercial Street, Industrial Area, Nairobi, Kenya",
-    mapsUrl: "https://maps.google.com/?q=Rolling+Razors+Customs+Nairobi+Kenya",
+    mapsUrl: "https://maps.google.com/?q=-1.3098,36.8524+(Rolling+Razors+Customs)",
+    mapsEmbedUrl: "https://www.google.com/maps?q=-1.3098,36.8524&z=16&hl=en&output=embed",
     coordinates: {
       lat: -1.3098,
       lng: 36.8524

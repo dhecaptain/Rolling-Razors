@@ -85,6 +85,19 @@ export const BookingWizard: React.FC = () => {
       if (bookingWizardDraft.preferredDate) setSelectedDate(bookingWizardDraft.preferredDate);
       if (bookingWizardDraft.preferredTime) setSelectedTime(bookingWizardDraft.preferredTime);
       if (bookingWizardDraft.locationType) setLocationType(bookingWizardDraft.locationType);
+      if ((bookingWizardDraft as any).material) setMaterial((bookingWizardDraft as any).material);
+      if ((bookingWizardDraft as any).color) setColor((bookingWizardDraft as any).color);
+      if ((bookingWizardDraft as any).pattern) setPattern((bookingWizardDraft as any).pattern);
+    } else {
+      try {
+        const raw = localStorage.getItem('rr_visualizer_draft');
+        if (raw) {
+          const v = JSON.parse(raw);
+          if (v.material) setMaterial(v.material);
+          if (v.color) setColor(v.color);
+          if (v.pattern) setPattern(v.pattern);
+        }
+      } catch {}
     }
   }, [bookingWizardInitialServiceId, bookingWizardDraft]);
 

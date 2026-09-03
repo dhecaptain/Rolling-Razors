@@ -115,42 +115,25 @@ export const LocationContact: React.FC = () => {
 
           </div>
 
-          {/* Right Column: Google Maps Style Interactive Panel */}
+          {/* Right Column: Real Google Maps Embed — exact to shop */}
           <div className="lg:col-span-7 bg-[#073B32] border border-[#D6A62E]/40 rounded-2xl overflow-hidden shadow-2xl flex flex-col justify-between">
-            
-            {/* Map Visualizer Mock with Nairobi Landmark Pin */}
             <div className="relative h-80 sm:h-96 w-full bg-[#052822] overflow-hidden">
-              {/* Map Texture & Roads graphic */}
-              <svg className="w-full h-full opacity-35" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <pattern id="map-grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#D6A62E" strokeWidth="0.5" strokeOpacity="0.3"/>
-                  </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#map-grid)" />
-                {/* Major Nairobi Highway Lines */}
-                <path d="M 0 100 Q 200 150 400 120 T 800 200" fill="none" stroke="#D6A62E" strokeWidth="4" strokeOpacity="0.6"/>
-                <path d="M 300 0 Q 350 200 420 400" fill="none" stroke="#F5F1E8" strokeWidth="3" strokeOpacity="0.4"/>
-                <path d="M 100 300 L 700 80" fill="none" stroke="#25D366" strokeWidth="2" strokeOpacity="0.5"/>
-              </svg>
-
-              {/* Nairobi Map Pin Badge */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center group cursor-pointer" onClick={handleDirections}>
-                <div className="relative flex items-center justify-center">
-                  <div className="absolute -inset-3 rounded-full bg-[#D6A62E]/30 animate-ping" />
-                  <div className="w-12 h-12 rounded-full bg-[#D6A62E] text-[#073B32] border-2 border-white shadow-2xl flex items-center justify-center">
-                    <MapPin className="w-6 h-6 fill-[#073B32]" />
-                  </div>
-                </div>
-                <div className="mt-2 bg-[#0B4035] border border-[#D6A62E] px-3 py-1 rounded-lg text-xs font-bold text-[#F5F1E8] shadow-xl whitespace-nowrap">
-                  {BUSINESS_CONFIG.name.toUpperCase()}
-                </div>
+              <iframe
+                title={`${BUSINESS_CONFIG.name} — ${BUSINESS_CONFIG.location.fullAddress}`}
+                src={BUSINESS_CONFIG.location.mapsEmbedUrl || `https://www.google.com/maps?q=${BUSINESS_CONFIG.location.coordinates.lat},${BUSINESS_CONFIG.location.coordinates.lng}&z=16&hl=en&output=embed`}
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                allowFullScreen
+              />
+              <div className="absolute top-4 left-4 bg-[#073B32]/90 border border-white/10 backdrop-blur-md px-3 py-1.5 rounded-lg text-[11px] text-white/90 flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-[#D6A62E]" /> {BUSINESS_CONFIG.location.city} Workshop • {BUSINESS_CONFIG.location.coordinates.lat.toFixed(4)}, {BUSINESS_CONFIG.location.coordinates.lng.toFixed(4)}
               </div>
-
-              {/* Quick Map Controls Overlay */}
-              <div className="absolute top-4 left-4 bg-[#073B32]/90 border border-white/10 backdrop-blur-md px-3 py-1.5 rounded-lg text-[11px] text-white/90">
-                📍 {BUSINESS_CONFIG.location.city} Workshop • GPS Verified
-              </div>
+              <button onClick={handleDirections} className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-[#D6A62E] text-[#073B32] border-2 border-white px-4 py-1.5 rounded-full text-xs font-black shadow-xl flex items-center gap-1.5 hover:bg-[#c39626] transition-colors">
+                <MapPin className="w-3.5 h-3.5" /> Open in Google Maps
+              </button>
             </div>
 
             {/* Map Action Bottom Strip */}

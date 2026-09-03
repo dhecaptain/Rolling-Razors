@@ -148,8 +148,8 @@ interface AppContextType {
   setSelectedWorkOrderId: (id: string | null) => void;
   bookingWizardInitialServiceId: string | null;
   setBookingWizardInitialServiceId: (id: string | null) => void;
-  bookingWizardDraft: { vehicleType?: string; preferredDate?: string; preferredTime?: string; locationType?: 'workshop' | 'customer_location' } | null;
-  setBookingWizardDraft: (d: { vehicleType?: string; preferredDate?: string; preferredTime?: string; locationType?: 'workshop' | 'customer_location' } | null) => void;
+  bookingWizardDraft: { vehicleType?: string; preferredDate?: string; preferredTime?: string; locationType?: 'workshop' | 'customer_location'; material?: string; color?: string; pattern?: string } | null;
+  setBookingWizardDraft: (d: { vehicleType?: string; preferredDate?: string; preferredTime?: string; locationType?: 'workshop' | 'customer_location'; material?: string; color?: string; pattern?: string } | null) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -241,7 +241,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [selectedWorkOrderId, setSelectedWorkOrderId] = useState<string | null>(null);
   const [bookingWizardInitialServiceId, setBookingWizardInitialServiceId] = useState<string | null>(null);
-  const [bookingWizardDraft, setBookingWizardDraft] = useState<{ vehicleType?: string; preferredDate?: string; preferredTime?: string; locationType?: 'workshop' | 'customer_location' } | null>(null);
+  const [bookingWizardDraft, setBookingWizardDraft] = useState<{ vehicleType?: string; preferredDate?: string; preferredTime?: string; locationType?: 'workshop' | 'customer_location'; material?: string; color?: string; pattern?: string } | null>(null);
 
   // Toasts
   const [toasts, setToasts] = useState<ToastItem[]>([]);

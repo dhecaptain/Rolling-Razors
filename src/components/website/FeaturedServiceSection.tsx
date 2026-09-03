@@ -1,47 +1,60 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { 
-  Sparkles, 
-  ArrowRight, 
-  Check, 
-  Palette, 
-  Scissors, 
-  Layers, 
-  ShieldCheck 
+import { cdnUrl } from '../../utils/image';
+import { motion } from 'motion/react';
+import {
+  Sparkles,
+  ArrowRight,
+  Check,
+  Palette,
+  Scissors,
+  Layers,
 } from 'lucide-react';
 
 export const FeaturedServiceSection: React.FC = () => {
-  const { setView, setBookingWizardInitialServiceId } = useApp();
+  const { setView, setBookingWizardInitialServiceId, setBookingWizardDraft } = useApp() as any;
 
-  const [activeMaterial, setActiveMaterial] = useState('Nappa Leather');
-  const [activeColor, setActiveColor] = useState('Saddle Brown');
+  const [activeMaterial, setActiveMaterial] = useState('Genuine Nappa Leather');
+  const [activeColor, setActiveColor] = useState('Saddle Brown & Black');
   const [activePattern, setActivePattern] = useState('Diamond Quilted');
 
   const materials = [
-    { name: 'Nappa Leather', desc: 'Silky smooth, high durability automotive grade' },
-    { name: 'Italian Top Grain', desc: 'Full grain natural cowhide with rich character' },
-    { name: 'Heavy Duty Vinyl', desc: '100% waterproof, puncture & tear resistant' },
-    { name: 'Motorsport Alcantara', desc: 'Velvety grip, heat dissipating luxury suede' }
+    { name: 'Genuine Nappa Leather', desc: 'Silky smooth, high durability', image: 'https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=1200&q=80' },
+    { name: 'Italian Full Grain', desc: 'Full grain natural cowhide', image: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80' },
+    { name: 'Heavy-Duty Commercial Vinyl', desc: '100% waterproof, tear resistant', image: 'https://images.unsplash.com/photo-1541348263662-e0c8de4259ba?auto=format&fit=crop&w=1200&q=80' },
+    { name: 'Alcantara Suede & Leather Combo', desc: 'Velvety grip, heat dissipating', image: 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=1200&q=80' }
   ];
 
   const colors = [
-    { name: 'Saddle Brown', hex: '#8C5E3C', border: 'border-[#8C5E3C]' },
-    { name: 'Cognac Tan', hex: '#C2844B', border: 'border-[#C2844B]' },
-    { name: 'Jet Black', hex: '#1C1C1E', border: 'border-white/40' },
-    { name: 'Deep Burgundy', hex: '#58111A', border: 'border-[#58111A]' },
-    { name: 'Forest Green', hex: '#0B4035', border: 'border-[#0B4035]' }
+    { name: 'Saddle Brown & Black', hex: '#8C5E3C', border: 'border-[#8C5E3C]' },
+    { name: 'Cognac Tan & Jet Black', hex: '#C2844B', border: 'border-[#C2844B]' },
+    { name: 'All Jet Black with Red Stitch', hex: '#1C1C1E', border: 'border-white/40' },
+    { name: 'Deep Burgundy Wine', hex: '#58111A', border: 'border-[#58111A]' },
+    { name: 'Forest Green & Gold Accent', hex: '#0B4035', border: 'border-[#0B4035]' }
   ];
 
   const patterns = [
-    'Diamond Quilted',
-    'Double French Stitch',
-    'Honeycomb Hex',
-    'Perforated Motorsport',
-    'Classic Horizontal Ribs'
+    { name: 'Diamond Quilted', overlay: 'diamond' as const },
+    { name: 'Double French Stitch', overlay: 'french' as const },
+    { name: 'Honeycomb Hexagon', overlay: 'hex' as const },
+    { name: 'Perforated Motorsport', overlay: 'perforated' as const },
+    { name: 'Classic Horizontal Pleats', overlay: 'ribs' as const }
   ];
+
+  const activeMaterialData = materials.find(m => m.name === activeMaterial) || materials[0];
+  const activeColorData = colors.find(c => c.name === activeColor) || colors[0];
+  const activePatternData = patterns.find(p => p.name === activePattern) || patterns[0];
 
   const handleStartCustomBuild = () => {
     setBookingWizardInitialServiceId('srv-1');
+    try {
+      setBookingWizardDraft?.({
+        material: activeMaterial,
+        color: activeColor,
+        pattern: activePattern,
+      } as any);
+      localStorage.setItem('rr_visualizer_draft', JSON.stringify({ material: activeMaterial, color: activeColor, pattern: activePattern }));
+    } catch {}
     setView('booking');
   };
 
@@ -66,15 +79,54 @@ export const FeaturedServiceSection: React.FC = () => {
         {/* Split Editorial Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
           
-          {/* Left Column: Large Image & Interactive Visualizer Preview */}
+          {/* Left Column: Live Visualizer — updates on material/color/pattern */}
           <div className="lg:col-span-6 space-y-4">
-            <div className="relative rounded-2xl overflow-hidden border-2 border-[#D6A62E]/40 shadow-2xl group">
-              <img
-                src="https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=1200&q=80"
-                alt="Rolling Razors Bespoke Vehicle Interior"
-                className="w-full h-[400px] sm:h-[480px] object-cover group-hover:scale-105 transition-transform duration-700"
+            <div className="relative rounded-2xl overflow-hidden border-2 border-[#D6A62E]/40 shadow-2xl group bg-[#052822]">
+              <motion.img
+                key={activeMaterialData.image}
+                src={cdnUrl(activeMaterialData.image, { w: 1200 })}
+                alt={`Rolling Razors ${activeMaterial} interior in ${activeColor}`}
+                initial={{ opacity: 0, scale: 1.02 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+                className="w-full h-[400px] sm:h-[480px] object-cover"
+                loading="eager"
+                decoding="async"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#073B32] via-transparent to-black/20" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#073B32] via-transparent to-black/20 pointer-events-none" />
+              <motion.div
+                key={activeColor}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+                className="absolute inset-0 pointer-events-none"
+                style={{ backgroundColor: activeColorData.hex, opacity: 0.32, mixBlendMode: 'multiply' } as any}
+              />
+              <motion.div
+                key={activePattern}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.4 }}
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  opacity: activePatternData.overlay === 'perforated' ? 0.18 : 0.14,
+                  backgroundImage:
+                    activePatternData.overlay === 'diamond'
+                      ? `repeating-linear-gradient(45deg, transparent 0 14px, rgba(214,166,46,0.18) 14px 15px), repeating-linear-gradient(-45deg, transparent 0 14px, rgba(214,166,46,0.18) 14px 15px)`
+                      : activePatternData.overlay === 'hex'
+                      ? `radial-gradient(circle at 1px 1px, rgba(214,166,46,0.22) 1.5px, transparent 0)`
+                      : activePatternData.overlay === 'french'
+                      ? `repeating-linear-gradient(90deg, transparent 0 32px, rgba(214,166,46,0.15) 32px 33px)`
+                      : activePatternData.overlay === 'perforated'
+                      ? `radial-gradient(circle, rgba(0,0,0,0.35) 1.2px, transparent 1.6px)`
+                      : `repeating-linear-gradient(0deg, transparent 0 18px, rgba(214,166,46,0.12) 18px 19px)`,
+                  backgroundSize: activePatternData.overlay === 'hex' || activePatternData.overlay === 'perforated' ? '14px 14px' : 'auto',
+                }}
+              />
+              <div className="absolute top-3 left-3 bg-[#073B32]/90 backdrop-blur-md border border-[#D6A62E]/30 px-2.5 py-1 rounded-full text-[10px] font-bold text-[#D6A62E] flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: activeColorData.hex }} />
+                {activeMaterial} • {activeColor}
+              </div>
               
               {/* Dynamic Floating Spec Card */}
               <div className="absolute bottom-4 left-4 right-4 bg-[#0B4035]/95 backdrop-blur-md p-4 rounded-xl border border-[#D6A62E]/40 shadow-xl space-y-2">
