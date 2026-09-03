@@ -4,5 +4,9 @@ dist/
 coverage/
 .DS_Store
 *.log
-.env*
+.env
+.env.local
 !.env.example
+prisma/migrations/.env
+server/db.json.bak
+server.ts.json.bak

@@ -12,7 +12,7 @@ import {
 import { VehicleType } from '../../types';
 
 export const QuickBookingWidget: React.FC = () => {
-  const { services, setView, setBookingWizardInitialServiceId } = useApp();
+  const { services, setView, setBookingWizardInitialServiceId, setBookingWizardDraft } = useApp();
 
   const [serviceId, setServiceId] = useState<string>(services[0]?.id || 'srv-1');
   const [vehicleType, setVehicleType] = useState<VehicleType>('Car');
@@ -43,6 +43,7 @@ export const QuickBookingWidget: React.FC = () => {
   const handleCheckAvailability = (e: React.FormEvent) => {
     e.preventDefault();
     setBookingWizardInitialServiceId(serviceId);
+    setBookingWizardDraft({ vehicleType, preferredDate, preferredTime, locationType });
     setView('booking');
   };
 

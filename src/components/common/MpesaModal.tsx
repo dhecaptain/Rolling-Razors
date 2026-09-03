@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { CheckCircle2, AlertCircle, Loader2, Smartphone, ShieldCheck, ArrowRight, X, Copy, Check, Lock, Radio } from 'lucide-react';
+import { BUSINESS_CONFIG } from '../../config/business';
 import confetti from 'canvas-confetti';
 
 export const MpesaModal: React.FC = () => {
@@ -8,7 +9,7 @@ export const MpesaModal: React.FC = () => {
   
   const [phoneNumber, setPhoneNumber] = useState(mpesaPrompt.phone || '0712901234');
   const [step, setStep] = useState<'prompt' | 'initiating' | 'waiting' | 'success' | 'failed'>('prompt');
-  const [countdown, setCountdown] = useState(30);
+  const [countdown, setCountdown] = useState(90);
   const [confirmedReceipt, setConfirmedReceipt] = useState('');
   const [failureMessage, setFailureMessage] = useState('');
   const [checkoutRequestId, setCheckoutRequestId] = useState<string | null>(null);
@@ -19,7 +20,7 @@ export const MpesaModal: React.FC = () => {
     if (mpesaPrompt.isOpen) {
       setPhoneNumber(mpesaPrompt.phone || '0712901234');
       setStep('prompt');
-      setCountdown(30);
+      setCountdown(90);
       setConfirmedReceipt('');
       setFailureMessage('');
       setCheckoutRequestId(null);
@@ -104,9 +105,8 @@ export const MpesaModal: React.FC = () => {
         return;
       }
 
-      // STK Push dispatched successfully to Safaricom
       setCheckoutRequestId(data.CheckoutRequestID);
-      setCountdown(30);
+      setCountdown(90);
       setStep('waiting');
       addToast('info', 'STK Push Sent', `Please check handset ${phoneNumber} and enter your M-Pesa PIN.`);
     } catch (err: any) {
@@ -168,8 +168,8 @@ export const MpesaModal: React.FC = () => {
 
   if (!mpesaPrompt.isOpen) return null;
 
-  const handleCopyReceipt = () => {
-    navigator.clipboard.writeText(confirmedReceipt);
+  const handleCopyReceipt = async () => {
+    try { await navigator.clipboard.writeText(confirmedReceipt); } catch { const t=document.createElement('textarea'); t.value=confirmedReceipt; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -192,7 +192,7 @@ export const MpesaModal: React.FC = () => {
             </div>
             <div>
               <h3 className="font-bold text-base text-[#F5F1E8]">Lipa na M-Pesa Online</h3>
-              <p className="text-xs text-[#D6A62E]">Paybill: 174379 • Rolling Razors Customs</p>
+              <p className="text-xs text-[#D6A62E]">Paybill: {BUSINESS_CONFIG.mpesa.paybill} • Rolling Razors Customs</p>
             </div>
           </div>
           <button 

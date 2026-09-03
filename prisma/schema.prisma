@@ -1,0 +1,264 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  customer
+  admin
+}
+
+enum BookingStatus {
+  pending
+  confirmed
+  checked_in
+  in_progress
+  quality_check
+  ready
+  completed
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  processing
+  deposit_paid
+  paid
+  failed
+  refunded
+}
+
+enum WorkOrderStage {
+  BOOKED
+  VEHICLE_RECEIVED
+  MATERIALS_PREPARED
+  IN_PROGRESS
+  QUALITY_CHECK
+  READY_FOR_COLLECTION
+  COLLECTED
+}
+
+enum WorkOrderPriority {
+  Low
+  Normal
+  High
+  Urgent
+}
+
+enum MpesaStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum CustomerStatus {
+  Active
+  VIP
+  New
+}
+
+model User {
+  id        String   @id
+  name      String
+  phone     String   @unique
+  email     String   @unique
+  role      UserRole
+  avatar    String
+  location  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Customer {
+  id            String         @id
+  name          String
+  phone         String         @unique
+  email         String         @unique
+  avatar        String?
+  vehiclesCount Int?
+  totalBookings Int?
+  totalSpent    Int            @default(0)
+  lastVisit     String?
+  location      String?
+  status        CustomerStatus?
+  address       String?
+  notes         String?
+  savedVehicles Json?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Vehicle {
+  id                    String   @id
+  customerId            String
+  type                  String
+  make                  String
+  model                 String
+  year                  Int
+  registrationNo        String   @unique
+  color                 String?
+  image                 String?
+  previousServicesCount Int      @default(0)
+  upholsteryHistory     Json?
+  notes                 String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  @@index([customerId])
+}
+
+model Booking {
+  id                      String        @id
+  customerId              String?
+  customerName            String
+  customerPhone           String
+  customerEmail           String?
+  serviceId               String
+  serviceName             String
+  vehicleDetails          Json
+  requirementsDesc        String?
+  notes                   String?
+  customOptions           Json?
+  referencePhotos         Json?
+  selectedMaterial        String?
+  stitchingStyle          String?
+  appointmentDate         String
+  appointmentTime         String
+  locationType            String
+  customerLocation        String?
+  customerLocationAddress String?
+  estimatedPrice          Int
+  depositAmount           Int
+  balanceAmount           Int?
+  depositPaid             Boolean       @default(false)
+  paymentStatus           PaymentStatus?
+  paymentMethod           String?
+  mpesaReceiptNo          String?
+  status                  BookingStatus @default(pending)
+  assignedStaffId         String?
+  assignedStaffName       String?
+  workOrderId             String?
+  timeline                Json?
+  internalNotes           String?
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+  @@index([customerId])
+  @@index([customerPhone])
+  @@index([status])
+}
+
+model WorkOrder {
+  id                   String            @id
+  bookingId            String            @unique
+  customerId           String?
+  customerName         String
+  customerPhone        String
+  vehicleId            String?
+  vehicleDisplayName   String
+  vehicleRegistration  String
+  serviceName          String
+  assignedStaffId      String?
+  assignedStaffName    String
+  priority             WorkOrderPriority @default(Normal)
+  stage                WorkOrderStage    @default(BOOKED)
+  customerRequirements String?
+  materialsRequired    Json?
+  estimatedCost        Int?
+  actualCost           Int?
+  beforePhotos         Json?
+  progressPhotos       Json?
+  afterPhotos          Json?
+  internalNotes        String?
+  progressPercentage   Int               @default(10)
+  createdAt            DateTime          @default(now())
+  targetCompletionDate String?
+  updatedAt            DateTime          @updatedAt
+  @@index([bookingId])
+  @@index([stage])
+}
+
+model Invoice {
+  id          String   @id
+  bookingId   String   @unique
+  workOrderId String?
+  customerName String
+  customerPhone String
+  customerEmail String
+  vehicleInfo String
+  serviceName String
+  items       Json
+  subtotal    Int
+  depositPaid Int      @default(0)
+  balanceDue  Int      @default(0)
+  total       Int
+  paymentMethod String
+  paymentStatus String
+  mpesaRef    String?
+  issueDate   String
+  dueDate     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@index([bookingId])
+}
+
+model Staff {
+  id             String   @id
+  name           String
+  role           String
+  phone          String   @unique
+  specialization String?
+  specialty      String?
+  activeJobs     Int      @default(0)
+  completedJobs  Int      @default(0)
+  avatar         String
+  rating         Float
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Service {
+  id                 String   @id
+  name               String   @unique
+  category           String?
+  shortDesc          String
+  longDesc           String
+  startingPrice      Int
+  estimatedDuration  String
+  image              String
+  iconName           String
+  isFeatured         Boolean  @default(false)
+  popular            Boolean  @default(false)
+  includedFeatures   Json
+  materialsAvailable Json
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model MpesaTransaction {
+  id                String      @id @default(cuid())
+  merchantRequestId String
+  checkoutRequestId String      @unique
+  bookingId         String?
+  invoiceId         String?
+  amount            Int
+  phone             String
+  status            MpesaStatus @default(PENDING)
+  receiptNumber     String?
+  failureReason     String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  @@index([checkoutRequestId])
+  @@index([bookingId])
+}
+
+model Otp {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  otp       String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  @@index([phone])
+}

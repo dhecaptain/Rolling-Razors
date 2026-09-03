@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: rolling-razors-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: rolling_razors
+      POSTGRES_USER: rolling_razors
+      POSTGRES_PASSWORD: rolling_razors_pass
+    ports:
+      - "5435:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rolling_razors"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+  app:
+    build: .
+    container_name: rolling-razors-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://rolling_razors:rolling_razors_pass@postgres:5432/rolling_razors
+      NODE_ENV: production
+      PORT: 3000
+      AUTH_SECRET: rolling-razors-kenya-customs-secret-key-2026
+      ADMIN_EMAIL: james@rollingrazors.co.ke
+      ADMIN_PHONE: 0712345678
+      ADMIN_PASSWORD: rolling2025
+    ports:
+      - "3000:3000"
+volumes:
+  pgdata:

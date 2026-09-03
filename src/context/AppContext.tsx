@@ -30,6 +30,7 @@ import {
   INITIAL_NOTIFICATIONS, 
   INITIAL_VEHICLES 
 } from '../data/mockData';
+import { phoneKey, phonesMatch, normalizePhoneKe } from '../utils/phone';
 
 export type AppView = 'website' | 'booking' | 'customer_dashboard' | 'admin_dashboard' | 'auth';
 
@@ -101,6 +102,7 @@ interface AppContextType {
   // Vehicle actions
   addVehicle: (vehicle: Omit<Vehicle, 'id' | 'previousServicesCount'>) => void;
   deleteVehicle: (id: string) => void;
+  updateProfile: (patch: Partial<User>) => void;
   
   // Service actions
   updateServicePrice: (serviceId: string, price: number) => void;
@@ -146,6 +148,8 @@ interface AppContextType {
   setSelectedWorkOrderId: (id: string | null) => void;
   bookingWizardInitialServiceId: string | null;
   setBookingWizardInitialServiceId: (id: string | null) => void;
+  bookingWizardDraft: { vehicleType?: string; preferredDate?: string; preferredTime?: string; locationType?: 'workshop' | 'customer_location' } | null;
+  setBookingWizardDraft: (d: { vehicleType?: string; preferredDate?: string; preferredTime?: string; locationType?: 'workshop' | 'customer_location' } | null) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -237,6 +241,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [selectedWorkOrderId, setSelectedWorkOrderId] = useState<string | null>(null);
   const [bookingWizardInitialServiceId, setBookingWizardInitialServiceId] = useState<string | null>(null);
+  const [bookingWizardDraft, setBookingWizardDraft] = useState<{ vehicleType?: string; preferredDate?: string; preferredTime?: string; locationType?: 'workshop' | 'customer_location' } | null>(null);
 
   // Toasts
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -295,16 +300,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('rr_notifications', JSON.stringify(notifications));
   }, [notifications]);
 
+  function getAuthHeader(): Record<string,string> {
+    try {
+      const raw = localStorage.getItem('rr_auth_session');
+      if (!raw) return {};
+      const s = JSON.parse(raw);
+      if (s?.token) return { Authorization: `Bearer ${s.token}` };
+    } catch {}
+    return {};
+  }
+
   // Fetch durable database state from backend API on boot
   useEffect(() => {
     const fetchDatabaseRecords = async () => {
       try {
+        const headers = getAuthHeader();
         const [bRes, vRes, woRes, invRes, cRes] = await Promise.all([
-          fetch('/api/bookings'),
-          fetch('/api/vehicles'),
-          fetch('/api/work-orders'),
-          fetch('/api/invoices'),
-          fetch('/api/customers')
+          fetch('/api/bookings', { headers }),
+          fetch('/api/vehicles', { headers }),
+          fetch('/api/work-orders', { headers }),
+          fetch('/api/invoices', { headers }),
+          fetch('/api/customers', { headers })
         ]);
 
         if (bRes.ok) {
@@ -659,10 +675,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setNotifications(prev => [newNotifCustomer, newNotifAdmin, ...prev]);
 
-    // Persist new booking to durable server database
     fetch('/api/bookings', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
       body: JSON.stringify(newBooking)
     }).catch(err => console.warn('Could not sync booking to server database:', err));
 
@@ -862,10 +877,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       targetBooking = updated;
 
-      // Sync booking payment status to server database
       fetch(`/api/bookings/${bookingId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
         body: JSON.stringify({
           paymentStatus: finalPaymentStatus,
           paymentMethod: method,
@@ -998,10 +1012,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }));
 
-    // Sync work order stage to server database
     fetch(`/api/work-orders/${workOrderId}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
       body: JSON.stringify({ stage, progressPercentage: progressMap[stage] })
     }).catch(err => console.warn('Could not sync work order to server database:', err));
 
@@ -1037,7 +1050,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addVehicle = (vehicleData: Omit<Vehicle, 'id' | 'previousServicesCount'>) => {
-    const reg = (vehicleData.registrationNo || 'KAA 000A').toUpperCase();
+    const reg = (vehicleData.registrationNo || 'KAA 000A').toUpperCase().trim();
+    const normReg = reg.replace(/\s+/g, "");
+    if (vehicles.some(v => v.registrationNo.replace(/\s+/g, "").toLowerCase() === normReg.toLowerCase())) {
+      addToast('error', 'Duplicate Registration', `Vehicle ${reg} already exists in your garage.`);
+      return;
+    }
     const newVehicle: Vehicle = {
       ...vehicleData,
       type: vehicleData.type || 'Car',
@@ -1047,15 +1065,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       previousServicesCount: 0
     };
     setVehicles(prev => [newVehicle, ...prev]);
-
-    // Persist vehicle to server database
-    fetch('/api/vehicles', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newVehicle)
-    }).catch(err => console.warn('Could not sync vehicle to server database:', err));
-
+    const headers: Record<string,string> = { 'Content-Type': 'application/json', ...getAuthHeader() };
+    fetch('/api/vehicles', { method: 'POST', headers, body: JSON.stringify(newVehicle) })
+      .then(async r => {
+        if (!r.ok) {
+          const d = await r.json().catch(()=>({error:'Failed'}));
+          if (r.status === 409) {
+            addToast('error', 'Duplicate Registration', d.error || `Vehicle ${reg} already exists.`);
+            setVehicles(prev => prev.filter(v => v.id !== newVehicle.id));
+          }
+        }
+      })
+      .catch(err => console.warn('Could not sync vehicle to server database:', err));
     addToast('success', 'Vehicle Added', `${vehicleData.make} ${vehicleData.model} (${reg}) added to your garage.`);
+  };
+
+  const updateProfile = (patch: Partial<User>) => {
+    if (!currentUser) return;
+    const updated = { ...currentUser, ...patch, phone: patch.phone ? normalizePhoneKe(patch.phone) : currentUser.phone };
+    setCurrentUser(updated);
+    try {
+      const raw = localStorage.getItem('rr_auth_session');
+      if (raw) {
+        const s = JSON.parse(raw);
+        s.user = updated;
+        localStorage.setItem('rr_auth_session', JSON.stringify(s));
+      }
+    } catch {}
+    addToast('success', 'Profile Updated', 'Your contact details have been saved.');
   };
 
   const deleteVehicle = (id: string) => {
@@ -1069,13 +1106,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return prev.filter(v => v.id !== id);
     });
-
     if (allowed) {
-      // Sync vehicle deletion to server database
-      fetch(`/api/vehicles/${id}`, {
-        method: 'DELETE'
-      }).catch(err => console.warn('Could not sync vehicle deletion to server database:', err));
-
+      fetch(`/api/vehicles/${id}`, { method: 'DELETE', headers: getAuthHeader() as any }).catch(err => console.warn('Could not sync vehicle deletion to server database:', err));
       addToast('info', 'Vehicle Removed', 'Vehicle has been removed from your saved garage.');
     } else {
       addToast('error', 'Access Denied', 'You can only remove vehicles belonging to your own account.');
@@ -1227,7 +1259,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         selectedWorkOrderId,
         setSelectedWorkOrderId,
         bookingWizardInitialServiceId,
-        setBookingWizardInitialServiceId
+        setBookingWizardInitialServiceId,
+        bookingWizardDraft,
+        setBookingWizardDraft,
+        updateProfile
       }}
     >
       {children}

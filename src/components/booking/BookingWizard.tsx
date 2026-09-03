@@ -31,6 +31,7 @@ export const BookingWizard: React.FC = () => {
     openMpesaPayment, 
     bookingWizardInitialServiceId,
     setBookingWizardInitialServiceId,
+    bookingWizardDraft,
     setCustomerTab
   } = useApp();
 
@@ -79,7 +80,13 @@ export const BookingWizard: React.FC = () => {
     if (bookingWizardInitialServiceId) {
       setSelectedServiceId(bookingWizardInitialServiceId);
     }
-  }, [bookingWizardInitialServiceId]);
+    if (bookingWizardDraft) {
+      if (bookingWizardDraft.vehicleType) setVehicleType(bookingWizardDraft.vehicleType as any);
+      if (bookingWizardDraft.preferredDate) setSelectedDate(bookingWizardDraft.preferredDate);
+      if (bookingWizardDraft.preferredTime) setSelectedTime(bookingWizardDraft.preferredTime);
+      if (bookingWizardDraft.locationType) setLocationType(bookingWizardDraft.locationType);
+    }
+  }, [bookingWizardInitialServiceId, bookingWizardDraft]);
 
   const selectedService = services.find(s => s.id === selectedServiceId) || services[0];
   const serviceCost = selectedService.startingPrice;

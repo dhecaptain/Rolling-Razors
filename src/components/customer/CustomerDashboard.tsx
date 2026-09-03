@@ -22,6 +22,7 @@ import {
   X
 } from 'lucide-react';
 import { Booking, Vehicle } from '../../types';
+import { phoneKey, phonesMatch } from '../../utils/phone';
 
 export const CustomerDashboard: React.FC = () => {
   const { 
@@ -32,9 +33,9 @@ export const CustomerDashboard: React.FC = () => {
     vehicles, 
     addVehicle, 
     deleteVehicle,
+    updateProfile,
     workOrders, 
     openMpesaPayment, 
-    updateBookingStatus, 
     setView,
     openAuth,
     setBookingWizardInitialServiceId,
@@ -51,6 +52,10 @@ export const CustomerDashboard: React.FC = () => {
   const [newReg, setNewReg] = useState('KDM 102P');
   const [newType, setNewType] = useState<'Car' | 'SUV' | 'Van' | 'Truck' | 'Matatu' | 'Other'>('SUV');
   const [newColor, setNewColor] = useState('Pearl White');
+  const [profileName, setProfileName] = useState(currentUser.name);
+  const [profilePhone, setProfilePhone] = useState(currentUser.phone);
+  const [profileEmail, setProfileEmail] = useState(currentUser.email);
+  const [profileLocation, setProfileLocation] = useState(currentUser.location || 'Nairobi, Kenya');
 
   // If user is somehow not logged in, show auth gate
   if (!currentUser) {
@@ -75,19 +80,17 @@ export const CustomerDashboard: React.FC = () => {
     );
   }
 
-  // Strictly filter bookings for the authenticated customer only
-  const myBookings = bookings.filter(b => 
+  const myBookings = [...bookings.filter(b => 
     b.customerId === currentUser.id ||
-    (currentUser.phone && b.customerPhone?.replace(/\s+/g, '') === currentUser.phone.replace(/\s+/g, '')) ||
+    (currentUser.phone && b.customerPhone && phonesMatch(b.customerPhone, currentUser.phone)) ||
     (currentUser.email && b.customerEmail && b.customerEmail.toLowerCase() === currentUser.email.toLowerCase())
-  );
+  )].sort((a,b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime());
 
-  // Strictly filter vehicles for the authenticated customer only
   const myVehicles = vehicles.filter(v => v.customerId === currentUser.id);
 
-  const activeBookings = myBookings.filter(b => b.status === 'pending' || b.status === 'confirmed' || b.status === 'checked_in' || b.status === 'in_progress' || b.status === 'quality_check' || b.status === 'ready');
+  const activeBookings = myBookings.filter(b => ['pending','confirmed','checked_in','in_progress','quality_check','ready'].includes(b.status));
   const completedBookings = myBookings.filter(b => b.status === 'completed');
-  const latestActiveBooking = activeBookings[0];
+  const latestActiveBooking = [...activeBookings].sort((a,b) => new Date(a.appointmentDate).getTime() - new Date(b.appointmentDate).getTime())[0] || null;
   const activeWorkOrder = latestActiveBooking ? workOrders.find(wo => wo.bookingId === latestActiveBooking.id) : null;
 
   // Dynamic driver loyalty tier based on actual completed jobs
@@ -134,16 +137,15 @@ export const CustomerDashboard: React.FC = () => {
 
   const getStatusBadge = (status: Booking['status']) => {
     switch (status) {
-      case 'confirmed':
-        return <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-xs font-bold">Confirmed</span>;
-      case 'in_progress':
-        return <span className="px-2.5 py-0.5 rounded-full bg-[#D6A62E]/20 text-[#D6A62E] border border-[#D6A62E]/40 text-xs font-bold animate-pulse">In Workshop</span>;
-      case 'completed':
-        return <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/40 text-xs font-bold">Completed</span>;
-      case 'cancelled':
-        return <span className="px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40 text-xs font-bold">Cancelled</span>;
-      default:
-        return <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 text-xs font-bold">Pending Deposit</span>;
+      case 'confirmed': return <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-xs font-bold">Confirmed</span>;
+      case 'pending': return <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 text-xs font-bold">Pending Deposit</span>;
+      case 'checked_in': return <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/40 text-xs font-bold">Checked In</span>;
+      case 'in_progress': return <span className="px-2.5 py-0.5 rounded-full bg-[#D6A62E]/20 text-[#D6A62E] border border-[#D6A62E]/40 text-xs font-bold animate-pulse">In Workshop</span>;
+      case 'quality_check': return <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/40 text-xs font-bold">Quality Check</span>;
+      case 'ready': return <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 text-xs font-bold">Ready for Pickup</span>;
+      case 'completed': return <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/40 text-xs font-bold">Completed</span>;
+      case 'cancelled': return <span className="px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40 text-xs font-bold">Cancelled</span>;
+      default: return <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-white/70 border border-white/20 text-xs font-bold">{String(status)}</span>;
     }
   };
 
@@ -538,12 +540,7 @@ export const CustomerDashboard: React.FC = () => {
                       </div>
 
                       <div className="pt-3 border-t border-white/10 flex items-center justify-between">
-                        <button
-                          onClick={() => deleteVehicle(v.id)}
-                          className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" /> Remove
-                        </button>
+                        <button onClick={() => { if (confirm(`Remove ${v.make} ${v.model} (${v.registrationNo}) from garage?`)) deleteVehicle(v.id); }} className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1"> <Trash2 className="w-3.5 h-3.5" /> Remove </button>
 
                         <button
                           onClick={() => {
@@ -573,39 +570,21 @@ export const CustomerDashboard: React.FC = () => {
             <div className="space-y-4 text-xs">
               <div>
                 <label className="block text-white/70 mb-1">Full Name</label>
-                <input
-                  type="text"
-                  defaultValue={currentUser.name}
-                  className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-white font-bold"
-                />
+                <input type="text" value={profileName} onChange={e=>setProfileName(e.target.value)} className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-white font-bold" />
               </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-white/70 mb-1">Kenyan Phone (M-Pesa registered)</label>
-                  <input
-                    type="text"
-                    defaultValue={currentUser.phone}
-                    className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-white font-bold"
-                  />
+                  <input type="text" value={profilePhone} onChange={e=>setProfilePhone(e.target.value)} className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-white font-bold" />
                 </div>
                 <div>
                   <label className="block text-white/70 mb-1">Email</label>
-                  <input
-                    type="email"
-                    defaultValue={currentUser.email}
-                    className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-white font-bold"
-                  />
+                  <input type="email" value={profileEmail} onChange={e=>setProfileEmail(e.target.value)} className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-white font-bold" />
                 </div>
               </div>
-
               <div>
                 <label className="block text-white/70 mb-1">Primary Estate / Area in Kenya</label>
-                <input
-                  type="text"
-                  defaultValue={currentUser.location || 'Nairobi, Kenya'}
-                  className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-white font-bold"
-                />
+                <input type="text" value={profileLocation} onChange={e=>setProfileLocation(e.target.value)} className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-white font-bold" />
               </div>
 
               <div className="pt-2">
@@ -622,12 +601,7 @@ export const CustomerDashboard: React.FC = () => {
                 </div>
               </div>
 
-              <button
-                onClick={() => addToast('success', 'Profile Updated', 'Your contact details and preferences have been saved.')}
-                className="py-3 px-6 rounded-xl bg-[#D6A62E] hover:bg-[#c39626] text-[#073B32] font-black text-xs uppercase tracking-wider shadow"
-              >
-                Save Changes
-              </button>
+              <button onClick={() => updateProfile({ name: profileName, phone: profilePhone, email: profileEmail, location: profileLocation })} className="py-3 px-6 rounded-xl bg-[#D6A62E] hover:bg-[#c39626] text-[#073B32] font-black text-xs uppercase tracking-wider shadow">Save Changes</button>
             </div>
           </div>
         )}
