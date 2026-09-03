@@ -43,4 +43,6 @@ jobs:
       - run: npx prisma migrate deploy
       - run: npm run typecheck
       - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --reporter=list
       - run: npx prisma generate --check 2>&1 | head -20

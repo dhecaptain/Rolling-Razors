@@ -12,10 +12,12 @@ import { env } from "./server/env";
 import { logger } from "./server/logger";
 import { serverDb } from "./server/db";
 import { prisma } from "./server/prisma";
+import { initSentry, Sentry } from "./server/sentry";
 import { normalizePhoneKe, toDarajaPhone, phoneKey, phonesMatch, isValidKePhone } from "./server/phone";
 import { validate, adminLoginSchema, customerLoginSchema, customerRegisterSchema, stkPushSchema, bookingCreateSchema, vehicleCreateSchema } from "./server/validators";
 import { Booking, Customer, User, Vehicle, WorkOrder } from "./src/types";
 
+initSentry();
 const app = express();
 const PORT = env.PORT;
 
@@ -398,7 +400,7 @@ app.get("/api/openapi.json", (_req,res)=>{
   });
 });
 app.use("/api", (_req,res)=>res.status(404).json({ success:false, error:"API endpoint not found." }));
-app.use((err:any,_req:express.Request,res:express.Response,_next:express.NextFunction)=>{ logger.error({ err, requestId:(_req as any).id }, "Unhandled error"); res.status(err.status||500).json({ success:false, error: env.NODE_ENV==="production"?"Internal server error.":err.message||"Internal error", requestId:(_req as any).id }); });
+app.use((err:any,req:express.Request,res:express.Response,_next:express.NextFunction)=>{ Sentry.captureException(err, { extra:{ requestId:(req as any).id, path:req.path } }); logger.error({ err, requestId:(req as any).id }, "Unhandled error"); res.status(err.status||500).json({ success:false, error: env.NODE_ENV==="production"?"Internal server error.":err.message||"Internal error", requestId:(req as any).id }); });
 
 async function startServer(){
   if(env.NODE_ENV!=="production"){

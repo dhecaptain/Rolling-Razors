@@ -31,6 +31,10 @@ export const env = {
   CORS_ORIGIN: (process.env.CORS_ORIGIN || "").trim(),
   BCRYPT_ROUNDS: Number(process.env.BCRYPT_ROUNDS || 12),
   OTP_HASH_SECRET: (process.env.OTP_HASH_SECRET || process.env.AUTH_SECRET || "").trim(),
+  SENTRY_DSN: (process.env.SENTRY_DSN || "").trim(),
+  SENTRY_ENV: (process.env.SENTRY_ENV || process.env.NODE_ENV || "development").trim(),
+  IMAGE_CDN: (process.env.IMAGE_CDN || "unsplash").trim(),
+  IMAGE_CDN_URL: (process.env.IMAGE_CDN_URL || "").trim(),
 };
 
 if (!env.AUTH_SECRET || env.AUTH_SECRET.length < 32 || env.AUTH_SECRET === "rolling-razors-kenya-customs-secret-key-2026") {

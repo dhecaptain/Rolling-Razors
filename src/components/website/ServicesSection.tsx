@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Service } from '../../types';
+import { cdnUrl, srcSet } from '../../utils/image';
 import { 
   Car, 
   Armchair, 
@@ -78,8 +79,12 @@ export const ServicesSection: React.FC = () => {
               {/* Image Container with Zoom Effect */}
               <div className="relative h-48 overflow-hidden">
                 <img
-                  src={service.image}
+                  src={cdnUrl(service.image, { w: 600 })}
+                  srcSet={srcSet(service.image, [400, 600, 800])}
+                  sizes="(max-width: 768px) 100vw, 33vw"
                   alt={service.name}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700 ease-out"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#073B32] via-transparent to-black/20" />
@@ -158,8 +163,12 @@ export const ServicesSection: React.FC = () => {
             {/* Modal Image Header */}
             <div className="relative h-60 w-full overflow-hidden">
               <img 
-                src={selectedService.image} 
+                src={cdnUrl(selectedService.image, { w: 800 })}
+                srcSet={srcSet(selectedService.image, [600, 800, 1200])}
+                sizes="100vw"
                 alt={selectedService.name} 
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#073B32] to-transparent" />

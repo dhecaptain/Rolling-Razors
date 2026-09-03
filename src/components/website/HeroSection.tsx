@@ -11,6 +11,7 @@ import {
   Star 
 } from 'lucide-react';
 import { QuickBookingWidget } from './QuickBookingWidget';
+import { cdnUrl } from '../../utils/image';
 
 export const HeroSection: React.FC = () => {
   const { setView, setBookingWizardInitialServiceId } = useApp();
@@ -33,8 +34,12 @@ export const HeroSection: React.FC = () => {
       {/* Background Cinematic Interior Image with Forest Green Gradients */}
       <div className="absolute inset-0 z-0">
         <img
-          src="https://images.unsplash.com/photo-1541348263662-e0c8de4259ba?auto=format&fit=crop&w=2000&q=85"
+          src={cdnUrl("https://images.unsplash.com/photo-1541348263662-e0c8de4259ba?auto=format&fit=crop&w=2000&q=85", { w: 1600, q: 75 })}
+          srcSet={`${cdnUrl("https://images.unsplash.com/photo-1541348263662-e0c8de4259ba?auto=format&fit=crop&w=800&q=75", { w: 800 })} 800w, ${cdnUrl("https://images.unsplash.com/photo-1541348263662-e0c8de4259ba?auto=format&fit=crop&w=1600&q=75", { w: 1600 })} 1600w, ${cdnUrl("https://images.unsplash.com/photo-1541348263662-e0c8de4259ba?auto=format&fit=crop&w=2000&q=75", { w: 2000 })} 2000w`}
+          sizes="100vw"
           alt="Rolling Razors Customs Handcrafted Leather Car Interior"
+          fetchPriority="high"
+          decoding="async"
           className="w-full h-full object-cover object-center transform scale-105 transition-transform duration-1000"
         />
         {/* Forest Green Gradient Overlays */}
@@ -113,9 +118,9 @@ export const HeroSection: React.FC = () => {
             {/* Social Proof Mini Bar */}
             <div className="flex items-center gap-3 pt-1 text-xs text-white/70">
               <div className="flex -space-x-2">
-                <img className="inline-block h-7 w-7 rounded-full ring-2 ring-[#073B32] object-cover" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80" alt="Customer" />
-                <img className="inline-block h-7 w-7 rounded-full ring-2 ring-[#073B32] object-cover" src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=100&q=80" alt="Customer" />
-                <img className="inline-block h-7 w-7 rounded-full ring-2 ring-[#073B32] object-cover" src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=100&q=80" alt="Customer" />
+                <img className="inline-block h-7 w-7 rounded-full ring-2 ring-[#073B32] object-cover" src={cdnUrl("https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80", { w: 100 })} loading="lazy" decoding="async" alt="Customer" />
+                <img className="inline-block h-7 w-7 rounded-full ring-2 ring-[#073B32] object-cover" src={cdnUrl("https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=100&q=80", { w: 100 })} loading="lazy" decoding="async" alt="Customer" />
+                <img className="inline-block h-7 w-7 rounded-full ring-2 ring-[#073B32] object-cover" src={cdnUrl("https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=100&q=80", { w: 100 })} loading="lazy" decoding="async" alt="Customer" />
               </div>
               <div className="flex items-center gap-1">
                 <div className="flex text-[#D6A62E]">
