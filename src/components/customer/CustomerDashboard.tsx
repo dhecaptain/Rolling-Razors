@@ -90,6 +90,16 @@ export const CustomerDashboard: React.FC = () => {
   const latestActiveBooking = activeBookings[0];
   const activeWorkOrder = latestActiveBooking ? workOrders.find(wo => wo.bookingId === latestActiveBooking.id) : null;
 
+  // Dynamic driver loyalty tier based on actual completed jobs
+  const completedCount = completedBookings.length;
+  const loyaltyTier = completedCount >= 5 
+    ? { name: 'VIP Master Driver', badgeClass: 'bg-[#D6A62E] text-[#073B32]' }
+    : completedCount >= 3
+      ? { name: 'Gold Club Driver', badgeClass: 'bg-amber-400 text-slate-900' }
+      : completedCount >= 1
+        ? { name: 'Regular Driver', badgeClass: 'bg-emerald-500/30 text-emerald-300 border border-emerald-500/40' }
+        : { name: 'New Driver', badgeClass: 'bg-white/10 text-white/80 border border-white/20' };
+
   const handleCreateVehicle = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMake || !newModel || !newReg) {
@@ -103,9 +113,7 @@ export const CustomerDashboard: React.FC = () => {
       model: newModel,
       year: newYear,
       registrationNo: newReg.toUpperCase(),
-      registrationNumber: newReg.toUpperCase(),
       type: newType,
-      vehicleType: newType,
       color: newColor,
       upholsteryHistory: ['Initial Factory Seats']
     });
@@ -156,8 +164,8 @@ export const CustomerDashboard: React.FC = () => {
                 <h1 className="text-2xl sm:text-3xl font-black font-display text-white">
                   Karibu, {currentUser.name}!
                 </h1>
-                <span className="px-2 py-0.5 rounded bg-[#D6A62E] text-[#073B32] font-black text-[10px] uppercase">
-                  VIP Driver
+                <span className={`px-2.5 py-0.5 rounded-full font-black text-[10px] uppercase tracking-wider shadow-sm ${loyaltyTier.badgeClass}`}>
+                  {loyaltyTier.name}
                 </span>
               </div>
               <p className="text-xs text-[#D6A62E] mt-0.5 flex items-center gap-2">

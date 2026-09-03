@@ -60,12 +60,20 @@ export const BookingWizard: React.FC = () => {
   const [customerLocationAddress, setCustomerLocationAddress] = useState<string>('Kilimani, Nairobi');
 
   // Customer Details
-  const [customerName, setCustomerName] = useState<string>(currentUser?.name || 'Brian Mwangi');
-  const [customerPhone, setCustomerPhone] = useState<string>(currentUser?.phone || '0712 901 234');
-  const [customerEmail, setCustomerEmail] = useState<string>(currentUser?.email || 'brian.mwangi@gmail.com');
+  const [customerName, setCustomerName] = useState<string>(currentUser?.name || '');
+  const [customerPhone, setCustomerPhone] = useState<string>(currentUser?.phone || '');
+  const [customerEmail, setCustomerEmail] = useState<string>(currentUser?.email || '');
 
   // Confirmed booking state
   const [confirmedBookingId, setConfirmedBookingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (currentUser) {
+      if (!customerName) setCustomerName(currentUser.name || '');
+      if (!customerPhone) setCustomerPhone(currentUser.phone || '');
+      if (!customerEmail) setCustomerEmail(currentUser.email || '');
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     if (bookingWizardInitialServiceId) {

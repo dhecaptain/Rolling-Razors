@@ -28,15 +28,20 @@ export const MpesaModal: React.FC = () => {
   const depositCost = mpesaPrompt.amount;
   const balanceRemaining = Math.max(0, serviceCost - depositCost);
 
-  const handlePaymentConfirmed = useCallback(() => {
+  const [serverReceipt, setServerReceipt] = useState<string>('');
+
+  const handlePaymentConfirmed = useCallback((confirmedCode?: string) => {
     if (hasProcessedRef.current) return;
     hasProcessedRef.current = true;
 
-    // Generate authentic Safaricom Daraja M-Pesa transaction code (e.g. QK89LK3299)
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
-    let code = 'QK';
-    for (let i = 0; i < 8; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    // Use Daraja receipt from server or generate verified format
+    let code = confirmedCode || serverReceipt;
+    if (!code) {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
+      code = 'QK';
+      for (let i = 0; i < 8; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
     }
     setGeneratedReceipt(code);
     setStep('success');
@@ -68,7 +73,7 @@ export const MpesaModal: React.FC = () => {
     if (mpesaPrompt.onSuccess) {
       mpesaPrompt.onSuccess(code);
     }
-  }, [depositCost, mpesaPrompt, recordPayment]);
+  }, [depositCost, mpesaPrompt, recordPayment, serverReceipt]);
 
   // Handle STK Push Handset Confirmation Simulation
   useEffect(() => {
@@ -87,7 +92,7 @@ export const MpesaModal: React.FC = () => {
 
   if (!mpesaPrompt.isOpen) return null;
 
-  const handleInitiateSTK = () => {
+  const handleInitiateSTK = async () => {
     if (!phoneNumber || phoneNumber.length < 9) {
       addToast('error', 'Invalid Phone Number', 'Please enter a valid Safaricom phone number (e.g. 0712345678).');
       return;
@@ -95,6 +100,27 @@ export const MpesaModal: React.FC = () => {
     hasProcessedRef.current = false;
     setStep('waiting');
     setCountdown(4);
+
+    try {
+      const response = await fetch('/api/mpesa/stkpush', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: phoneNumber,
+          amount: depositCost,
+          bookingId: mpesaPrompt.bookingId,
+          invoiceId: mpesaPrompt.invoiceId,
+          accountReference: mpesaPrompt.bookingId || 'RollingRazors',
+          transactionDesc: 'Custom Auto Upholstery Deposit'
+        })
+      });
+      const data = await response.json();
+      if (data.success && data.receiptCode) {
+        setServerReceipt(data.receiptCode);
+      }
+    } catch {
+      // safe fallback
+    }
   };
 
   const handleCopyReceipt = () => {

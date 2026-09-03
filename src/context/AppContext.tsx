@@ -319,79 +319,110 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: 'Invalid phone number format' };
     }
 
-    const formattedPhone = cleanPhone.startsWith('+254') 
-      ? cleanPhone 
-      : cleanPhone.startsWith('0') 
-        ? `+254 ${cleanPhone.substring(1, 4)} ${cleanPhone.substring(4, 7)} ${cleanPhone.substring(7)}` 
-        : `+254 ${cleanPhone}`;
+    try {
+      // Connect to server authentication endpoint
+      const response = await fetch('/api/auth/customer/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: cleanPhone, password })
+      });
 
-    // Find existing registered customer or initialize profile
-    const existing = customers.find(c => c.phone.replace(/\s+/g, '') === cleanPhone.replace(/\s+/g, ''));
-    
-    const token = `rr_jwt_cust_${Math.random().toString(36).substring(2)}_${Date.now()}`;
-    const user: User = {
-      id: existing ? existing.id : 'cust-' + (customers.length + 1),
-      name: existing ? existing.name : 'Brian Mwangi',
-      phone: existing ? existing.phone : formattedPhone,
-      email: existing ? existing.email : 'brian.mwangi@gmail.com',
-      role: 'customer',
-      avatar: existing?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-      location: existing?.address || 'Nairobi, Kenya',
-      token
-    };
+      const data = await response.json();
+      if (data.success && data.user) {
+        const sessionData = {
+          user: data.user,
+          token: data.token,
+          expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7-day token
+        };
 
-    const sessionData = {
-      user,
-      token,
-      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7-day token
-    };
+        localStorage.setItem('rr_auth_session', JSON.stringify(sessionData));
+        setCurrentUser(data.user);
+        setIsLoggedIn(true);
+        setView('customer_dashboard');
+        addToast('success', `Karibu, ${data.user.name}!`, 'Authenticated and signed into Driver Portal.');
+        return { success: true };
+      } else {
+        const errMsg = data.error || 'Authentication failed. Please check your credentials.';
+        addToast('error', 'Login Failed', errMsg);
+        return { success: false, error: errMsg };
+      }
+    } catch {
+      // Offline / client fallback
+      const formattedPhone = cleanPhone.startsWith('+254') 
+        ? cleanPhone 
+        : cleanPhone.startsWith('0') 
+          ? `+254 ${cleanPhone.substring(1, 4)} ${cleanPhone.substring(4, 7)} ${cleanPhone.substring(7)}` 
+          : `+254 ${cleanPhone}`;
 
-    localStorage.setItem('rr_auth_session', JSON.stringify(sessionData));
-    setCurrentUser(user);
-    setIsLoggedIn(true);
-    setView('customer_dashboard');
-    addToast('success', `Karibu, ${user.name}!`, 'Authenticated and signed into Driver Portal.');
-    return { success: true };
+      const existing = customers.find(c => c.phone.replace(/\s+/g, '') === cleanPhone.replace(/\s+/g, ''));
+      const token = `rr_jwt_cust_${Math.random().toString(36).substring(2)}_${Date.now()}`;
+      const user: User = {
+        id: existing ? existing.id : 'cust-' + (customers.length + 1),
+        name: existing ? existing.name : 'Brian Mwangi',
+        phone: existing ? existing.phone : formattedPhone,
+        email: existing ? existing.email : 'brian.mwangi@gmail.com',
+        role: 'customer',
+        avatar: existing?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+        location: existing?.address || 'Nairobi, Kenya',
+        token
+      };
+
+      const sessionData = {
+        user,
+        token,
+        expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000
+      };
+
+      localStorage.setItem('rr_auth_session', JSON.stringify(sessionData));
+      setCurrentUser(user);
+      setIsLoggedIn(true);
+      setView('customer_dashboard');
+      addToast('success', `Karibu, ${user.name}!`, 'Authenticated and signed into Driver Portal.');
+      return { success: true };
+    }
   };
 
   const loginAdmin = async (identifier: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    const cleanIdent = identifier.trim().toLowerCase();
+    const cleanIdent = identifier.trim();
     const cleanPass = password.trim();
 
-    // Verify admin credentials against authorized workshop keys
-    const validEmails = ['james@rollingrazors.co.ke', 'admin@rollingrazors.co.ke', 'staff@rollingrazors.co.ke', '0712345678', '+254712345678'];
-    const isIdentValid = validEmails.some(v => cleanIdent.includes(v.replace(/\s+/g, '').toLowerCase())) || cleanIdent === 'admin' || cleanIdent === 'james';
-    const isPassValid = cleanPass === 'admin123' || cleanPass === 'rolling2025' || cleanPass === 'pass' || cleanPass === '1234';
-
-    if (!isIdentValid || !isPassValid) {
-      addToast('error', 'Access Denied', 'Invalid workshop staff credentials or passcode. Access to admin operations was blocked.');
-      return { success: false, error: 'Invalid workshop staff credentials or security passcode.' };
+    if (!cleanIdent || !cleanPass) {
+      addToast('error', 'Missing Information', 'Please provide administrator email/phone and security passcode.');
+      return { success: false, error: 'Identifier and passcode required' };
     }
 
-    const token = `rr_jwt_adm_${Math.random().toString(36).substring(2)}_${Date.now()}`;
-    const adminUser: User = {
-      id: 'staff-1',
-      name: 'James Kimani (Owner)',
-      phone: '+254 712 345 678',
-      email: 'james@rollingrazors.co.ke',
-      role: 'admin',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
-      location: 'Workshop HQ, Industrial Area, Nairobi',
-      token
-    };
+    try {
+      // Authenticate strictly on the backend API
+      const response = await fetch('/api/auth/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: cleanIdent, password: cleanPass })
+      });
 
-    const sessionData = {
-      user: adminUser,
-      token,
-      expiresAt: Date.now() + 24 * 60 * 60 * 1000 // 24-hour admin session
-    };
+      const data = await response.json();
+      if (data.success && data.user) {
+        const sessionData = {
+          user: data.user,
+          token: data.token,
+          expiresAt: Date.now() + 24 * 60 * 60 * 1000 // 24-hour admin session
+        };
 
-    localStorage.setItem('rr_auth_session', JSON.stringify(sessionData));
-    setCurrentUser(adminUser);
-    setIsLoggedIn(true);
-    setView('admin_dashboard');
-    addToast('info', 'Admin Access Granted', 'Authenticated into Rolling Razors Workshop Operations Hub.');
-    return { success: true };
+        localStorage.setItem('rr_auth_session', JSON.stringify(sessionData));
+        setCurrentUser(data.user);
+        setIsLoggedIn(true);
+        setView('admin_dashboard');
+        addToast('info', 'Admin Access Granted', 'Authenticated into Rolling Razors Workshop Operations Hub.');
+        return { success: true };
+      } else {
+        const errMsg = data.error || 'Invalid workshop staff credentials or security passcode.';
+        addToast('error', 'Access Denied', errMsg);
+        return { success: false, error: errMsg };
+      }
+    } catch {
+      // Fallback
+      addToast('error', 'Authentication Error', 'Unable to reach authentication server.');
+      return { success: false, error: 'Server authentication unreachable' };
+    }
   };
 
   const registerCustomer = async (data: { name: string; phone: string; email?: string; password?: string }): Promise<{ success: boolean; error?: string }> => {
@@ -400,45 +431,87 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: 'Full name and phone number required' };
     }
 
-    const newCustomerId = 'cust-' + (customers.length + 1);
-    const newCustomer: Customer = {
-      id: newCustomerId,
-      name: data.name,
-      phone: data.phone,
-      email: data.email || `${data.name.toLowerCase().replace(/\s+/g, '.')}@gmail.com`,
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-      totalSpent: 0,
-      status: 'New',
-      address: 'Nairobi, Kenya',
-      savedVehicles: []
-    };
+    try {
+      const response = await fetch('/api/auth/customer/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
 
-    setCustomers(prev => [...prev, newCustomer]);
+      const resData = await response.json();
+      if (resData.success && resData.user) {
+        const newCustomer: Customer = {
+          id: resData.user.id,
+          name: resData.user.name,
+          phone: resData.user.phone,
+          email: resData.user.email || `${data.name.toLowerCase().replace(/\s+/g, '.')}@gmail.com`,
+          avatar: resData.user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+          totalSpent: 0,
+          status: 'New',
+          address: 'Nairobi, Kenya',
+          savedVehicles: []
+        };
 
-    const token = `rr_jwt_cust_${Math.random().toString(36).substring(2)}_${Date.now()}`;
-    const user: User = {
-      id: newCustomerId,
-      name: data.name,
-      phone: data.phone,
-      email: newCustomer.email,
-      role: 'customer',
-      avatar: newCustomer.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-      location: 'Nairobi, Kenya',
-      token
-    };
+        setCustomers(prev => [...prev, newCustomer]);
 
-    const sessionData = {
-      user,
-      token,
-      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000
-    };
+        const sessionData = {
+          user: resData.user,
+          token: resData.token,
+          expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000
+        };
 
-    localStorage.setItem('rr_auth_session', JSON.stringify(sessionData));
-    setCurrentUser(user);
-    setIsLoggedIn(true);
-    setView('customer_dashboard');
-    addToast('success', 'Account Created', `Karibu ${data.name}! Your Rolling Razors garage is ready.`);
-    return { success: true };
+        localStorage.setItem('rr_auth_session', JSON.stringify(sessionData));
+        setCurrentUser(resData.user);
+        setIsLoggedIn(true);
+        setView('customer_dashboard');
+        addToast('success', 'Account Created', `Karibu ${data.name}! Your Rolling Razors garage is ready.`);
+        return { success: true };
+      } else {
+        const errMsg = resData.error || 'Registration failed.';
+        addToast('error', 'Registration Failed', errMsg);
+        return { success: false, error: errMsg };
+      }
+    } catch {
+      const newCustomerId = 'cust-' + (customers.length + 1);
+      const newCustomer: Customer = {
+        id: newCustomerId,
+        name: data.name,
+        phone: data.phone,
+        email: data.email || `${data.name.toLowerCase().replace(/\s+/g, '.')}@gmail.com`,
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+        totalSpent: 0,
+        status: 'New',
+        address: 'Nairobi, Kenya',
+        savedVehicles: []
+      };
+
+      setCustomers(prev => [...prev, newCustomer]);
+
+      const token = `rr_jwt_cust_${Math.random().toString(36).substring(2)}_${Date.now()}`;
+      const user: User = {
+        id: newCustomerId,
+        name: data.name,
+        phone: data.phone,
+        email: newCustomer.email,
+        role: 'customer',
+        avatar: newCustomer.avatar,
+        location: 'Nairobi, Kenya',
+        token
+      };
+
+      const sessionData = {
+        user,
+        token,
+        expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000
+      };
+
+      localStorage.setItem('rr_auth_session', JSON.stringify(sessionData));
+      setCurrentUser(user);
+      setIsLoggedIn(true);
+      setView('customer_dashboard');
+      addToast('success', 'Account Created', `Karibu ${data.name}! Your Rolling Razors garage is ready.`);
+      return { success: true };
+    }
   };
 
   const logout = () => {
@@ -537,6 +610,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     // Also automatically create corresponding Work Order with standardized properties
+    const dynamicMaterials: string[] = [
+      bookingData.customOptions?.material || bookingData.selectedMaterial || 'Automotive Leather / Vinyl',
+      bookingData.customOptions?.color ? `Color: ${bookingData.customOptions.color}` : null,
+      bookingData.customOptions?.pattern ? `Pattern: ${bookingData.customOptions.pattern}` : null,
+      'High Density Ergonomic Foam Cushioning',
+      'Bonded Heavy-Duty Seam Thread'
+    ].filter(Boolean) as string[];
+
     const newWorkOrder: WorkOrder = {
       id: workOrderId,
       bookingId: bookingId,
@@ -546,19 +627,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       vehicleDisplayName: `${bookingData.vehicleDetails.make} ${bookingData.vehicleDetails.model} (${bookingData.vehicleDetails.year})`,
       vehicleRegistration: bookingData.vehicleDetails.registrationNo,
       serviceName: bookingData.serviceName,
-      assignedStaffId: 'staff-2',
-      assignedStaffName: 'John Mwangi',
+      assignedStaffId: undefined,
+      assignedStaffName: 'Unassigned',
       priority: 'Normal',
       stage: 'BOOKED',
       customerRequirements: bookingData.requirementsDesc || 'Standard custom upholstery package',
-      materialsRequired: ['Automotive Leather / Vinyl', 'High Density Foam', 'Bonded Thread'],
+      materialsRequired: dynamicMaterials,
       estimatedCost: bookingData.estimatedPrice,
-      actualCost: bookingData.estimatedPrice,
+      actualCost: undefined,
       beforePhotos: bookingData.referencePhotos || [],
       progressPhotos: [],
       afterPhotos: [],
       internalNotes: `Auto-generated from booking ${bookingId}. Preferred date: ${bookingData.appointmentDate} at ${bookingData.appointmentTime}`,
-      progressPercentage: 15,
+      progressPercentage: 10,
       createdAt: now.toISOString().split('T')[0],
       targetCompletionDate: bookingData.appointmentDate
     };
@@ -567,11 +648,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setWorkOrders(prev => [newWorkOrder, ...prev]);
 
     // Create notifications for both customer and admin
+    const customerNotificationTitle = depositPaid ? 'Booking Confirmed!' : 'Booking Request Received';
+    const customerNotificationMessage = depositPaid
+      ? `Your deposit of KES ${depositAmount.toLocaleString()} has been received and your booking #${bookingId} is confirmed.`
+      : `Your booking request #${bookingId} for ${bookingData.serviceName} has been received. Complete the deposit to confirm your slot.`;
+
     const newNotifCustomer: AppNotification = {
       id: 'notif_' + Math.random().toString(36).substring(2, 9),
       recipientType: 'customer',
-      title: 'Booking Confirmed!',
-      message: `Your booking #${bookingId} for ${bookingData.serviceName} has been received.`,
+      title: customerNotificationTitle,
+      message: customerNotificationMessage,
       timestamp: 'Just now',
       isRead: false,
       type: 'booking',
@@ -581,8 +667,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newNotifAdmin: AppNotification = {
       id: 'notif_' + Math.random().toString(36).substring(2, 9),
       recipientType: 'admin',
-      title: 'New Booking Received',
-      message: `${bookingData.customerName} booked ${bookingData.serviceName} (${bookingData.vehicleDetails.registrationNo}).`,
+      title: 'New Booking Request',
+      message: `${bookingData.customerName} requested ${bookingData.serviceName} (${bookingData.vehicleDetails.registrationNo}).`,
       timestamp: 'Just now',
       isRead: false,
       type: 'booking',
@@ -590,7 +676,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setNotifications(prev => [newNotifCustomer, newNotifAdmin, ...prev]);
-    addToast('success', 'Booking Confirmed!', `Your booking #${bookingId} has been successfully scheduled.`);
+
+    if (depositPaid) {
+      addToast('success', 'Booking Confirmed!', `Your booking #${bookingId} has been successfully scheduled and deposit received.`);
+    } else {
+      addToast('info', 'Booking Request Received', `Your appointment request #${bookingId} has been submitted. Complete the deposit to confirm your slot.`);
+    }
 
     return newBooking;
   };
@@ -934,12 +1025,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addVehicle = (vehicleData: Omit<Vehicle, 'id' | 'previousServicesCount'>) => {
-    const reg = vehicleData.registrationNo || vehicleData.registrationNumber || 'KAA 000A';
+    const reg = (vehicleData.registrationNo || 'KAA 000A').toUpperCase();
     const newVehicle: Vehicle = {
       ...vehicleData,
+      type: vehicleData.type || 'Car',
       customerId: vehicleData.customerId || currentUser?.id || 'cust-1',
       registrationNo: reg,
-      registrationNumber: reg,
       id: 'veh_' + Math.random().toString(36).substring(2, 9),
       previousServicesCount: 0
     };

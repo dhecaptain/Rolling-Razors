@@ -29,14 +29,14 @@ export const AuthView: React.FC = () => {
   const [isRegister, setIsRegister] = useState(false);
   
   // Customer inputs
-  const [phone, setPhone] = useState('0712 901 234');
-  const [name, setName] = useState('Brian Mwangi');
-  const [email, setEmail] = useState('brian.mwangi@gmail.com');
-  const [customerPassword, setCustomerPassword] = useState('pass1234');
+  const [phone, setPhone] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [customerPassword, setCustomerPassword] = useState('');
 
   // Admin inputs
-  const [adminIdentifier, setAdminIdentifier] = useState('james@rollingrazors.co.ke');
-  const [adminPasscode, setAdminPasscode] = useState('admin123');
+  const [adminIdentifier, setAdminIdentifier] = useState('');
+  const [adminPasscode, setAdminPasscode] = useState('');
 
   // Loading state
   const [isLoading, setIsLoading] = useState(false);

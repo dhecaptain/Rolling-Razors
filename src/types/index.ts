@@ -39,13 +39,11 @@ export type VehicleType = 'Car' | 'SUV' | 'Van' | 'Truck' | 'Matatu' | 'Other';
 export interface Vehicle {
   id: string;
   customerId: string;
-  type?: VehicleType;
-  vehicleType?: VehicleType;
+  type: VehicleType;
   make: string;
   model: string;
   year: number;
-  registrationNo?: string;
-  registrationNumber?: string;
+  registrationNo: string;
   color?: string;
   image?: string;
   previousServicesCount?: number;
