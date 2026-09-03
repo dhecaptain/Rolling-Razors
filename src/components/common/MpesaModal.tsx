@@ -7,9 +7,11 @@ export const MpesaModal: React.FC = () => {
   const { mpesaPrompt, closeMpesaPayment, addToast, recordPayment, bookings } = useApp();
   
   const [phoneNumber, setPhoneNumber] = useState(mpesaPrompt.phone || '0712901234');
-  const [step, setStep] = useState<'prompt' | 'waiting' | 'success' | 'failed'>('prompt');
-  const [countdown, setCountdown] = useState(4);
-  const [generatedReceipt, setGeneratedReceipt] = useState('');
+  const [step, setStep] = useState<'prompt' | 'initiating' | 'waiting' | 'success' | 'failed'>('prompt');
+  const [countdown, setCountdown] = useState(30);
+  const [confirmedReceipt, setConfirmedReceipt] = useState('');
+  const [failureMessage, setFailureMessage] = useState('');
+  const [checkoutRequestId, setCheckoutRequestId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const hasProcessedRef = useRef(false);
 
@@ -17,8 +19,10 @@ export const MpesaModal: React.FC = () => {
     if (mpesaPrompt.isOpen) {
       setPhoneNumber(mpesaPrompt.phone || '0712901234');
       setStep('prompt');
-      setCountdown(4);
-      setGeneratedReceipt('');
+      setCountdown(30);
+      setConfirmedReceipt('');
+      setFailureMessage('');
+      setCheckoutRequestId(null);
       hasProcessedRef.current = false;
     }
   }, [mpesaPrompt.isOpen, mpesaPrompt.phone]);
@@ -28,22 +32,11 @@ export const MpesaModal: React.FC = () => {
   const depositCost = mpesaPrompt.amount;
   const balanceRemaining = Math.max(0, serviceCost - depositCost);
 
-  const [serverReceipt, setServerReceipt] = useState<string>('');
-
-  const handlePaymentConfirmed = useCallback((confirmedCode?: string) => {
+  const handlePaymentConfirmed = useCallback((receiptCode: string) => {
     if (hasProcessedRef.current) return;
     hasProcessedRef.current = true;
 
-    // Use Daraja receipt from server or generate verified format
-    let code = confirmedCode || serverReceipt;
-    if (!code) {
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
-      code = 'QK';
-      for (let i = 0; i < 8; i++) {
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-    }
-    setGeneratedReceipt(code);
+    setConfirmedReceipt(receiptCode);
     setStep('success');
 
     // Trigger celebration confetti
@@ -65,41 +58,26 @@ export const MpesaModal: React.FC = () => {
         amount: depositCost,
         method: 'M-Pesa',
         status: 'deposit_paid',
-        transactionReference: code,
+        transactionReference: receiptCode,
         invoiceId: mpesaPrompt.invoiceId
       });
     }
 
     if (mpesaPrompt.onSuccess) {
-      mpesaPrompt.onSuccess(code);
+      mpesaPrompt.onSuccess(receiptCode);
     }
-  }, [depositCost, mpesaPrompt, recordPayment, serverReceipt]);
+  }, [depositCost, mpesaPrompt, recordPayment]);
 
-  // Handle STK Push Handset Confirmation Simulation
-  useEffect(() => {
-    if (step !== 'waiting') return;
-
-    if (countdown > 0) {
-      const timer = setTimeout(() => {
-        setCountdown(prev => prev - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
-    } else {
-      // Countdown reached 0 -> execute payment confirmation cleanly outside of state updater
-      handlePaymentConfirmed();
-    }
-  }, [step, countdown, handlePaymentConfirmed]);
-
-  if (!mpesaPrompt.isOpen) return null;
-
+  // Initiate STK Push
   const handleInitiateSTK = async () => {
     if (!phoneNumber || phoneNumber.length < 9) {
       addToast('error', 'Invalid Phone Number', 'Please enter a valid Safaricom phone number (e.g. 0712345678).');
       return;
     }
+
+    setStep('initiating');
+    setFailureMessage('');
     hasProcessedRef.current = false;
-    setStep('waiting');
-    setCountdown(4);
 
     try {
       const response = await fetch('/api/mpesa/stkpush', {
@@ -114,17 +92,84 @@ export const MpesaModal: React.FC = () => {
           transactionDesc: 'Custom Auto Upholstery Deposit'
         })
       });
+
       const data = await response.json();
-      if (data.success && data.receiptCode) {
-        setServerReceipt(data.receiptCode);
+
+      if (!response.ok || !data.success) {
+        // Strict production rule: If Daraja fails or credentials missing, FAIL explicitly
+        const errorMsg = data.error || 'Failed to dispatch Lipa Na M-Pesa STK push. Gateway unavailable.';
+        setFailureMessage(errorMsg);
+        setStep('failed');
+        addToast('error', 'M-Pesa Request Failed', errorMsg);
+        return;
       }
-    } catch {
-      // safe fallback
+
+      // STK Push dispatched successfully to Safaricom
+      setCheckoutRequestId(data.CheckoutRequestID);
+      setCountdown(30);
+      setStep('waiting');
+      addToast('info', 'STK Push Sent', `Please check handset ${phoneNumber} and enter your M-Pesa PIN.`);
+    } catch (err: any) {
+      const networkError = err?.message || 'Unable to connect to M-Pesa payment server.';
+      setFailureMessage(networkError);
+      setStep('failed');
+      addToast('error', 'Connection Error', networkError);
     }
   };
 
+  // Poll transaction status while waiting for user PIN
+  useEffect(() => {
+    if (step !== 'waiting' || !checkoutRequestId) return;
+
+    let isSubscribed = true;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/mpesa/query/${checkoutRequestId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!isSubscribed) return;
+
+        if (data.success && data.transaction) {
+          if (data.transaction.status === 'SUCCESS') {
+            clearInterval(interval);
+            handlePaymentConfirmed(data.transaction.receiptNumber || 'M-PESA-PAID');
+          } else if (data.transaction.status === 'FAILED') {
+            clearInterval(interval);
+            setFailureMessage(data.transaction.failureReason || 'Transaction cancelled by customer or failed on handset.');
+            setStep('failed');
+          }
+        }
+      } catch (err) {
+        console.warn('Error polling M-Pesa status:', err);
+      }
+    }, 3500);
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+    };
+  }, [step, checkoutRequestId, handlePaymentConfirmed]);
+
+  // Countdown timer for handset entry
+  useEffect(() => {
+    if (step !== 'waiting') return;
+
+    if (countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown(prev => prev - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else {
+      // Countdown timeout without confirmation -> Fail strictly
+      setFailureMessage('Transaction timed out waiting for M-Pesa PIN authorization on handset.');
+      setStep('failed');
+    }
+  }, [step, countdown]);
+
+  if (!mpesaPrompt.isOpen) return null;
+
   const handleCopyReceipt = () => {
-    navigator.clipboard.writeText(generatedReceipt);
+    navigator.clipboard.writeText(confirmedReceipt);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -147,13 +192,13 @@ export const MpesaModal: React.FC = () => {
             </div>
             <div>
               <h3 className="font-bold text-base text-[#F5F1E8]">Lipa na M-Pesa Online</h3>
-              <p className="text-xs text-[#D6A62E]">Paybill: 889900 • Rolling Razors Customs</p>
+              <p className="text-xs text-[#D6A62E]">Paybill: 174379 • Rolling Razors Customs</p>
             </div>
           </div>
           <button 
             id="close-mpesa-modal-btn"
             onClick={closeMpesaPayment}
-            className="text-white/60 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+            className="text-white/60 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -220,8 +265,19 @@ export const MpesaModal: React.FC = () => {
 
               <div className="text-center pt-1">
                 <span className="text-[11px] text-white/50">
-                  Instant automated Safaricom Daraja API verification
+                  Direct Safaricom Daraja API Gateway Verification
                 </span>
+              </div>
+            </div>
+          )}
+
+          {/* STEP: Initiating STK Push */}
+          {step === 'initiating' && (
+            <div className="text-center py-6 space-y-4 animate-in fade-in">
+              <Loader2 className="w-10 h-10 animate-spin text-[#25D366] mx-auto" />
+              <div>
+                <h4 className="font-bold text-base text-white">Connecting to Safaricom Daraja...</h4>
+                <p className="text-xs text-white/70 mt-1">Dispatching STK Push request to {phoneNumber}...</p>
               </div>
             </div>
           )}
@@ -255,15 +311,18 @@ export const MpesaModal: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => setStep('failed')}
-                className="py-2 px-4 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white text-xs font-semibold transition-colors"
+                onClick={() => {
+                  setFailureMessage('Payment cancelled by user.');
+                  setStep('failed');
+                }}
+                className="py-2 px-4 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white text-xs font-semibold transition-colors cursor-pointer"
               >
                 Cancel or Use Different Number
               </button>
             </div>
           )}
 
-          {/* STEP 3: Success Screen (Payment Atomically Recorded) */}
+          {/* STEP 3: Success Screen (Verified Daraja Receipt) */}
           {step === 'success' && (
             <div className="text-center py-4 space-y-4 animate-in zoom-in-95 duration-300">
               <div className="w-14 h-14 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center mx-auto text-emerald-400 shadow-lg">
@@ -280,7 +339,7 @@ export const MpesaModal: React.FC = () => {
               <div className="bg-[#052822] p-4 rounded-xl border border-emerald-700/60 flex items-center justify-between text-xs">
                 <div className="text-left">
                   <span className="text-white/60 block text-[10px] uppercase font-bold tracking-wider">M-Pesa Receipt Number</span>
-                  <span className="font-mono font-black text-[#D6A62E] text-base">{generatedReceipt}</span>
+                  <span className="font-mono font-black text-[#D6A62E] text-base">{confirmedReceipt}</span>
                 </div>
                 <button
                   id="copy-mpesa-receipt-btn"
@@ -313,26 +372,34 @@ export const MpesaModal: React.FC = () => {
             </div>
           )}
 
-          {/* STEP 4: Failed State */}
+          {/* STEP 4: Failed State (Explicit error, NO fake fallback) */}
           {step === 'failed' && (
             <div className="text-center py-4 space-y-4 animate-in fade-in">
               <div className="w-14 h-14 rounded-full bg-rose-500/20 border-2 border-rose-400 flex items-center justify-center mx-auto text-rose-400">
                 <AlertCircle className="w-8 h-8" />
               </div>
-              <div>
-                <h4 className="font-bold text-lg text-white">Payment Incomplete</h4>
-                <p className="text-xs text-white/70">The M-Pesa transaction was cancelled or timed out.</p>
+              <div className="space-y-1">
+                <h4 className="font-bold text-lg text-white">Payment Unsuccessful</h4>
+                <p className="text-xs text-rose-300 font-medium px-2">
+                  {failureMessage || 'The M-Pesa transaction could not be completed.'}
+                </p>
+                <p className="text-[11px] text-white/50 mt-1">
+                  No funds were deducted. Check your network or M-Pesa gateway credentials.
+                </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 pt-2">
                 <button
-                  onClick={() => setStep('prompt')}
-                  className="flex-1 py-2.5 rounded-lg bg-[#D6A62E] text-[#073B32] font-bold text-xs cursor-pointer"
+                  onClick={() => {
+                    setFailureMessage('');
+                    setStep('prompt');
+                  }}
+                  className="flex-1 py-2.5 rounded-lg bg-[#D6A62E] hover:bg-[#c49727] text-[#073B32] font-bold text-xs cursor-pointer transition-colors"
                 >
                   Try Again
                 </button>
                 <button
                   onClick={closeMpesaPayment}
-                  className="flex-1 py-2.5 rounded-lg bg-white/10 text-white font-semibold text-xs cursor-pointer"
+                  className="flex-1 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-semibold text-xs cursor-pointer transition-colors"
                 >
                   Close
                 </button>

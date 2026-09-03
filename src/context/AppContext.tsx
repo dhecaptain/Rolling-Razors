@@ -295,6 +295,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('rr_notifications', JSON.stringify(notifications));
   }, [notifications]);
 
+  // Fetch durable database state from backend API on boot
+  useEffect(() => {
+    const fetchDatabaseRecords = async () => {
+      try {
+        const [bRes, vRes, woRes, invRes, cRes] = await Promise.all([
+          fetch('/api/bookings'),
+          fetch('/api/vehicles'),
+          fetch('/api/work-orders'),
+          fetch('/api/invoices'),
+          fetch('/api/customers')
+        ]);
+
+        if (bRes.ok) {
+          const bData = await bRes.json();
+          if (bData.success && Array.isArray(bData.bookings) && bData.bookings.length > 0) {
+            setBookings(bData.bookings);
+          }
+        }
+        if (vRes.ok) {
+          const vData = await vRes.json();
+          if (vData.success && Array.isArray(vData.vehicles) && vData.vehicles.length > 0) {
+            setVehicles(vData.vehicles);
+          }
+        }
+        if (woRes.ok) {
+          const woData = await woRes.json();
+          if (woData.success && Array.isArray(woData.workOrders) && woData.workOrders.length > 0) {
+            setWorkOrders(woData.workOrders);
+          }
+        }
+        if (invRes.ok) {
+          const invData = await invRes.json();
+          if (invData.success && Array.isArray(invData.invoices) && invData.invoices.length > 0) {
+            setInvoices(invData.invoices);
+          }
+        }
+        if (cRes.ok) {
+          const cData = await cRes.json();
+          if (cData.success && Array.isArray(cData.customers) && cData.customers.length > 0) {
+            setCustomers(cData.customers);
+          }
+        }
+      } catch (err) {
+        console.warn('Backend database initial sync notice:', err);
+      }
+    };
+
+    fetchDatabaseRecords();
+  }, []);
+
   const addToast = (type: 'success' | 'info' | 'warning' | 'error', title: string, message: string) => {
     const id = 'toast_' + Math.random().toString(36).substring(2, 9);
     setToasts(prev => [...prev, { id, type, title, message }]);
@@ -347,38 +397,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return { success: false, error: errMsg };
       }
     } catch {
-      // Offline / client fallback
-      const formattedPhone = cleanPhone.startsWith('+254') 
-        ? cleanPhone 
-        : cleanPhone.startsWith('0') 
-          ? `+254 ${cleanPhone.substring(1, 4)} ${cleanPhone.substring(4, 7)} ${cleanPhone.substring(7)}` 
-          : `+254 ${cleanPhone}`;
-
-      const existing = customers.find(c => c.phone.replace(/\s+/g, '') === cleanPhone.replace(/\s+/g, ''));
-      const token = `rr_jwt_cust_${Math.random().toString(36).substring(2)}_${Date.now()}`;
-      const user: User = {
-        id: existing ? existing.id : 'cust-' + (customers.length + 1),
-        name: existing ? existing.name : 'Brian Mwangi',
-        phone: existing ? existing.phone : formattedPhone,
-        email: existing ? existing.email : 'brian.mwangi@gmail.com',
-        role: 'customer',
-        avatar: existing?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-        location: existing?.address || 'Nairobi, Kenya',
-        token
-      };
-
-      const sessionData = {
-        user,
-        token,
-        expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000
-      };
-
-      localStorage.setItem('rr_auth_session', JSON.stringify(sessionData));
-      setCurrentUser(user);
-      setIsLoggedIn(true);
-      setView('customer_dashboard');
-      addToast('success', `Karibu, ${user.name}!`, 'Authenticated and signed into Driver Portal.');
-      return { success: true };
+      addToast('error', 'Authentication Failed', 'Backend authentication server is unreachable. Please check your connection.');
+      return { success: false, error: 'Authentication server unreachable' };
     }
   };
 
@@ -419,7 +439,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return { success: false, error: errMsg };
       }
     } catch {
-      // Fallback
       addToast('error', 'Authentication Error', 'Unable to reach authentication server.');
       return { success: false, error: 'Server authentication unreachable' };
     }
@@ -472,45 +491,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return { success: false, error: errMsg };
       }
     } catch {
-      const newCustomerId = 'cust-' + (customers.length + 1);
-      const newCustomer: Customer = {
-        id: newCustomerId,
-        name: data.name,
-        phone: data.phone,
-        email: data.email || `${data.name.toLowerCase().replace(/\s+/g, '.')}@gmail.com`,
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-        totalSpent: 0,
-        status: 'New',
-        address: 'Nairobi, Kenya',
-        savedVehicles: []
-      };
-
-      setCustomers(prev => [...prev, newCustomer]);
-
-      const token = `rr_jwt_cust_${Math.random().toString(36).substring(2)}_${Date.now()}`;
-      const user: User = {
-        id: newCustomerId,
-        name: data.name,
-        phone: data.phone,
-        email: newCustomer.email,
-        role: 'customer',
-        avatar: newCustomer.avatar,
-        location: 'Nairobi, Kenya',
-        token
-      };
-
-      const sessionData = {
-        user,
-        token,
-        expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000
-      };
-
-      localStorage.setItem('rr_auth_session', JSON.stringify(sessionData));
-      setCurrentUser(user);
-      setIsLoggedIn(true);
-      setView('customer_dashboard');
-      addToast('success', 'Account Created', `Karibu ${data.name}! Your Rolling Razors garage is ready.`);
-      return { success: true };
+      addToast('error', 'Registration Error', 'Unable to reach backend server for registration.');
+      return { success: false, error: 'Backend server unreachable' };
     }
   };
 
@@ -676,6 +658,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setNotifications(prev => [newNotifCustomer, newNotifAdmin, ...prev]);
+
+    // Persist new booking to durable server database
+    fetch('/api/bookings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newBooking)
+    }).catch(err => console.warn('Could not sync booking to server database:', err));
 
     if (depositPaid) {
       addToast('success', 'Booking Confirmed!', `Your booking #${bookingId} has been successfully scheduled and deposit received.`);
@@ -872,6 +861,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
 
       targetBooking = updated;
+
+      // Sync booking payment status to server database
+      fetch(`/api/bookings/${bookingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentStatus: finalPaymentStatus,
+          paymentMethod: method,
+          mpesaReceiptNo: transactionReference,
+          depositPaid: true,
+          depositAmount: Math.max(b.depositAmount || 0, amount),
+          balanceAmount: remainingBalance,
+          status: newStatus
+        })
+      }).catch(err => console.warn('Could not sync payment to server database:', err));
+
       return updated;
     }));
 
@@ -993,6 +998,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }));
 
+    // Sync work order stage to server database
+    fetch(`/api/work-orders/${workOrderId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stage, progressPercentage: progressMap[stage] })
+    }).catch(err => console.warn('Could not sync work order to server database:', err));
+
     // Find linked booking
     const linkedWo = workOrders.find(w => w.id === workOrderId);
     if (linkedWo && linkedWo.bookingId) {
@@ -1035,6 +1047,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       previousServicesCount: 0
     };
     setVehicles(prev => [newVehicle, ...prev]);
+
+    // Persist vehicle to server database
+    fetch('/api/vehicles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newVehicle)
+    }).catch(err => console.warn('Could not sync vehicle to server database:', err));
+
     addToast('success', 'Vehicle Added', `${vehicleData.make} ${vehicleData.model} (${reg}) added to your garage.`);
   };
 
@@ -1051,6 +1071,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     if (allowed) {
+      // Sync vehicle deletion to server database
+      fetch(`/api/vehicles/${id}`, {
+        method: 'DELETE'
+      }).catch(err => console.warn('Could not sync vehicle deletion to server database:', err));
+
       addToast('info', 'Vehicle Removed', 'Vehicle has been removed from your saved garage.');
     } else {
       addToast('error', 'Access Denied', 'You can only remove vehicles belonging to your own account.');

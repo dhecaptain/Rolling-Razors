@@ -312,11 +312,11 @@ export const AuthView: React.FC = () => {
                 required
                 value={adminIdentifier}
                 onChange={(e) => setAdminIdentifier(e.target.value)}
-                placeholder="james@rollingrazors.co.ke"
+                placeholder="staff@rollingrazors.co.ke"
                 className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-white font-bold placeholder-white/30 focus:outline-none focus:border-[#D6A62E]"
               />
-              <span className="text-[10px] text-[#D6A62E] mt-1 block">
-                Authorized staff email: <strong className="font-mono">james@rollingrazors.co.ke</strong>
+              <span className="text-[10px] text-white/60 mt-1 block">
+                Enter your authorized workshop administrator email or registered staff phone.
               </span>
             </div>
 
@@ -330,11 +330,11 @@ export const AuthView: React.FC = () => {
                 required
                 value={adminPasscode}
                 onChange={(e) => setAdminPasscode(e.target.value)}
-                placeholder="Passcode"
+                placeholder="Enter authorized workshop passcode"
                 className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-white font-bold placeholder-white/30 focus:outline-none focus:border-[#D6A62E] font-mono"
               />
-              <span className="text-[10px] text-[#D6A62E] mt-1 block">
-                Master workshop passcode: <strong className="font-mono">admin123</strong>
+              <span className="text-[10px] text-white/50 mt-1 block">
+                Enter the secure passcode configured in your environment or workshop records.
               </span>
             </div>
 
