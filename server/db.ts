@@ -137,10 +137,19 @@ class PrismaDatabaseManager {
     return rows.map(mapBooking);
   }
 
-  async getBookingsPaginated(customerId: string | undefined, status: string | undefined, page: number, limit: number): Promise<{ data: Booking[]; total: number }> {
+  async getBookingsPaginated(customerId: string | undefined, status: string | undefined, page: number, limit: number, search?: string): Promise<{ data: Booking[]; total: number }> {
     const where: any = {};
     if (customerId) where.customerId = customerId;
     if (status && status !== "all") where.status = status;
+    if (search) {
+      const q = search.trim();
+      where.OR = [
+        { customerName: { contains: q, mode: "insensitive" } },
+        { customerPhone: { contains: q } },
+        { serviceName: { contains: q, mode: "insensitive" } },
+        { id: { contains: q, mode: "insensitive" } },
+      ];
+    }
     const [rows, total] = await Promise.all([
       prisma.booking.findMany({ where, skip: (page-1)*limit, take: limit, orderBy: { createdAt: "desc" } }),
       prisma.booking.count({ where }),
@@ -318,6 +327,74 @@ class PrismaDatabaseManager {
     const clean = phone.replace(/\s+/g, "");
     await prisma.otp.delete({ where: { phone: clean } }).catch(() => {});
   }
+
+  async createAuditLog(data: { actorId: string; actorName: string; actorRole: string; action: string; entityType: string; entityId: string; before?: any; after?: any; ip?: string; requestId?: string }): Promise<void> {
+    await prisma.auditLog.create({ data: { actorId: data.actorId, actorName: data.actorName, actorRole: data.actorRole, action: data.action, entityType: data.entityType, entityId: data.entityId, before: data.before ?? undefined, after: data.after ?? undefined, ip: data.ip, requestId: data.requestId } });
+  }
+
+  async getAuditLogs(entityType?: string, entityId?: string, limit = 50): Promise<any[]> {
+    const where: any = {};
+    if (entityType) where.entityType = entityType;
+    if (entityId) where.entityId = entityId;
+    return prisma.auditLog.findMany({ where, orderBy: { createdAt: "desc" }, take: limit });
+  }
+
+  async updateWorkOrderWithVersion(id: string, patch: Partial<WorkOrder> & { version?: number }, actor?: { id: string; name: string; role: string; ip?: string; requestId?: string }): Promise<{ workOrder?: WorkOrder; error?: string; conflict?: boolean }> {
+    const existing = await prisma.workOrder.findUnique({ where: { id } });
+    if (!existing) return { error: "Work order not found." };
+    if (patch.version !== undefined && patch.version !== existing.version) {
+      return { error: `Version conflict: expected ${existing.version}, got ${patch.version}. Reload and try again.`, conflict: true };
+    }
+    const { version, ...rest } = patch as any;
+    const before = existing;
+    try {
+      const updated = await prisma.workOrder.update({
+        where: { id, ...(patch.version !== undefined ? { version: patch.version } : {}) },
+        data: { ...toWorkOrderPatch(rest), version: { increment: 1 } } as any,
+      });
+      if (actor) {
+        await this.createAuditLog({ actorId: actor.id, actorName: actor.name, actorRole: actor.role, action: `workOrder:${patch.stage || "update"}`, entityType: "WorkOrder", entityId: id, before, after: updated, ip: actor.ip, requestId: actor.requestId });
+      }
+      return { workOrder: mapWorkOrder(updated) };
+    } catch (e: any) {
+      if (String(e.message).includes("Record to update does not exist")) return { error: "Version conflict: record was modified by another user.", conflict: true };
+      return { error: e.message };
+    }
+  }
+
+  async getInventory(): Promise<any[]> {
+    return prisma.inventoryItem.findMany({ orderBy: { qtyOnHand: "asc" } });
+  }
+
+  async getLowStock(): Promise<any[]> {
+    const items = await prisma.inventoryItem.findMany();
+    return items.filter(i => i.qtyOnHand <= i.reorderPoint);
+  }
+
+  async upsertInventoryItem(item: { sku: string; name: string; category: string; qtyOnHand?: number; reorderPoint?: number; costPerUnit?: number }): Promise<any> {
+    return prisma.inventoryItem.upsert({
+      where: { sku: item.sku },
+      update: { name: item.name, category: item.category, qtyOnHand: item.qtyOnHand, reorderPoint: item.reorderPoint, costPerUnit: item.costPerUnit },
+      create: { sku: item.sku, name: item.name, category: item.category, qtyOnHand: item.qtyOnHand ?? 0, reorderPoint: item.reorderPoint ?? 5, costPerUnit: item.costPerUnit ?? 0 },
+    });
+  }
+
+  validateBookingTransition(from: string, to: string): { valid: boolean; error?: string } {
+    const allowed: Record<string, string[]> = {
+      pending: ["confirmed", "cancelled"],
+      confirmed: ["checked_in", "cancelled"],
+      checked_in: ["in_progress", "cancelled"],
+      in_progress: ["quality_check", "cancelled"],
+      quality_check: ["ready", "in_progress"],
+      ready: ["completed", "quality_check"],
+      completed: [],
+      cancelled: [],
+    };
+    if (from === to) return { valid: true };
+    const next = allowed[from] || [];
+    if (!next.includes(to)) return { valid: false, error: `Invalid transition ${from} → ${to}. Allowed: ${next.join(", ") || "none"}` };
+    return { valid: true };
+  }
 }
 
 function mapBooking(r: any): Booking {
@@ -348,8 +425,8 @@ function toBookingPatch(p: Partial<Booking>): any {
   if (p.referencePhotos) d.referencePhotos = p.referencePhotos as any;
   return d;
 }
-function mapWorkOrder(r: any): WorkOrder {
-  return { id: r.id, bookingId: r.bookingId, customerId: r.customerId || undefined, customerName: r.customerName, customerPhone: r.customerPhone, vehicleId: r.vehicleId || undefined, vehicleDisplayName: r.vehicleDisplayName, vehicleRegistration: r.vehicleRegistration, serviceName: r.serviceName, assignedStaffId: r.assignedStaffId || undefined, assignedStaffName: r.assignedStaffName, priority: r.priority as any, stage: r.stage as any, customerRequirements: r.customerRequirements || undefined, materialsRequired: r.materialsRequired as any, estimatedCost: r.estimatedCost ?? undefined, actualCost: r.actualCost ?? undefined, beforePhotos: r.beforePhotos as any, progressPhotos: r.progressPhotos as any, afterPhotos: r.afterPhotos as any, internalNotes: r.internalNotes || undefined, progressPercentage: r.progressPercentage, createdAt: r.createdAt.toISOString().split("T")[0], targetCompletionDate: r.targetCompletionDate || undefined };
+function mapWorkOrder(r: any): WorkOrder & { version?: number } {
+  return { id: r.id, bookingId: r.bookingId, customerId: r.customerId || undefined, customerName: r.customerName, customerPhone: r.customerPhone, vehicleId: r.vehicleId || undefined, vehicleDisplayName: r.vehicleDisplayName, vehicleRegistration: r.vehicleRegistration, serviceName: r.serviceName, assignedStaffId: r.assignedStaffId || undefined, assignedStaffName: r.assignedStaffName, priority: r.priority as any, stage: r.stage as any, customerRequirements: r.customerRequirements || undefined, materialsRequired: r.materialsRequired as any, estimatedCost: r.estimatedCost ?? undefined, actualCost: r.actualCost ?? undefined, beforePhotos: r.beforePhotos as any, progressPhotos: r.progressPhotos as any, afterPhotos: r.afterPhotos as any, internalNotes: r.internalNotes || undefined, progressPercentage: r.progressPercentage, version: r.version ?? 0, createdAt: r.createdAt.toISOString().split("T")[0], targetCompletionDate: r.targetCompletionDate || undefined } as any;
 }
 function toWorkOrderData(w: WorkOrder): any {
   return { bookingId: w.bookingId, customerId: w.customerId, customerName: w.customerName, customerPhone: w.customerPhone, vehicleId: w.vehicleId, vehicleDisplayName: w.vehicleDisplayName, vehicleRegistration: w.vehicleRegistration, serviceName: w.serviceName, assignedStaffId: w.assignedStaffId, assignedStaffName: w.assignedStaffName, priority: w.priority, stage: w.stage, customerRequirements: w.customerRequirements, materialsRequired: w.materialsRequired as any, estimatedCost: w.estimatedCost, actualCost: w.actualCost, beforePhotos: w.beforePhotos as any, progressPhotos: w.progressPhotos as any, afterPhotos: w.afterPhotos as any, internalNotes: w.internalNotes, progressPercentage: w.progressPercentage, targetCompletionDate: w.targetCompletionDate };

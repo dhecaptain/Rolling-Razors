@@ -154,10 +154,10 @@ app.get("/api/auth/verify", (req,res)=>{
 
 app.get("/api/bookings", authenticateOptional, async (req,res)=>{
   const { page, limit }=getPagination(req);
-  const customerId=req.query.customerId as string|undefined; const status=req.query.status as string|undefined;
+  const customerId=req.query.customerId as string|undefined; const status=req.query.status as string|undefined; const q=req.query.q as string|undefined;
   const user=(req as any).user;
   if(customerId && user && user.role!=="admin" && user.id!==customerId) return res.status(403).json({ success:false, error:"Forbidden." });
-  const { data: bookings, total }=await serverDb.getBookingsPaginated(customerId, status, page, limit);
+  const { data: bookings, total }=await serverDb.getBookingsPaginated(customerId, status, page, limit, q);
   res.json({ success:true, bookings, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
 });
 
@@ -186,9 +186,27 @@ app.patch("/api/bookings/:id", authenticateToken, async (req,res)=>{
   const { id }=req.params; const existing=await serverDb.getBooking(id); if(!existing) return res.status(404).json({ success:false, error:"Booking not found." });
   const user=(req as any).user; if(user.role!=="admin" && existing.customerId && existing.customerId!==user.id && !phonesMatch(existing.customerPhone, user.phone||"")) return res.status(403).json({ success:false, error:"Forbidden." });
   const allowed=["status","assignedStaffId","assignedStaffName","paymentStatus","paymentMethod","mpesaReceiptNo","depositPaid","depositAmount","balanceAmount","internalNotes"];
-  if(user.role!=="admin"){ const filtered:any={}; for(const k of ["status"] ) if(k in req.body) filtered[k]=req.body[k]; if(Object.keys(filtered).length===0) return res.status(403).json({ success:false, error:"Customers can only update status to cancelled." }); if(filtered.status!=="cancelled") return res.status(403).json({ success:false, error:"Forbidden." }); const updated=await serverDb.updateBooking(id, filtered); return res.json({ success:true, booking:updated }); }
+  if(user.role!=="admin"){
+    const filtered:any={}; for(const k of ["status"] ) if(k in req.body) filtered[k]=req.body[k];
+    if(Object.keys(filtered).length===0) return res.status(403).json({ success:false, error:"Customers can only update status to cancelled." });
+    if(filtered.status!=="cancelled") return res.status(403).json({ success:false, error:"Forbidden." });
+    const v=serverDb.validateBookingTransition(existing.status, filtered.status);
+    if(!v.valid) return res.status(409).json({ success:false, error:v.error });
+    const before={ ...existing };
+    const updated=await serverDb.updateBooking(id, filtered);
+    await serverDb.createAuditLog({ actorId:user.id, actorName:user.name, actorRole:user.role, action:`booking:${filtered.status}`, entityType:"Booking", entityId:id, before, after:updated, ip:req.ip, requestId:(req as any).id });
+    return res.json({ success:true, booking:updated });
+  }
   const patch:any={}; for(const k of allowed) if(k in req.body) patch[k]=req.body[k];
-  const updated=await serverDb.updateBooking(id, patch); res.json({ success:true, booking:updated });
+  if(patch.status){
+    const v=serverDb.validateBookingTransition(existing.status, patch.status);
+    if(!v.valid) return res.status(409).json({ success:false, error:v.error });
+    if(patch.status==="confirmed" && !existing.depositPaid && !patch.depositPaid) return res.status(409).json({ success:false, error:"Cannot confirm booking without deposit. Record M-Pesa payment first." });
+  }
+  const before={ ...existing };
+  const updated=await serverDb.updateBooking(id, patch);
+  await serverDb.createAuditLog({ actorId:user.id, actorName:user.name, actorRole:user.role, action:`booking:${patch.status||"update"}`, entityType:"Booking", entityId:id, before, after:updated, ip:req.ip, requestId:(req as any).id });
+  res.json({ success:true, booking:updated });
 });
 
 app.get("/api/vehicles", authenticateOptional, async (req,res)=>{
@@ -224,8 +242,16 @@ app.get("/api/work-orders", authenticateOptional, async (req,res)=>{
 });
 
 app.patch("/api/work-orders/:id", authenticateToken, requireAdmin, async (req,res)=>{
-  const { id }=req.params; const allowed=["stage","progressPercentage","assignedStaffId","assignedStaffName","priority","internalNotes","actualCost"]; const patch:any={}; for(const k of allowed) if(k in req.body) patch[k]=req.body[k];
-  const updated=await serverDb.updateWorkOrder(id, patch); if(!updated) return res.status(404).json({ success:false, error:"Work order not found." }); res.json({ success:true, workOrder:updated });
+  const { id }=req.params; const allowed=["stage","progressPercentage","assignedStaffId","assignedStaffName","priority","internalNotes","actualCost","version"]; const patch:any={}; for(const k of allowed) if(k in req.body) patch[k]=req.body[k];
+  const user=(req as any).user;
+  const result=await serverDb.updateWorkOrderWithVersion(id, patch, { id:user.id, name:user.name, role:user.role, ip:req.ip, requestId:(req as any).id });
+  if(result.conflict) return res.status(409).json({ success:false, error:result.error, conflict:true });
+  if(result.error) return res.status(404).json({ success:false, error:result.error });
+  if(patch.stage && ["VEHICLE_RECEIVED","MATERIALS_PREPARED"].includes(patch.stage)){
+    const low=await serverDb.getLowStock();
+    if(low.length) logger.warn({ workOrderId:id, low:low.map((i:any)=>i.sku) }, "[Inventory] low stock warning on stage transition");
+  }
+  res.json({ success:true, workOrder:result.workOrder });
 });
 
 app.get("/api/invoices", authenticateOptional, async (req,res)=>{
@@ -243,6 +269,20 @@ app.get("/api/customers", authenticateToken, requireAdmin, async (req,res)=>{
   const { page, limit }=getPagination(req);
   const { data: customers, total }=await serverDb.getCustomersPaginated(page, limit);
   res.json({ success:true, customers, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
+});
+app.get("/api/audit-logs", authenticateToken, requireAdmin, async (req,res)=>{
+  const entityType=req.query.entityType as string|undefined; const entityId=req.query.entityId as string|undefined; const limit=Math.min(100, parseInt(req.query.limit as string)||20);
+  const logs=await serverDb.getAuditLogs(entityType, entityId, limit);
+  res.json({ success:true, logs });
+});
+app.get("/api/inventory", authenticateToken, requireAdmin, async (_req,res)=>{
+  const items=await serverDb.getInventory();
+  const low=await serverDb.getLowStock();
+  res.json({ success:true, inventory:items, lowStock:low });
+});
+app.get("/api/inventory/low", authenticateToken, requireAdmin, async (_req,res)=>{
+  const low=await serverDb.getLowStock();
+  res.json({ success:true, lowStock:low });
 });
 app.get("/api/staff", async (_req,res)=>{ res.json({ success:true, staff: await serverDb.getStaff() }); });
 app.get("/api/services", async (_req,res)=>{

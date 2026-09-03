@@ -178,11 +178,13 @@ model WorkOrder {
   afterPhotos          Json?
   internalNotes        String?
   progressPercentage   Int               @default(10)
+  version              Int               @default(0)
   createdAt            DateTime          @default(now())
   targetCompletionDate String?
   updatedAt            DateTime          @updatedAt
   @@index([bookingId])
   @@index([stage])
+  @@index([assignedStaffId, stage])
 }
 
 model Invoice {
@@ -269,4 +271,39 @@ model Otp {
   createdAt DateTime @default(now())
   @@index([phone])
   @@index([expiresAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  actorName  String
+  actorRole  String
+  action     String
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  ip         String?
+  requestId  String?
+  createdAt  DateTime @default(now())
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([createdAt])
+}
+
+model InventoryItem {
+  id           String   @id @default(cuid())
+  sku          String   @unique
+  name         String
+  category     String
+  unit         String   @default("m")
+  qtyOnHand    Float    @default(0)
+  reorderPoint Float    @default(5)
+  costPerUnit  Int      @default(0)
+  supplier     String?
+  location     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  @@index([category])
+  @@index([qtyOnHand])
 }

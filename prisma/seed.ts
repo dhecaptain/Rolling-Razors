@@ -86,7 +86,21 @@ async function main() {
     });
   }
 
+  const inventory = [
+    { sku: "LEATHER-NAPPA-TAN-001", name: "Nappa Leather Tan #804", category: "leather", qtyOnHand: 18, reorderPoint: 12, costPerUnit: 2800 },
+    { sku: "LEATHER-ITALIAN-SADDLE", name: "Italian Saddle Brown Leather", category: "leather", qtyOnHand: 3, reorderPoint: 10, costPerUnit: 4200 },
+    { sku: "VINYL-HD-BLACK-001", name: "Heavy-Duty Vinyl Black", category: "vinyl", qtyOnHand: 45, reorderPoint: 15, costPerUnit: 850 },
+    { sku: "FOAM-HD-50MM", name: "High-Density Foam 50mm", category: "foam", qtyOnHand: 8, reorderPoint: 10, costPerUnit: 1200 },
+    { sku: "THREAD-GOLD-40", name: "Gold Bonded Nylon Thread #40", category: "thread", qtyOnHand: 22, reorderPoint: 8, costPerUnit: 150 },
+    { sku: "CANVAS-RIPSTOP-550", name: "Ripstop Canvas 550gsm", category: "canvas", qtyOnHand: 30, reorderPoint: 10, costPerUnit: 950 },
+  ];
+  for (const item of inventory) {
+    await prisma.inventoryItem.upsert({ where: { sku: item.sku }, update: item, create: item });
+  }
+
   console.log("Seed complete.");
+  const low = await prisma.inventoryItem.findMany({ where: { qtyOnHand: { lte: 5 } } });
+  if (low.length) console.log(`Low stock: ${low.map(i => i.sku).join(", ")}`);
 }
 
 main().then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1); });
