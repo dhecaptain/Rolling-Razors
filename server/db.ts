@@ -35,6 +35,15 @@ class PrismaDatabaseManager {
     const raw = String(identifier).trim();
     const cleanLower = raw.toLowerCase().replace(/\s+/g, "");
     const key = phoneKey(raw);
+    if (cleanLower.includes("@")) {
+      const found = await prisma.user.findFirst({ where: { email: { equals: cleanLower, mode: "insensitive" } } });
+      if (found) return { id: found.id, name: found.name, phone: found.phone, email: found.email, role: found.role as any, avatar: found.avatar, location: found.location || undefined };
+    }
+    if (key && key.length === 9) {
+      const users = await prisma.user.findMany({ where: { phone: { contains: key.slice(-6) } } });
+      const found = users.find(u => phoneKey(u.phone) === key);
+      if (found) return { id: found.id, name: found.name, phone: found.phone, email: found.email, role: found.role as any, avatar: found.avatar, location: found.location || undefined };
+    }
     const users = await prisma.user.findMany();
     const found = users.find(u => {
       const uEmail = (u.email || "").toLowerCase().replace(/\s+/g, "");
@@ -66,6 +75,14 @@ class PrismaDatabaseManager {
     }));
   }
 
+  async getCustomersPaginated(page=1, limit=20): Promise<{ data: Customer[]; total: number }> {
+    const [rows, total] = await Promise.all([
+      prisma.customer.findMany({ skip: (page-1)*limit, take: limit, orderBy: { createdAt: "desc" } }),
+      prisma.customer.count(),
+    ]);
+    return { data: rows.map(r => ({ id: r.id, name: r.name, phone: r.phone, email: r.email, avatar: r.avatar || undefined, vehiclesCount: r.vehiclesCount || undefined, totalBookings: r.totalBookings || undefined, totalSpent: r.totalSpent, lastVisit: r.lastVisit || undefined, location: r.location || undefined, status: r.status as any, address: r.address || undefined, notes: r.notes || undefined, savedVehicles: (r.savedVehicles as any) || [] })), total };
+  }
+
   async getCustomer(id: string): Promise<Customer | undefined> {
     const r = await prisma.customer.findUnique({ where: { id } });
     if (!r) return undefined;
@@ -93,6 +110,15 @@ class PrismaDatabaseManager {
     return rows.map(r => ({ id: r.id, customerId: r.customerId, type: r.type as any, make: r.make, model: r.model, year: r.year, registrationNo: r.registrationNo, color: r.color || undefined, image: r.image || undefined, previousServicesCount: r.previousServicesCount, upholsteryHistory: (r.upholsteryHistory as any) || undefined, notes: r.notes || undefined }));
   }
 
+  async getVehiclesPaginated(customerId: string | undefined, page: number, limit: number): Promise<{ data: Vehicle[]; total: number }> {
+    const where = customerId ? { customerId } : {};
+    const [rows, total] = await Promise.all([
+      prisma.vehicle.findMany({ where, skip: (page-1)*limit, take: limit, orderBy: { createdAt: "desc" } }),
+      prisma.vehicle.count({ where }),
+    ]);
+    return { data: rows.map(r => ({ id: r.id, customerId: r.customerId, type: r.type as any, make: r.make, model: r.model, year: r.year, registrationNo: r.registrationNo, color: r.color || undefined, image: r.image || undefined, previousServicesCount: r.previousServicesCount, upholsteryHistory: (r.upholsteryHistory as any) || undefined, notes: r.notes || undefined })), total };
+  }
+
   async addVehicle(vehicle: Vehicle): Promise<Vehicle> {
     await prisma.vehicle.upsert({
       where: { registrationNo: vehicle.registrationNo.toUpperCase() },
@@ -111,6 +137,17 @@ class PrismaDatabaseManager {
     return rows.map(mapBooking);
   }
 
+  async getBookingsPaginated(customerId: string | undefined, status: string | undefined, page: number, limit: number): Promise<{ data: Booking[]; total: number }> {
+    const where: any = {};
+    if (customerId) where.customerId = customerId;
+    if (status && status !== "all") where.status = status;
+    const [rows, total] = await Promise.all([
+      prisma.booking.findMany({ where, skip: (page-1)*limit, take: limit, orderBy: { createdAt: "desc" } }),
+      prisma.booking.count({ where }),
+    ]);
+    return { data: rows.map(mapBooking), total };
+  }
+
   async getBooking(id: string): Promise<Booking | undefined> {
     const r = await prisma.booking.findUnique({ where: { id } });
     return r ? mapBooking(r) : undefined;
@@ -125,6 +162,14 @@ class PrismaDatabaseManager {
     return booking;
   }
 
+  async createBookingWithWorkOrder(booking: Booking, workOrder: WorkOrder): Promise<{ booking: Booking; workOrder: WorkOrder }> {
+    await prisma.$transaction(async (tx) => {
+      await tx.booking.upsert({ where: { id: booking.id }, update: toBookingData(booking), create: { id: booking.id, ...toBookingData(booking) as any } });
+      await tx.workOrder.upsert({ where: { id: workOrder.id }, update: toWorkOrderData(workOrder), create: { id: workOrder.id, ...toWorkOrderData(workOrder) as any } });
+    });
+    return { booking, workOrder };
+  }
+
   async updateBooking(id: string, patch: Partial<Booking>): Promise<Booking | undefined> {
     try {
       const r = await prisma.booking.update({ where: { id }, data: toBookingPatch(patch) });
@@ -135,6 +180,14 @@ class PrismaDatabaseManager {
   async getWorkOrders(): Promise<WorkOrder[]> {
     const rows = await prisma.workOrder.findMany({ orderBy: { createdAt: "desc" } });
     return rows.map(mapWorkOrder);
+  }
+
+  async getWorkOrdersPaginated(page: number, limit: number): Promise<{ data: WorkOrder[]; total: number }> {
+    const [rows, total] = await Promise.all([
+      prisma.workOrder.findMany({ skip: (page-1)*limit, take: limit, orderBy: { createdAt: "desc" } }),
+      prisma.workOrder.count(),
+    ]);
+    return { data: rows.map(mapWorkOrder), total };
   }
 
   async getWorkOrder(id: string): Promise<WorkOrder | undefined> {
@@ -169,6 +222,24 @@ class PrismaDatabaseManager {
     return rows.map(mapInvoice);
   }
 
+  async getInvoicesPaginated(customerId: string | undefined, page: number, limit: number): Promise<{ data: Invoice[]; total: number }> {
+    if (customerId) {
+      const bookings = await prisma.booking.findMany({ where: { customerId }, select: { id: true } });
+      const ids = bookings.map(b => b.id);
+      const where = { bookingId: { in: ids } };
+      const [rows, total] = await Promise.all([
+        prisma.invoice.findMany({ where, skip: (page-1)*limit, take: limit, orderBy: { createdAt: "desc" } }),
+        prisma.invoice.count({ where }),
+      ]);
+      return { data: rows.map(mapInvoice), total };
+    }
+    const [rows, total] = await Promise.all([
+      prisma.invoice.findMany({ skip: (page-1)*limit, take: limit, orderBy: { createdAt: "desc" } }),
+      prisma.invoice.count(),
+    ]);
+    return { data: rows.map(mapInvoice), total };
+  }
+
   async getInvoice(id: string): Promise<Invoice | undefined> {
     const r = await prisma.invoice.findUnique({ where: { id } });
     return r ? mapInvoice(r) : undefined;
@@ -198,6 +269,14 @@ class PrismaDatabaseManager {
   async getTransactions(): Promise<MpesaTransactionRecord[]> {
     const rows = await prisma.mpesaTransaction.findMany({ orderBy: { createdAt: "desc" } });
     return rows.map(r => ({ merchantRequestId: r.merchantRequestId, checkoutRequestId: r.checkoutRequestId, bookingId: r.bookingId || undefined, invoiceId: r.invoiceId || undefined, amount: r.amount, phone: r.phone, status: r.status as any, receiptNumber: r.receiptNumber || undefined, failureReason: r.failureReason || undefined, createdAt: r.createdAt.toISOString(), updatedAt: r.updatedAt.toISOString() }));
+  }
+
+  async getTransactionsPaginated(page: number, limit: number): Promise<{ data: MpesaTransactionRecord[]; total: number }> {
+    const [rows, total] = await Promise.all([
+      prisma.mpesaTransaction.findMany({ skip: (page-1)*limit, take: limit, orderBy: { createdAt: "desc" } }),
+      prisma.mpesaTransaction.count(),
+    ]);
+    return { data: rows.map(r => ({ merchantRequestId: r.merchantRequestId, checkoutRequestId: r.checkoutRequestId, bookingId: r.bookingId || undefined, invoiceId: r.invoiceId || undefined, amount: r.amount, phone: r.phone, status: r.status as any, receiptNumber: r.receiptNumber || undefined, failureReason: r.failureReason || undefined, createdAt: r.createdAt.toISOString(), updatedAt: r.updatedAt.toISOString() })), total };
   }
 
   async getTransaction(checkoutRequestId: string): Promise<MpesaTransactionRecord | undefined> {

@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: rolling_razors_test
+          POSTGRES_USER: rolling_razors
+          POSTGRES_PASSWORD: rolling_razors_pass
+        ports:
+          - 5435:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://rolling_razors:rolling_razors_pass@localhost:5435/rolling_razors_test
+      AUTH_SECRET: test-secret-32chars-long-for-ci-only
+      ADMIN_EMAIL: ci@rollingrazors.co.ke
+      ADMIN_PHONE: 0712345678
+      ADMIN_PASSWORD: ci-test-pass
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx prisma migrate deploy
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npx prisma generate --check 2>&1 | head -20

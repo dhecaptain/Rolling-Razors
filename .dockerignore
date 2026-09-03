@@ -1,0 +1,13 @@
+node_modules
+dist
+.git
+.gitignore
+.env
+.env.local
+.env.*.local
+data
+*.log
+coverage
+prisma/migrations/.env
+npm-debug.log
+.DS_Store

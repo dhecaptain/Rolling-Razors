@@ -108,6 +108,8 @@ model Vehicle {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
   @@index([customerId])
+  @@index([registrationNo])
+  @@index([customerId, registrationNo])
 }
 
 model Booking {
@@ -148,6 +150,9 @@ model Booking {
   @@index([customerId])
   @@index([customerPhone])
   @@index([status])
+  @@index([appointmentDate])
+  @@index([createdAt])
+  @@index([customerId, status])
 }
 
 model WorkOrder {
@@ -252,6 +257,8 @@ model MpesaTransaction {
   updatedAt         DateTime    @updatedAt
   @@index([checkoutRequestId])
   @@index([bookingId])
+  @@index([phone])
+  @@index([status, createdAt])
 }
 
 model Otp {
@@ -261,4 +268,5 @@ model Otp {
   expiresAt DateTime
   createdAt DateTime @default(now())
   @@index([phone])
+  @@index([expiresAt])
 }

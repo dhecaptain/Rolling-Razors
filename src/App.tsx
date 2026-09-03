@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/website/Navbar';
 import { HeroSection } from './components/website/HeroSection';
@@ -10,10 +10,10 @@ import { WhyChooseUs } from './components/website/WhyChooseUs';
 import { CustomerReviews } from './components/website/CustomerReviews';
 import { LocationContact } from './components/website/LocationContact';
 import { Footer } from './components/website/Footer';
-import { BookingWizard } from './components/booking/BookingWizard';
-import { CustomerDashboard } from './components/customer/CustomerDashboard';
-import { AdminDashboard } from './components/admin/AdminDashboard';
-import { AuthView } from './components/auth/AuthView';
+const BookingWizard = lazy(() => import('./components/booking/BookingWizard').then(m => ({ default: m.BookingWizard })));
+const CustomerDashboard = lazy(() => import('./components/customer/CustomerDashboard').then(m => ({ default: m.CustomerDashboard })));
+const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const AuthView = lazy(() => import('./components/auth/AuthView').then(m => ({ default: m.AuthView })));
 import { WhatsAppFloat } from './components/common/WhatsAppFloat';
 import { MpesaModal } from './components/common/MpesaModal';
 import { ToastContainer } from './components/common/ToastContainer';
@@ -43,10 +43,12 @@ const MainContent: React.FC = () => {
           </>
         )}
 
-        {view === 'booking' && <BookingWizard />}
-        {view === 'customer_dashboard' && <CustomerDashboard />}
-        {view === 'admin_dashboard' && <AdminDashboard />}
-        {view === 'auth' && <AuthView />}
+        <Suspense fallback={<div className="min-h-[60vh] flex items-center justify-center text-[#D6A62E]">Loading...</div>}>
+          {view === 'booking' && <BookingWizard />}
+          {view === 'customer_dashboard' && <CustomerDashboard />}
+          {view === 'admin_dashboard' && <AdminDashboard />}
+          {view === 'auth' && <AuthView />}
+        </Suspense>
       </main>
 
       {/* Modals, Overlays and Floating Tools */}

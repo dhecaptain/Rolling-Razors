@@ -27,11 +27,22 @@ export const env = {
   MPESA_PASSKEY: (process.env.MPESA_PASSKEY || "").trim(),
   MPESA_SHORTCODE: (process.env.MPESA_SHORTCODE || "").trim(),
   MPESA_ENVIRONMENT: (process.env.MPESA_ENVIRONMENT || "sandbox").trim().toLowerCase(),
+  MPESA_CALLBACK_SECRET: (process.env.MPESA_CALLBACK_SECRET || "").trim(),
   CORS_ORIGIN: (process.env.CORS_ORIGIN || "").trim(),
+  BCRYPT_ROUNDS: Number(process.env.BCRYPT_ROUNDS || 12),
+  OTP_HASH_SECRET: (process.env.OTP_HASH_SECRET || process.env.AUTH_SECRET || "").trim(),
 };
 
-if (!env.AUTH_SECRET || env.AUTH_SECRET.length < 32) {
-  console.warn("[SECURITY] AUTH_SECRET is weak or default — set a strong 32+ char secret in production!");
+if (!env.AUTH_SECRET || env.AUTH_SECRET.length < 32 || env.AUTH_SECRET === "rolling-razors-kenya-customs-secret-key-2026") {
+  const msg = "[SECURITY] AUTH_SECRET is weak/default — set a strong 32+ char secret!";
+  if (env.NODE_ENV === "production") throw new Error(msg);
+  console.warn(msg);
+}
+if (env.NODE_ENV === "production" && !env.CORS_ORIGIN) {
+  throw new Error("CORS_ORIGIN must be set in production (comma-separated allowed origins)");
+}
+if (env.NODE_ENV === "production" && !env.MPESA_CALLBACK_SECRET) {
+  console.warn("[SECURITY] MPESA_CALLBACK_SECRET not set — callback endpoint will be unprotected!");
 }
 
 export function isMpesaConfigured(): boolean {
