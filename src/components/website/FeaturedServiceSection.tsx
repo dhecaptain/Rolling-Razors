@@ -220,15 +220,15 @@ export const FeaturedServiceSection: React.FC = () => {
                 <div className="flex flex-wrap gap-1.5">
                   {patterns.map((pat) => (
                     <button
-                      key={pat}
-                      onClick={() => setActivePattern(pat)}
+                      key={pat.name}
+                      onClick={() => setActivePattern(pat.name)}
                       className={`py-1 px-2.5 rounded-lg text-xs font-medium border transition-all ${
-                        activePattern === pat
+                        activePattern === pat.name
                           ? 'bg-[#D6A62E] text-[#073B32] border-[#D6A62E] font-bold'
                           : 'bg-[#073B32] text-white/80 border-white/10 hover:border-white/30'
                       }`}
                     >
-                      {pat}
+                      {pat.name}
                     </button>
                   ))}
                 </div>
