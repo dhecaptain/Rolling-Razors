@@ -350,7 +350,10 @@ app.get("/api/invoices", authenticateToken, async (req,res)=>{
 });
 
 app.patch("/api/invoices/:id", authenticateToken, requireAdmin, requireCasbin("invoices","update"), async (req,res)=>{
-  const { id }=req.params; const updated=await serverDb.updateInvoice(id, req.body); if(!updated) return res.status(404).json({ success:false, error:"Invoice not found." }); res.json({ success:true, invoice:updated });
+  const { id }=req.params; const allowed=["paymentStatus","paymentMethod","mpesaRef","depositPaid","balanceDue"]; const patch:any={}; for(const key of allowed) if(key in req.body) patch[key]=req.body[key];
+  if(!Object.keys(patch).length) return res.status(400).json({ success:false, error:"No supported invoice fields supplied." });
+  if("balanceDue" in patch && (!Number.isInteger(patch.balanceDue)||patch.balanceDue<0)) return res.status(400).json({ success:false,error:"Balance due must be a non-negative whole number." });
+  const updated=await serverDb.updateInvoice(id, patch); if(!updated) return res.status(404).json({ success:false, error:"Invoice not found." }); res.json({ success:true, invoice:updated });
 });
 
 app.get("/api/customers", authenticateToken, requireAdmin, async (req,res)=>{
@@ -372,10 +375,28 @@ app.get("/api/inventory/low", authenticateToken, requireAdmin, requireCasbin("in
   const low=await serverDb.getLowStock();
   res.json({ success:true, lowStock:low });
 });
-app.get("/api/staff", async (_req,res)=>{ res.json({ success:true, staff: await serverDb.getStaff() }); });
+app.get("/api/staff", authenticateToken, requireAdmin, async (_req,res)=>{ res.json({ success:true, staff: await serverDb.getStaff() }); });
 app.get("/api/services", async (_req,res)=>{
   const services=await prisma.service.findMany({ orderBy:{ startingPrice:"asc" } });
   res.json({ success:true, services });
+});
+app.post("/api/services", authenticateToken, requireAdmin, requireCasbin("services","update"), async (req,res)=>{
+  const body=req.body || {};
+  if(typeof body.name!=="string" || body.name.trim().length<2 || !Number.isInteger(body.startingPrice) || body.startingPrice<0) return res.status(400).json({ success:false, error:"Service name and a non-negative whole-number price are required." });
+  try {
+    const service=await prisma.service.create({ data:{ id:`svc_${crypto.randomUUID()}`, name:body.name.trim(), category:body.category||null, shortDesc:body.shortDesc||"", longDesc:body.longDesc||body.shortDesc||"", startingPrice:body.startingPrice, estimatedDuration:body.estimatedDuration||"1 - 2 Days", image:body.image||"", iconName:body.iconName||"Scissors", isFeatured:Boolean(body.isFeatured), popular:Boolean(body.popular), includedFeatures:Array.isArray(body.includedFeatures)?body.includedFeatures:[], materialsAvailable:Array.isArray(body.materialsAvailable)?body.materialsAvailable:[] } });
+    res.status(201).json({ success:true, service });
+  } catch(error:any) { if(error?.code==="P2002") return res.status(409).json({ success:false, error:"A service with this name already exists." }); throw error; }
+});
+app.patch("/api/services/:id", authenticateToken, requireAdmin, requireCasbin("services","update"), async (req,res)=>{
+  const body=req.body || {}; const data:any={};
+  if("startingPrice" in body){ if(!Number.isInteger(body.startingPrice)||body.startingPrice<0) return res.status(400).json({ success:false,error:"Price must be a non-negative whole number." }); data.startingPrice=body.startingPrice; }
+  if("isFeatured" in body) data.isFeatured=Boolean(body.isFeatured);
+  if("popular" in body) data.popular=Boolean(body.popular);
+  if("name" in body){ if(typeof body.name!=="string"||body.name.trim().length<2) return res.status(400).json({success:false,error:"Service name is invalid."}); data.name=body.name.trim(); }
+  if(!Object.keys(data).length) return res.status(400).json({success:false,error:"No supported service fields supplied."});
+  try { const service=await prisma.service.update({ where:{id:req.params.id}, data }); res.json({success:true,service}); }
+  catch(error:any){ if(error?.code==="P2025") return res.status(404).json({success:false,error:"Service not found."}); if(error?.code==="P2002") return res.status(409).json({success:false,error:"A service with this name already exists."}); throw error; }
 });
 
 function getDarajaConfig(){
