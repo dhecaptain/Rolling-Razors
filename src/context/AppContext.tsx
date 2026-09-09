@@ -325,31 +325,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         if (bRes.ok) {
           const bData = await bRes.json();
-          if (bData.success && Array.isArray(bData.bookings) && bData.bookings.length > 0) {
+          if (bData.success && Array.isArray(bData.bookings)) {
             setBookings(bData.bookings);
           }
         }
         if (vRes.ok) {
           const vData = await vRes.json();
-          if (vData.success && Array.isArray(vData.vehicles) && vData.vehicles.length > 0) {
+          if (vData.success && Array.isArray(vData.vehicles)) {
             setVehicles(vData.vehicles);
           }
         }
         if (woRes.ok) {
           const woData = await woRes.json();
-          if (woData.success && Array.isArray(woData.workOrders) && woData.workOrders.length > 0) {
+          if (woData.success && Array.isArray(woData.workOrders)) {
             setWorkOrders(woData.workOrders);
           }
         }
         if (invRes.ok) {
           const invData = await invRes.json();
-          if (invData.success && Array.isArray(invData.invoices) && invData.invoices.length > 0) {
+          if (invData.success && Array.isArray(invData.invoices)) {
             setInvoices(invData.invoices);
           }
         }
         if (cRes.ok) {
           const cData = await cRes.json();
-          if (cData.success && Array.isArray(cData.customers) && cData.customers.length > 0) {
+          if (cData.success && Array.isArray(cData.customers)) {
             setCustomers(cData.customers);
           }
         }
@@ -358,8 +358,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     };
 
+    if (!currentUser) return;
     fetchDatabaseRecords();
-  }, []);
+  }, [currentUser?.id]);
 
   const addToast = (type: 'success' | 'info' | 'warning' | 'error', title: string, message: string) => {
     const id = 'toast_' + Math.random().toString(36).substring(2, 9);
@@ -512,6 +513,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem('rr_auth_session');
     setIsLoggedIn(false);
     setCurrentUser(null);
+    setBookings([]);
+    setWorkOrders([]);
+    setInvoices([]);
+    setVehicles([]);
+    setCustomers([]);
     setView('website');
     addToast('info', 'Logged Out', 'You have been safely signed out.');
   };
@@ -553,12 +559,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addService = (serviceData: Omit<Service, 'id'>) => {
-    const id = 'srv-' + (services.length + 1);
-    const newService: Service = {
-      ...serviceData,
-      id
-    };
-    setServices(prev => [...prev, newService]);
+  const optimisticId = 'srv-' + crypto.randomUUID();
+  const optimisticService: Service = { ...serviceData, id: optimisticId };
+  setServices(prev => [...prev, optimisticService]);
+  fetch('/api/services', { method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeader() }, credentials: 'include', body: JSON.stringify(serviceData) })
+    .then(async response => { const data = await response.json().catch(() => ({})); if (!response.ok || !data.success) throw new Error(data.error || 'Could not create service.'); setServices(prev => prev.map(service => service.id === optimisticId ? data.service : service)); })
+    .catch(error => { setServices(prev => prev.filter(service => service.id !== optimisticId)); addToast('error', 'Service Creation Failed', error.message); });
   };
 
   const closeMpesaPayment = () => {
@@ -1111,12 +1117,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateServicePrice = (serviceId: string, price: number) => {
+    if (!Number.isInteger(price) || price < 0) { addToast('error', 'Invalid Price', 'Enter a non-negative whole-number price.'); return; }
+    const previous = services.find(s => s.id === serviceId);
     setServices(prev => prev.map(s => s.id === serviceId ? { ...s, startingPrice: price } : s));
+    fetch(`/api/services/${serviceId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', ...getAuthHeader() }, credentials: 'include', body: JSON.stringify({ startingPrice: price }) })
+      .then(async response => { if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Could not save price.'); })
+      .catch(error => { if (previous) setServices(prev => prev.map(s => s.id === serviceId ? previous : s)); addToast('error', 'Price Update Failed', error.message); });
     addToast('success', 'Price Updated', `Service base pricing updated to KES ${price.toLocaleString()}.`);
   };
 
   const toggleServiceAvailability = (serviceId: string) => {
-    setServices(prev => prev.map(s => s.id === serviceId ? { ...s, isFeatured: !s.isFeatured } : s));
+    const service = services.find(s => s.id === serviceId); if (!service) return;
+    const nextFeatured = !service.isFeatured;
+    setServices(prev => prev.map(s => s.id === serviceId ? { ...s, isFeatured: nextFeatured } : s));
+    fetch(`/api/services/${serviceId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', ...getAuthHeader() }, credentials: 'include', body: JSON.stringify({ isFeatured: nextFeatured }) })
+      .then(async response => { if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Could not save availability.'); })
+      .catch(error => { setServices(prev => prev.map(s => s.id === serviceId ? service : s)); addToast('error', 'Availability Update Failed', error.message); });
   };
 
   const generateInvoiceForBooking = (bookingId: string): Invoice => {
