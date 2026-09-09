@@ -325,31 +325,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         if (bRes.ok) {
           const bData = await bRes.json();
-          if (bData.success && Array.isArray(bData.bookings) && bData.bookings.length > 0) {
+          if (bData.success && Array.isArray(bData.bookings)) {
             setBookings(bData.bookings);
           }
         }
         if (vRes.ok) {
           const vData = await vRes.json();
-          if (vData.success && Array.isArray(vData.vehicles) && vData.vehicles.length > 0) {
+          if (vData.success && Array.isArray(vData.vehicles)) {
             setVehicles(vData.vehicles);
           }
         }
         if (woRes.ok) {
           const woData = await woRes.json();
-          if (woData.success && Array.isArray(woData.workOrders) && woData.workOrders.length > 0) {
+          if (woData.success && Array.isArray(woData.workOrders)) {
             setWorkOrders(woData.workOrders);
           }
         }
         if (invRes.ok) {
           const invData = await invRes.json();
-          if (invData.success && Array.isArray(invData.invoices) && invData.invoices.length > 0) {
+          if (invData.success && Array.isArray(invData.invoices)) {
             setInvoices(invData.invoices);
           }
         }
         if (cRes.ok) {
           const cData = await cRes.json();
-          if (cData.success && Array.isArray(cData.customers) && cData.customers.length > 0) {
+          if (cData.success && Array.isArray(cData.customers)) {
             setCustomers(cData.customers);
           }
         }
@@ -358,8 +358,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     };
 
+    if (!currentUser) return;
     fetchDatabaseRecords();
-  }, []);
+  }, [currentUser?.id]);
 
   const addToast = (type: 'success' | 'info' | 'warning' | 'error', title: string, message: string) => {
     const id = 'toast_' + Math.random().toString(36).substring(2, 9);
@@ -512,6 +513,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem('rr_auth_session');
     setIsLoggedIn(false);
     setCurrentUser(null);
+    setBookings([]);
+    setWorkOrders([]);
+    setInvoices([]);
+    setVehicles([]);
+    setCustomers([]);
     setView('website');
     addToast('info', 'Logged Out', 'You have been safely signed out.');
   };

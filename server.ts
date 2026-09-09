@@ -218,29 +218,38 @@ app.get("/api/auth/verify", (req,res)=>{
   return res.json({ valid:true, user:d });
 });
 
-app.get("/api/bookings", authenticateOptional, async (req,res)=>{
+app.get("/api/bookings", authenticateToken, async (req,res)=>{
   const { page, limit }=getPagination(req);
-  const customerId=req.query.customerId as string|undefined; const status=req.query.status as string|undefined; const q=req.query.q as string|undefined;
+  const status=req.query.status as string|undefined; const q=req.query.q as string|undefined;
   const user=(req as any).user;
-  if(customerId && user && user.role!=="admin" && user.id!==customerId) return res.status(403).json({ success:false, error:"Forbidden." });
+  const customerId=user.role === "admin" ? (req.query.customerId as string|undefined) : user.id;
   const { data: bookings, total }=await serverDb.getBookingsPaginated(customerId, status, page, limit, q);
   res.json({ success:true, bookings, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
 });
 
-app.post("/api/bookings", authenticateOptional, async (req,res)=>{
+app.post("/api/bookings", authenticateToken, async (req,res)=>{
   const v=validate(bookingCreateSchema, req.body); if(!v.success) return res.status(400).json({ success:false, error:v.error });
   const input=v.data as any;
-  const existingCheck=input.id ? await serverDb.getBooking(input.id) : null;
-  const bookingId= existingCheck ? `RR-${Date.now().toString().slice(-6)}${Math.floor(100+Math.random()*900)}` : (input.id || `RR-${Date.now().toString().slice(-6)}${Math.floor(100+Math.random()*900)}`);
-  const workOrderId=input.workOrderId || `RR-WO-${bookingId.replace('RR-','')}`;
   const user=(req as any).user;
-  const customerId=input.customerId || user?.id;
+  const customerId=user.role === "admin" ? input.customerId : user.id;
+  if (!customerId) return res.status(400).json({ success:false, error:"A customer account is required." });
+  const customer = await serverDb.getCustomer(customerId);
+  if (!customer) return res.status(404).json({ success:false, error:"Customer account not found." });
+  const service = await prisma.service.findUnique({ where: { id: input.serviceId } });
+  if (!service) return res.status(400).json({ success:false, error:"Selected service is no longer available." });
+  const appointment = new Date(`${input.appointmentDate}T${input.appointmentTime}`);
+  if (Number.isNaN(appointment.getTime()) || appointment.getTime() < Date.now()) return res.status(400).json({ success:false, error:"Appointment must be a valid future date and time." });
+  const bookingId=`RR-${Date.now().toString().slice(-6)}${Math.floor(100+Math.random()*900)}`;
+  const workOrderId=`RR-WO-${bookingId.replace('RR-','')}`;
+  const estimatedPrice=Math.max(0, Math.round(service.startingPrice));
+  const customerName=user.role === "admin" ? customer.name : user.name;
+  const customerPhone=normalizePhoneKe(user.role === "admin" ? customer.phone : user.phone);
   const bookingData: Booking={
-    id:bookingId, customerId, customerName:input.customerName, customerPhone:normalizePhoneKe(input.customerPhone), customerEmail:input.customerEmail,
-    serviceId:input.serviceId, serviceName:input.serviceName, vehicleDetails:{ ...input.vehicleDetails, registrationNo: input.vehicleDetails.registrationNo.toUpperCase() },
+    id:bookingId, customerId, customerName, customerPhone, customerEmail:customer.email,
+    serviceId:service.id, serviceName:service.name, vehicleDetails:{ ...input.vehicleDetails, registrationNo: input.vehicleDetails.registrationNo.toUpperCase() },
     requirementsDesc:input.requirementsDesc, notes:input.notes, customOptions:input.customOptions, referencePhotos:input.referencePhotos, selectedMaterial:input.selectedMaterial, stitchingStyle:input.stitchingStyle,
     appointmentDate:input.appointmentDate, appointmentTime:input.appointmentTime, locationType:input.locationType, customerLocation:input.customerLocation, customerLocationAddress:input.customerLocationAddress,
-    estimatedPrice:input.estimatedPrice, depositAmount: Math.round(input.estimatedPrice*0.35), balanceAmount: Math.round(input.estimatedPrice*0.65), depositPaid:false, paymentStatus:"pending", status:"pending", workOrderId, createdAt:new Date().toISOString(), timeline:[{ status:"pending", timestamp:new Date().toLocaleString(), title:"Booking Created", note:`Appointment requested for ${input.vehicleDetails.make} ${input.vehicleDetails.model}.`, updatedBy:input.customerName }],
+    estimatedPrice, depositAmount: Math.round(estimatedPrice*0.35), balanceAmount: Math.round(estimatedPrice*0.65), depositPaid:false, paymentStatus:"pending", status:"pending", workOrderId, createdAt:new Date().toISOString(), timeline:[{ status:"pending", timestamp:new Date().toLocaleString(), title:"Booking Created", note:`Appointment requested for ${input.vehicleDetails.make} ${input.vehicleDetails.model}.`, updatedBy:customerName }],
   };
   const dynamicMaterials:string[]=[bookingData.selectedMaterial||'Automotive Leather / Vinyl','High Density Ergonomic Foam Cushioning','Bonded Heavy-Duty Seam Thread'];
   const newWorkOrder: WorkOrder={ id:workOrderId, bookingId, customerId, customerName:bookingData.customerName, customerPhone:bookingData.customerPhone, vehicleDisplayName:`${bookingData.vehicleDetails.make} ${bookingData.vehicleDetails.model} (${bookingData.vehicleDetails.year})`, vehicleRegistration:bookingData.vehicleDetails.registrationNo, serviceName:bookingData.serviceName, assignedStaffId:bookingData.assignedStaffId, assignedStaffName:bookingData.assignedStaffName||'Unassigned', priority:'Normal', stage:'BOOKED', customerRequirements:bookingData.requirementsDesc||'Standard custom upholstery package', materialsRequired:dynamicMaterials, estimatedCost:bookingData.estimatedPrice, actualCost:undefined, beforePhotos:[], progressPhotos:[], afterPhotos:[], progressPercentage:10, createdAt:new Date().toISOString().split('T')[0], targetCompletionDate:bookingData.appointmentDate };
@@ -275,9 +284,10 @@ app.patch("/api/bookings/:id", authenticateToken, requireAdmin, requireCasbin("b
   res.json({ success:true, booking:updated });
 });
 
-app.get("/api/vehicles", authenticateOptional, async (req,res)=>{
+app.get("/api/vehicles", authenticateToken, async (req,res)=>{
   const { page, limit }=getPagination(req);
-  const customerId=req.query.customerId as string|undefined;
+  const user=(req as any).user;
+  const customerId=user.role === "admin" ? (req.query.customerId as string|undefined) : user.id;
   const { data: vehicles, total }=await serverDb.getVehiclesPaginated(customerId, page, limit);
   res.json({ success:true, vehicles, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
 });
@@ -285,9 +295,10 @@ app.get("/api/vehicles", authenticateOptional, async (req,res)=>{
 app.post("/api/vehicles", authenticateToken, async (req,res)=>{
   const v=validate(vehicleCreateSchema, req.body); if(!v.success) return res.status(400).json({ success:false, error:v.error });
   const vehicleData=v.data as Vehicle; const user=(req as any).user;
-  if(user.role!=="admin" && vehicleData.customerId!==user.id) return res.status(403).json({ success:false, error:"Can only add vehicles to own garage." });
+  const customerId=user.role === "admin" ? vehicleData.customerId : user.id;
+  if (!customerId) return res.status(400).json({ success:false, error:"A customer account is required." });
   try {
-    const newVehicle: Vehicle={ ...vehicleData, id:vehicleData.id||`veh_${Date.now()}_${crypto.randomUUID().slice(0,6)}`, registrationNo:vehicleData.registrationNo.toUpperCase(), previousServicesCount:vehicleData.previousServicesCount||0 };
+    const newVehicle: Vehicle={ ...vehicleData, customerId, id:`veh_${Date.now()}_${crypto.randomUUID().slice(0,6)}`, registrationNo:vehicleData.registrationNo.toUpperCase(), previousServicesCount:0 };
     const saved=await serverDb.addVehicle(newVehicle); res.status(201).json({ success:true, vehicle:saved });
   } catch(e:any){
     if(String(e.message).includes("Unique")||String(e).includes("unique")) return res.status(409).json({ success:false, error:`Vehicle with registration ${vehicleData.registrationNo.toUpperCase()} already exists.` });
@@ -301,10 +312,18 @@ app.delete("/api/vehicles/:id", authenticateToken, async (req,res)=>{
   const deleted=await serverDb.deleteVehicle(id); if(!deleted) return res.status(404).json({ success:false, error:"Vehicle not found." }); res.json({ success:true, message:"Vehicle deleted." });
 });
 
-app.get("/api/work-orders", authenticateOptional, async (req,res)=>{
+app.get("/api/work-orders", authenticateToken, async (req,res)=>{
   const { page, limit }=getPagination(req);
+  const user=(req as any).user;
+  if (user.role === "admin") {
+    const { data: workOrders, total }=await serverDb.getWorkOrdersPaginated(page, limit);
+    return res.json({ success:true, workOrders, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
+  }
+  const { data: bookings }=await serverDb.getBookingsPaginated(user.id, undefined, 1, 1000);
+  const bookingIds=new Set(bookings.map(b=>b.id));
   const { data: workOrders, total }=await serverDb.getWorkOrdersPaginated(page, limit);
-  res.json({ success:true, workOrders, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
+  const scoped=workOrders.filter(wo=>bookingIds.has(wo.bookingId));
+  return res.json({ success:true, workOrders:scoped, pagination:{ page, limit, total:scoped.length, pages:Math.ceil(scoped.length/limit) } });
 });
 
 app.patch("/api/work-orders/:id", authenticateToken, requireAdmin, requireCasbin("work-orders","update"), async (req,res)=>{
@@ -320,9 +339,10 @@ app.patch("/api/work-orders/:id", authenticateToken, requireAdmin, requireCasbin
   res.json({ success:true, workOrder:result.workOrder });
 });
 
-app.get("/api/invoices", authenticateOptional, async (req,res)=>{
+app.get("/api/invoices", authenticateToken, async (req,res)=>{
   const { page, limit }=getPagination(req);
-  const customerId=req.query.customerId as string|undefined;
+  const user=(req as any).user;
+  const customerId=user.role === "admin" ? (req.query.customerId as string|undefined) : user.id;
   const { data: invoices, total }=await serverDb.getInvoicesPaginated(customerId, page, limit);
   res.json({ success:true, invoices, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
 });
@@ -434,8 +454,9 @@ app.post("/api/mpesa/callback", callbackLimiter, async (req,res)=>{
     } else if(resultCode===0){
       let receiptNumber=existing.receiptNumber; const items=stkCallback?.CallbackMetadata?.Item||[]; for(const item of items) if(item.Name==="MpesaReceiptNumber") receiptNumber=item.Value;
       await prisma.$transaction(async (txClient)=>{
-        await txClient.mpesaTransaction.update({ where:{ checkoutRequestId: checkoutRequestId }, data:{ status:"SUCCESS", receiptNumber: receiptNumber as string } });
-        if(existing.bookingId) await txClient.booking.update({ where:{ id: existing.bookingId }, data:{ paymentStatus:"deposit_paid", mpesaReceiptNo:receiptNumber, status:"confirmed" } }).catch(()=>{});
+        const claimed=await txClient.mpesaTransaction.updateMany({ where:{ checkoutRequestId: checkoutRequestId, status:"PENDING" }, data:{ status:"SUCCESS", receiptNumber: receiptNumber as string } });
+        if(claimed.count===0) return;
+        if(existing.bookingId) await txClient.booking.updateMany({ where:{ id: existing.bookingId, depositPaid:false }, data:{ paymentStatus:"deposit_paid", mpesaReceiptNo:receiptNumber, status:"confirmed", depositPaid:true } });
         if(existing.invoiceId){
           const inv=await txClient.invoice.findUnique({ where:{ id: existing.invoiceId } });
           if(inv){ const newPaid=(inv.depositPaid||0)+existing.amount; let payStatus="Deposit Paid"; if(newPaid>=inv.total) payStatus="Paid"; await (txClient.invoice.update as any)({ where:{ id: existing.invoiceId }, data:{ depositPaid:newPaid, balanceDue:Math.max(0, inv.total-newPaid), paymentStatus:payStatus, mpesaRef: receiptNumber||inv.mpesaRef } }); }
@@ -455,8 +476,9 @@ app.get("/api/mpesa/query/:checkoutRequestId", async (req,res)=>{
     if(liveStatus.status==="SUCCESS"){
       const receiptNumber=liveStatus.receiptNumber||tx.receiptNumber||`SDA${Date.now().toString(36).toUpperCase()}`;
       await prisma.$transaction(async (txPrisma)=>{
-        await txPrisma.mpesaTransaction.update({ where:{ checkoutRequestId: checkoutRequestId }, data:{ status:"SUCCESS", receiptNumber: receiptNumber as string } });
-        if(tx!.bookingId) await txPrisma.booking.update({ where:{ id: tx!.bookingId }, data:{ paymentStatus:"deposit_paid", mpesaReceiptNo:receiptNumber, status:"confirmed" } }).catch(()=>{});
+        const claimed=await txPrisma.mpesaTransaction.updateMany({ where:{ checkoutRequestId: checkoutRequestId, status:"PENDING" }, data:{ status:"SUCCESS", receiptNumber: receiptNumber as string } });
+        if(claimed.count===0) return;
+        if(tx!.bookingId) await txPrisma.booking.updateMany({ where:{ id: tx!.bookingId, depositPaid:false }, data:{ paymentStatus:"deposit_paid", mpesaReceiptNo:receiptNumber, status:"confirmed", depositPaid:true } });
         if(tx!.invoiceId){
           const inv=await txPrisma.invoice.findUnique({ where:{ id: tx!.invoiceId } });
           if(inv){ const newPaid=(inv.depositPaid||0)+tx!.amount; let payStatus="Deposit Paid"; if(newPaid>=inv.total) payStatus="Paid"; await (txPrisma.invoice.update as any)({ where:{ id: tx!.invoiceId }, data:{ depositPaid:newPaid, balanceDue:Math.max(0, inv.total-newPaid), paymentStatus:payStatus, mpesaRef: receiptNumber||inv.mpesaRef } }); }

@@ -12,7 +12,7 @@ export const vehicleDetailsSchema = z.object({
 });
 
 export const bookingCreateSchema = z.object({
-  id: z.string().min(1),
+  id: z.string().min(1).optional(),
   customerId: z.string().optional(),
   customerName: z.string().min(2).max(100),
   customerPhone: phoneSchema,
