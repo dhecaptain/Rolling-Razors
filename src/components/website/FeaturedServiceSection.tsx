@@ -106,12 +106,15 @@ export const FeaturedServiceSection: React.FC = () => {
                   animate={{ opacity: 1, scale: isSeatsFocused ? 1.35 : 1.08, x: isSeatsFocused ? 0 : 0, y: isSeatsFocused ? -8 : 0 }}
                   transition={{ duration: 0.7, ease: "easeOut" }}
                   className="w-full h-full object-cover"
-                  style={{ objectPosition: '50% 55%' }}
+                  style={{
+                    objectPosition: '50% 55%',
+                    filter: activeMaterial === 'Alcantara Suede & Leather Combo' ? 'saturate(0.82) contrast(1.08)' : activeMaterial === 'Heavy-Duty Commercial Vinyl' ? 'saturate(1.12) contrast(1.14)' : 'saturate(1.02) contrast(1.06)',
+                  }}
                   loading="eager"
                   decoding="async"
                 />
                 <motion.div
-                  key={activeColor}
+                  key={`${activeMaterial}-${activeColor}`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.5 }}
@@ -123,7 +126,7 @@ export const FeaturedServiceSection: React.FC = () => {
                   } as any}
                 />
                 <motion.div
-                  key={activePattern}
+                  key={`${activeMaterial}-${activeColor}-${activePattern}`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.4 }}
