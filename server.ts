@@ -239,6 +239,8 @@ app.post("/api/bookings", authenticateToken, async (req,res)=>{
   if (!service) return res.status(400).json({ success:false, error:"Selected service is no longer available." });
   const appointment = new Date(`${input.appointmentDate}T${input.appointmentTime}`);
   if (Number.isNaN(appointment.getTime()) || appointment.getTime() < Date.now()) return res.status(400).json({ success:false, error:"Appointment must be a valid future date and time." });
+  const conflictingBooking=await prisma.booking.findFirst({ where:{ appointmentDate:input.appointmentDate, appointmentTime:input.appointmentTime, status:{ in:["pending","confirmed","in_progress"] } } });
+  if(conflictingBooking) return res.status(409).json({ success:false, error:"That appointment slot is already reserved. Please choose another time." });
   const bookingId=`RR-${Date.now().toString().slice(-6)}${Math.floor(100+Math.random()*900)}`;
   const workOrderId=`RR-WO-${bookingId.replace('RR-','')}`;
   const estimatedPrice=Math.max(0, Math.round(service.startingPrice));
@@ -413,14 +415,14 @@ async function queryDarajaStatus(checkoutRequestId:string): Promise<{ status:"SU
   return { status:"PENDING" };
 }
 
-app.post("/api/mpesa/stkpush", mpesaLimiter, authenticateOptional, async (req,res)=>{
+app.post("/api/mpesa/stkpush", mpesaLimiter, authenticateToken, async (req,res)=>{
   const v=validate(stkPushSchema, req.body); if(!v.success) return res.status(400).json({ success:false, error:v.error });
   const { phone, amount, bookingId, invoiceId, accountReference, transactionDesc }=v.data as any; const formattedPhone=toDarajaPhone(String(phone));
   if(!isValidKePhone(String(phone))) return res.status(400).json({ success:false, error:"Invalid Kenyan phone number." });
   if(bookingId){
     const booking=await serverDb.getBooking(bookingId); if(!booking) return res.status(404).json({ success:false, error:"Booking not found." });
     const user=(req as any).user;
-    if(user && booking.customerId && booking.customerId!==user.id && user.role!=="admin" && !phonesMatch(booking.customerPhone, user.phone||"")) return res.status(403).json({ success:false, error:"Not your booking." });
+    if(!user || (user.role!=="admin" && booking.customerId!==user.id)) return res.status(403).json({ success:false, error:"Not your booking." });
     const expected=Math.round(booking.depositAmount);
     if(Math.round(Number(amount))!==expected) return res.status(400).json({ success:false, error:`Amount mismatch: expected KES ${expected.toLocaleString()} for booking ${bookingId}.` });
     if(booking.depositPaid) return res.status(409).json({ success:false, error:"Deposit already paid for this booking." });
@@ -469,8 +471,10 @@ app.post("/api/mpesa/callback", callbackLimiter, async (req,res)=>{
   return res.json({ ResultCode:0, ResultDesc:"Callback received successfully" });
 });
 
-app.get("/api/mpesa/query/:checkoutRequestId", async (req,res)=>{
+app.get("/api/mpesa/query/:checkoutRequestId", authenticateToken, async (req,res)=>{
   const { checkoutRequestId }=req.params; let tx=await serverDb.getTransaction(checkoutRequestId); if(!tx) return res.status(404).json({ success:false, error:"Transaction not found." });
+  const user=(req as any).user;
+  if(user.role!=="admin" && tx.bookingId){ const booking=await serverDb.getBooking(tx.bookingId); if(!booking || booking.customerId!==user.id) return res.status(403).json({ success:false, error:"Not your transaction." }); }
   if(tx.status==="PENDING"){
     const liveStatus=await queryDarajaStatus(checkoutRequestId);
     if(liveStatus.status==="SUCCESS"){
