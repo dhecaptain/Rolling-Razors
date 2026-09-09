@@ -27,11 +27,11 @@ export const FeaturedServiceSection: React.FC = () => {
   ];
 
   const colors = [
-    { name: 'Saddle Brown & Black', hex: '#8C5E3C', border: 'border-[#8C5E3C]' },
-    { name: 'Cognac Tan & Jet Black', hex: '#C2844B', border: 'border-[#C2844B]' },
-    { name: 'All Jet Black with Red Stitch', hex: '#1C1C1E', border: 'border-white/40' },
-    { name: 'Deep Burgundy Wine', hex: '#58111A', border: 'border-[#58111A]' },
-    { name: 'Forest Green & Gold Accent', hex: '#0B4035', border: 'border-[#0B4035]' }
+    { name: 'Saddle Brown & Black', hex: '#8C5E3C', secondaryHex: '#111111', border: 'border-[#8C5E3C]' },
+    { name: 'Cognac Tan & Jet Black', hex: '#C2844B', secondaryHex: '#171717', border: 'border-[#C2844B]' },
+    { name: 'All Jet Black with Red Stitch', hex: '#1C1C1E', secondaryHex: '#1C1C1E', border: 'border-white/40' },
+    { name: 'Deep Burgundy Wine', hex: '#58111A', secondaryHex: '#21070B', border: 'border-[#58111A]' },
+    { name: 'Forest Green & Gold Accent', hex: '#0B4035', secondaryHex: '#A98224', border: 'border-[#0B4035]' }
   ];
 
   const patterns = [
@@ -99,9 +99,9 @@ export const FeaturedServiceSection: React.FC = () => {
                 } as any}
               >
                 <motion.img
-                  key={activeMaterialData.image}
+                  key={`${activeMaterial}-${activeColor}-${activePattern}`}
                   src={cdnUrl(activeMaterialData.image, { w: 1200 })}
-                  alt={`Seats in ${activeMaterial} ${activeColor} ${activePattern}`}
+                  alt={`Seats in ${activeMaterial}, ${activeColor}, with ${activePattern} stitching`}
                   initial={{ opacity: 0, scale: 1.05 }}
                   animate={{ opacity: 1, scale: isSeatsFocused ? 1.35 : 1.08, x: isSeatsFocused ? 0 : 0, y: isSeatsFocused ? -8 : 0 }}
                   transition={{ duration: 0.7, ease: "easeOut" }}
@@ -116,7 +116,11 @@ export const FeaturedServiceSection: React.FC = () => {
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.5 }}
                   className="absolute inset-0 pointer-events-none"
-                  style={{ backgroundColor: activeColorData.hex, opacity: 0.42, mixBlendMode: 'multiply' } as any}
+                  style={{
+                    background: `linear-gradient(115deg, ${activeColorData.hex} 0%, ${activeColorData.hex} 54%, ${activeColorData.secondaryHex} 55%, ${activeColorData.secondaryHex} 100%)`,
+                    opacity: 0.48,
+                    mixBlendMode: 'multiply',
+                  } as any}
                 />
                 <motion.div
                   key={activePattern}
@@ -125,7 +129,8 @@ export const FeaturedServiceSection: React.FC = () => {
                   transition={{ duration: 0.4 }}
                   className="absolute inset-0 pointer-events-none"
                   style={{
-                    opacity: activePatternData.overlay === 'perforated' ? 0.22 : 0.16,
+                    opacity: activePatternData.overlay === 'perforated' ? 0.3 : 0.2,
+                    backgroundBlendMode: 'screen',
                     backgroundImage:
                       activePatternData.overlay === 'diamond'
                         ? `repeating-linear-gradient(45deg, transparent 0 13px, rgba(255,255,255,0.18) 13px 14px), repeating-linear-gradient(-45deg, transparent 0 13px, rgba(255,255,255,0.18) 13px 14px)`
