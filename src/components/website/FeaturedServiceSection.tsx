@@ -120,9 +120,9 @@ export const FeaturedServiceSection: React.FC = () => {
                   transition={{ duration: 0.5 }}
                   className="absolute inset-0 pointer-events-none"
                   style={{
-                    background: `linear-gradient(115deg, ${activeColorData.hex} 0%, ${activeColorData.hex} 54%, ${activeColorData.secondaryHex} 55%, ${activeColorData.secondaryHex} 100%)`,
-                    opacity: 0.48,
-                    mixBlendMode: 'multiply',
+                    background: `linear-gradient(115deg, ${activeColorData.hex} 0%, ${activeColorData.hex} 52%, ${activeColorData.secondaryHex} 52%, ${activeColorData.secondaryHex} 100%)`,
+                    opacity: 0.58,
+                    mixBlendMode: 'color',
                   } as any}
                 />
                 <motion.div
@@ -132,7 +132,8 @@ export const FeaturedServiceSection: React.FC = () => {
                   transition={{ duration: 0.4 }}
                   className="absolute inset-0 pointer-events-none"
                   style={{
-                    opacity: activePatternData.overlay === 'perforated' ? 0.3 : 0.2,
+                    opacity: activePatternData.overlay === 'perforated' ? 0.38 : 0.28,
+                    mixBlendMode: activePatternData.overlay === 'perforated' ? 'multiply' : 'screen',
                     backgroundBlendMode: 'screen',
                     backgroundImage:
                       activePatternData.overlay === 'diamond'
