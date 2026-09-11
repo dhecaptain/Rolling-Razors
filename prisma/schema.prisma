@@ -63,9 +63,10 @@ enum CustomerStatus {
 
 model User {
   id        String   @id
+  clerkId   String?  @unique
   name      String
-  phone     String   @unique
-  email     String   @unique
+  phone     String?  @unique
+  email     String?  @unique
   role      UserRole
   avatar    String
   location  String?

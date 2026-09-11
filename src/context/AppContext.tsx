@@ -31,6 +31,9 @@ import {
   INITIAL_VEHICLES 
 } from '../data/mockData';
 import { phoneKey, phonesMatch, normalizePhoneKe } from '../utils/phone';
+import { useUser, useAuth, useClerk } from '@clerk/clerk-react';
+import { clerkEnabled } from '../auth/clerkConfig';
+import { setAuthToken, getAuthToken } from '../lib/authToken';
 
 export type AppView = 'website' | 'booking' | 'customer_dashboard' | 'admin_dashboard' | 'auth' | 'admin_auth';
 
@@ -72,6 +75,10 @@ interface AppContextType {
   loginAdmin: (identifier: string, password: string) => Promise<{ success: boolean; error?: string }>;
   registerCustomer: (data: { name: string; phone: string; email?: string; password?: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
+
+  // Auth provider metadata + authenticated fetch helper
+  authProvider: 'clerk' | 'legacy';
+  authFetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
   
   // Data Collections
   services: Service[];
@@ -154,15 +161,28 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+interface ClerkApi {
+  isLoaded: boolean;
+  isSignedIn: boolean;
+  user: any | null;
+  getToken: () => Promise<string | null>;
+  signOut: () => Promise<void>;
+  openSignIn: (options?: any) => void;
+  openSignUp: (options?: any) => void;
+}
+
+const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }> = ({ children, clerk }) => {
+  const clerkMode = Boolean(clerk);
   const [view, setView] = useState<AppView>('website');
   const [customerTab, setCustomerTab] = useState<string>('dashboard');
   const [adminTab, setAdminTab] = useState<string>('overview');
   const [websiteSection, setWebsiteSection] = useState<string>('hero');
   const [authInitialMode, setAuthInitialMode] = useState<'customer' | 'admin' | 'register'>('customer');
 
-  // Verify and load cryptographic JWT session token on boot
+  // Verify and load cryptographic JWT session token on boot (legacy provider only;
+  // Clerk sessions are resolved from the Clerk SDK + /api/auth/sync).
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    if (clerkMode) return null;
     const saved = localStorage.getItem('rr_auth_session');
     if (saved) {
       try {
@@ -178,6 +198,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    if (clerkMode) return false;
     const saved = localStorage.getItem('rr_auth_session');
     if (saved) {
       try {
@@ -191,6 +212,70 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const role: UserRole = currentUser?.role || 'customer';
+
+  // --- Clerk session synchronization (server-verified via /api/auth/sync) ---
+  const clerkUserId = clerk?.user?.id;
+  const clerkLoaded = Boolean(clerk?.isLoaded);
+
+  useEffect(() => {
+    if (!clerkMode || !clerk || !clerk.isLoaded) return;
+    if (!clerk.isSignedIn || !clerk.user) {
+      setAuthToken(null);
+      setCurrentUser(null);
+      setIsLoggedIn(false);
+      return;
+    }
+    let active = true;
+    (async () => {
+      try {
+        const token = await clerk.getToken();
+        if (!active) return;
+        setAuthToken(token ?? null);
+        const res = await fetch('/api/auth/sync', {
+          method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          credentials: 'include',
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!active) return;
+        if (data?.success && data.user) {
+          setCurrentUser(data.user);
+          setIsLoggedIn(true);
+        } else {
+          setCurrentUser(null);
+          setIsLoggedIn(false);
+        }
+      } catch {
+        if (active) {
+          setCurrentUser(null);
+          setIsLoggedIn(false);
+        }
+      }
+    })();
+    return () => { active = false; };
+  }, [clerkMode, clerkLoaded, clerk?.isSignedIn, clerkUserId]);
+
+  // Keep a fresh short-lived Clerk session token available for synchronous header injection.
+  useEffect(() => {
+    if (!clerkMode || !clerk || !clerk.isLoaded) return;
+    if (!clerk.isSignedIn) { setAuthToken(null); return; }
+    let active = true;
+    const refresh = async () => {
+      try { const t = await clerk.getToken(); if (active) setAuthToken(t ?? null); }
+      catch { if (active) setAuthToken(null); }
+    };
+    refresh();
+    const id = window.setInterval(refresh, 30_000);
+    const onFocus = () => refresh();
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => {
+      active = false;
+      window.clearInterval(id);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
+  }, [clerkMode, clerkLoaded, clerk?.isSignedIn, clerkUserId]);
 
   // Main collections with initial state
   const [services, setServices] = useState<Service[]>(() => {
@@ -301,6 +386,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [notifications]);
 
   function getAuthHeader(): Record<string,string> {
+    if (clerkMode) {
+      const token = getAuthToken();
+      return token ? { Authorization: `Bearer ${token}` } : {};
+    }
     try {
       const raw = localStorage.getItem('rr_auth_session');
       if (!raw) return {};
@@ -309,6 +398,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {}
     return {};
   }
+
+  // Authenticated fetch helper: injects the active provider's bearer token.
+  const authFetch = React.useCallback(async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const headers: Record<string,string> = { ...((init?.headers as Record<string,string>) || {}), ...getAuthHeader() };
+    return fetch(input, { ...init, headers, credentials: 'include' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clerkMode, isLoggedIn]);
 
   // Fetch durable database state from backend API on boot
   useEffect(() => {
@@ -381,6 +477,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const loginCustomer = async (phone: string, password?: string): Promise<{ success: boolean; error?: string }> => {
+    if (clerkMode && clerk) { clerk.openSignIn(); return { success: true }; }
     const cleanPhone = phone.trim().replace(/\s+/g, '');
     if (!cleanPhone || cleanPhone.length < 9) {
       addToast('error', 'Invalid Phone Number', 'Please enter a valid Kenyan phone number (e.g. 0712 901 234).');
@@ -421,6 +518,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const loginAdmin = async (identifier: string, password: string): Promise<{ success: boolean; error?: string; requiresOtp?: boolean }> => {
+    if (clerkMode && clerk) { clerk.openSignIn(); return { success: true }; }
     const cleanIdent = identifier.trim();
     const cleanPass = password.trim();
     if (!cleanIdent || !cleanPass) {
@@ -458,6 +556,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const registerCustomer = async (data: { name: string; phone: string; email?: string; password?: string }): Promise<{ success: boolean; error?: string }> => {
+    if (clerkMode && clerk) { clerk.openSignUp(); return { success: true }; }
     if (!data.name || !data.phone) {
       addToast('error', 'Missing Information', 'Please provide full name and phone number.');
       return { success: false, error: 'Full name and phone number required' };
@@ -510,6 +609,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const logout = () => {
+    if (clerkMode && clerk) {
+      setAuthToken(null);
+      Promise.resolve(clerk.signOut()).catch(() => {});
+    }
     localStorage.removeItem('rr_auth_session');
     setIsLoggedIn(false);
     setCurrentUser(null);
@@ -1227,6 +1330,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         loginAdmin,
         registerCustomer,
         logout,
+        authProvider: clerkEnabled ? 'clerk' : 'legacy',
+        authFetch,
         services,
         bookings,
         workOrders,
@@ -1281,6 +1386,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     </AppContext.Provider>
   );
 };
+
+// Clerk-backed provider: reads the Clerk session (inside <ClerkProvider>) and
+// passes the primitives into the shared provider body. Legacy mode renders the
+// body directly without touching Clerk.
+const ClerkAppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isLoaded, isSignedIn, user } = useUser();
+  const { getToken } = useAuth();
+  const { signOut, openSignIn, openSignUp } = useClerk();
+  const clerk: ClerkApi = {
+    isLoaded: Boolean(isLoaded),
+    isSignedIn: Boolean(isSignedIn),
+    user: user ?? null,
+    getToken: () => getToken() as Promise<string | null>,
+    signOut: () => signOut(),
+    openSignIn: (options?: any) => openSignIn(options),
+    openSignUp: (options?: any) => openSignUp(options),
+  };
+  return <AppProviderInner clerk={clerk}>{children}</AppProviderInner>;
+};
+
+export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =>
+  clerkEnabled ? <ClerkAppProvider>{children}</ClerkAppProvider> : <AppProviderInner>{children}</AppProviderInner>;
 
 export const useApp = () => {
   const context = useContext(AppContext);

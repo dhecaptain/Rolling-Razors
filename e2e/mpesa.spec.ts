@@ -1,39 +1,65 @@
 import { test, expect } from "@playwright/test";
+import { registerCustomer, authHeaders, uniqueAppointment } from "./helpers";
+
+async function createBooking(request: import("@playwright/test").APIRequestContext, token: string, user: { id: string }, phone: string, email: string) {
+  const { appointmentDate, appointmentTime } = uniqueAppointment();
+  const res = await request.post("/api/bookings", {
+    headers: authHeaders(token),
+    data: {
+      customerId: user.id,
+      customerName: "MpesaUser",
+      customerPhone: phone,
+      customerEmail: email,
+      serviceId: "srv-1",
+      serviceName: "Car Upholstery",
+      vehicleDetails: { type: "Car", make: "Toyota", model: "Axio", year: 2020, registrationNo: `KAA ${Math.floor(100 + Math.random() * 900)}Z` },
+      appointmentDate,
+      appointmentTime,
+      locationType: "workshop",
+      estimatedPrice: 18000,
+      depositAmount: 6300,
+      status: "pending",
+    },
+  });
+  const raw = await res.text();
+  expect(res.ok(), `booking create failed (${res.status()}): ${raw}`).toBeTruthy();
+  return JSON.parse(raw).booking;
+}
 
 test.describe("M-Pesa", () => {
-  test("STK push validation - missing credentials should 503 or 400", async ({ request }) => {
+  test("STK push rejects unauthenticated requests", async ({ request }) => {
     const res = await request.post("/api/mpesa/stkpush", {
+      data: { phone: "0712345678", amount: 100, bookingId: "RR-9999" },
+    });
+    expect(res.status()).toBe(401);
+  });
+
+  test("STK push validation - authenticated, unknown booking", async ({ request }) => {
+    const { token } = await registerCustomer(request);
+    const res = await request.post("/api/mpesa/stkpush", {
+      headers: authHeaders(token),
       data: { phone: "0712345678", amount: 100, bookingId: "RR-9999" },
     });
     expect([400, 404, 503, 502]).toContain(res.status());
   });
 
   test("STK amount mismatch should 400 if booking exists", async ({ request }) => {
-    const phone = `07${Math.floor(10000000 + Math.random() * 90000000)}`;
-    const email = `mpesa${Date.now()}@test.ke`;
-    const reg = await request.post("/api/auth/customer/register", { data: { name: "MpesaUser", phone, email } });
-    const { token, user } = (await reg.json()).user ? await reg.json().then(r => ({ token: r.token, user: r.user })) : { token: "", user: {} as any };
-    if (!token) return;
+    const { token, user, phone, email } = await registerCustomer(request);
+    const booking = await createBooking(request, token, user, phone, email);
 
-    const booking = await request.post("/api/bookings", {
-      headers: { Authorization: `Bearer ${token}` },
-      data: {
-        id: `RR-${Date.now()}`, customerId: user.id, customerName: "MpesaUser", customerPhone: phone, customerEmail: email,
-        serviceId: "srv-1", serviceName: "Car Upholstery",
-        vehicleDetails: { type: "Car", make: "Toyota", model: "Axio", year: 2020, registrationNo: `KAA ${Math.floor(100+Math.random()*900)}Z` },
-        appointmentDate: new Date(Date.now()+86400000).toISOString().split("T")[0], appointmentTime: "10:00 AM",
-        locationType: "workshop", estimatedPrice: 18000, depositAmount: 6300, status: "pending", workOrderId: `RR-WO-${Date.now()}`,
-      },
-    });
-    const b = await booking.json();
-    if (!b.booking) return;
     const stk = await request.post("/api/mpesa/stkpush", {
-      headers: { Authorization: `Bearer ${token}` },
-      data: { phone, amount: 999, bookingId: b.booking.id },
+      headers: authHeaders(token),
+      data: { phone, amount: 999, bookingId: booking.id },
     });
     expect(stk.status()).toBe(400);
     const body = await stk.json();
     expect(body.error).toMatch(/mismatch/i);
+  });
+
+  test("non-admin cannot read admin M-Pesa transactions", async ({ request }) => {
+    const { token } = await registerCustomer(request);
+    const res = await request.get("/api/mpesa/transactions?page=1&limit=5", { headers: authHeaders(token) });
+    expect(res.status()).toBe(403);
   });
 
   test("callback without secret should be rejected if secret set", async ({ request }) => {

@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Logo } from '../common/Logo';
+import { clerkEnabled } from '../../auth/clerkConfig';
+import { ClerkAuthPanel } from './ClerkAuthPanel';
 import { ShieldAlert, Lock, ArrowRight, ArrowLeft, KeyRound, Loader2, AlertCircle, Smartphone } from 'lucide-react';
 
 export const AdminAuthView: React.FC = () => {
+  if (clerkEnabled) return <ClerkAuthPanel admin />;
   const { setView, loginAdmin, addToast } = useApp();
   const [adminIdentifier, setAdminIdentifier] = useState('');
   const [adminPasscode, setAdminPasscode] = useState('');

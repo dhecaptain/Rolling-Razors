@@ -28,7 +28,7 @@ function phoneKey(phone: string): string {
 class PrismaDatabaseManager {
   async getUsers(): Promise<User[]> {
     const users = await prisma.user.findMany();
-    return users.map(u => ({ id: u.id, name: u.name, phone: u.phone, email: u.email, role: u.role as any, avatar: u.avatar, location: u.location || undefined }));
+    return users.map(mapUser);
   }
 
   async findUser(identifier: string): Promise<User | undefined> {
@@ -37,29 +37,40 @@ class PrismaDatabaseManager {
     const key = phoneKey(raw);
     if (cleanLower.includes("@")) {
       const found = await prisma.user.findFirst({ where: { email: { equals: cleanLower, mode: "insensitive" } } });
-      if (found) return { id: found.id, name: found.name, phone: found.phone, email: found.email, role: found.role as any, avatar: found.avatar, location: found.location || undefined };
+      if (found) return mapUser(found);
     }
     if (key && key.length === 9) {
       const users = await prisma.user.findMany({ where: { phone: { contains: key.slice(-6) } } });
-      const found = users.find(u => phoneKey(u.phone) === key);
-      if (found) return { id: found.id, name: found.name, phone: found.phone, email: found.email, role: found.role as any, avatar: found.avatar, location: found.location || undefined };
+      const found = users.find(u => phoneKey(u.phone || "") === key);
+      if (found) return mapUser(found);
     }
     const users = await prisma.user.findMany();
     const found = users.find(u => {
       const uEmail = (u.email || "").toLowerCase().replace(/\s+/g, "");
       if (uEmail && uEmail === cleanLower) return true;
-      const uKey = phoneKey(u.phone);
+      const uKey = phoneKey(u.phone || "");
       return Boolean(key && uKey && key === uKey);
     });
     if (!found) return undefined;
-    return { id: found.id, name: found.name, phone: found.phone, email: found.email, role: found.role as any, avatar: found.avatar, location: found.location || undefined };
+    return mapUser(found);
+  }
+
+  async getUserById(id: string): Promise<User | undefined> {
+    const u = await prisma.user.findUnique({ where: { id } });
+    return u ? mapUser(u) : undefined;
+  }
+
+  async getUserByClerkId(clerkId: string): Promise<User | undefined> {
+    const u = await prisma.user.findUnique({ where: { clerkId } });
+    return u ? mapUser(u) : undefined;
   }
 
   async upsertUser(user: User): Promise<User> {
+    const data = { clerkId: user.clerkId || null, name: user.name, phone: user.phone || null, email: user.email || null, role: user.role, avatar: user.avatar, location: user.location };
     await prisma.user.upsert({
       where: { id: user.id },
-      update: { name: user.name, phone: user.phone, email: user.email, role: user.role, avatar: user.avatar, location: user.location },
-      create: { id: user.id, name: user.name, phone: user.phone, email: user.email, role: user.role, avatar: user.avatar, location: user.location },
+      update: data,
+      create: { id: user.id, ...data },
     });
     return user;
   }
@@ -397,6 +408,9 @@ class PrismaDatabaseManager {
   }
 }
 
+function mapUser(u: any): User {
+  return { id: u.id, clerkId: u.clerkId || undefined, name: u.name, phone: u.phone || "", email: u.email || "", role: u.role as any, avatar: u.avatar, location: u.location || undefined };
+}
 function mapBooking(r: any): Booking {
   return {
     id: r.id, customerId: r.customerId || undefined, customerName: r.customerName, customerPhone: r.customerPhone, customerEmail: r.customerEmail || undefined,

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Logo } from '../common/Logo';
+import { clerkEnabled } from '../../auth/clerkConfig';
+import { ClerkAuthPanel } from './ClerkAuthPanel';
 import {
   User,
   Lock,
@@ -13,6 +15,7 @@ import {
 } from 'lucide-react';
 
 export const AuthView: React.FC = () => {
+  if (clerkEnabled) return <ClerkAuthPanel />;
   const {
     setView,
     authInitialMode,

@@ -7,7 +7,7 @@ import { Booking, WorkOrder, WorkOrderStage } from '../../types';
 
 export const AdminDashboard: React.FC = () => {
   const {
-    currentUser, adminTab, setAdminTab, bookings, updateBookingStatus, workOrders, updateWorkOrderStage, services, addService, staff, customers, addToast, setView, openAuth
+    currentUser, adminTab, setAdminTab, bookings, updateBookingStatus, workOrders, updateWorkOrderStage, services, addService, staff, customers, addToast, setView, openAuth, authFetch
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -34,10 +34,9 @@ export const AdminDashboard: React.FC = () => {
 
   useEffect(() => {
     if (adminTab !== 'bookings') return;
-    const token = (() => { try { const s = JSON.parse(localStorage.getItem('rr_auth_session')||'{}'); return s.token; } catch { return ''; } })();
     const params = new URLSearchParams({ page: String(bookingsPage), limit: '10', status: bookingFilterStatus });
     if (debouncedSearch) params.set('q', debouncedSearch);
-    fetch(`/api/bookings?${params.toString()}`, { headers: token ? { Authorization: `Bearer ${token}` } : {}, credentials: 'include' })
+    authFetch(`/api/bookings?${params.toString()}`)
       .then(r => r.json())
       .then(d => {
         if (d.success) { setPaginatedBookings(d.bookings); setBookingsTotal(d.pagination?.total ?? d.bookings.length); }
@@ -48,21 +47,18 @@ export const AdminDashboard: React.FC = () => {
 
   useEffect(() => {
     if (adminTab !== 'payments') return;
-    const token = (() => { try { const s = JSON.parse(localStorage.getItem('rr_auth_session')||'{}'); return s.token; } catch { return ''; } })();
-    fetch('/api/mpesa/transactions?page=1&limit=20', { headers: token ? { Authorization: `Bearer ${token}` } : {}, credentials: 'include' })
+    authFetch('/api/mpesa/transactions?page=1&limit=20')
       .then(r=>r.json()).then(d=>{ if(d.success) setTransactions(d.transactions); }).catch(()=>{});
   }, [adminTab]);
 
   useEffect(() => {
-    const token = (() => { try { const s = JSON.parse(localStorage.getItem('rr_auth_session')||'{}'); return s.token; } catch { return ''; } })();
-    fetch('/api/inventory/low', { headers: token ? { Authorization: `Bearer ${token}` } : {}, credentials: 'include' })
+    authFetch('/api/inventory/low')
       .then(r=>r.json()).then(d=>{ if(d.success) setLowStock(d.lowStock || []); }).catch(()=>{});
   }, [adminTab]);
 
   useEffect(() => {
     if (!selectedBookingForAdmin) return;
-    const token = (() => { try { const s = JSON.parse(localStorage.getItem('rr_auth_session')||'{}'); return s.token; } catch { return ''; } })();
-    fetch(`/api/audit-logs?entityType=Booking&entityId=${selectedBookingForAdmin.id}&limit=20`, { headers: token ? { Authorization: `Bearer ${token}` } : {}, credentials: 'include' })
+    authFetch(`/api/audit-logs?entityType=Booking&entityId=${selectedBookingForAdmin.id}&limit=20`)
       .then(r=>r.json()).then(d=>{ if(d.success) setAuditLogs(d.logs); else setAuditLogs([]); }).catch(()=>setAuditLogs([]));
   }, [selectedBookingForAdmin]);
 
@@ -106,10 +102,9 @@ export const AdminDashboard: React.FC = () => {
   ];
 
   const handleStageChange = async (orderId: string, newStage: WorkOrderStage, version?: number) => {
-    const res = await fetch(`/api/work-orders/${orderId}`, {
+    const res = await authFetch(`/api/work-orders/${orderId}`, {
       method: 'PATCH',
-      headers: { 'Content-Type':'application/json', Authorization: `Bearer ${(() => { try { return JSON.parse(localStorage.getItem('rr_auth_session')||'{}').token||''; } catch { return ''; } })()}` },
-      credentials: 'include',
+      headers: { 'Content-Type':'application/json' },
       body: JSON.stringify({ stage: newStage, version }),
     });
     const data = await res.json();
@@ -356,8 +351,7 @@ export const AdminDashboard: React.FC = () => {
                           <div className="flex items-center justify-end gap-1.5">
                             {booking.status==='pending' && (
                               <button onClick={async()=>{
-                                const token=(()=>{try{return JSON.parse(localStorage.getItem('rr_auth_session')||'{}').token||'';}catch{return'';}})();
-                                const res=await fetch(`/api/bookings/${booking.id}`,{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},credentials:'include',body:JSON.stringify({status:'confirmed'})});
+                                const res=await authFetch(`/api/bookings/${booking.id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'confirmed'})});
                                 const data=await res.json();
                                 if(!res.ok) addToast('error','Confirm Failed', data.error||'State transition rejected');
                                 else { updateBookingStatus(booking.id,'confirmed','Admin confirmed schedule.'); addToast('success','Booking Confirmed',`Booking ${booking.id} is confirmed.`); }

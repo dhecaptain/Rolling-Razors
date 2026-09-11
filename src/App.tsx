@@ -1,5 +1,7 @@
 import React, { Suspense, lazy } from 'react';
+import { ClerkProvider } from '@clerk/clerk-react';
 import { AppProvider, useApp } from './context/AppContext';
+import { clerkEnabled, clerkPublishableKey } from './auth/clerkConfig';
 import { Navbar } from './components/website/Navbar';
 import { HeroSection } from './components/website/HeroSection';
 import { ServicesSection } from './components/website/ServicesSection';
@@ -68,9 +70,17 @@ const MainContent: React.FC = () => {
 };
 
 export default function App() {
-  return (
+  const tree = (
     <AppProvider>
       <MainContent />
     </AppProvider>
+  );
+
+  if (!clerkEnabled || !clerkPublishableKey) return tree;
+
+  return (
+    <ClerkProvider publishableKey={clerkPublishableKey}>
+      {tree}
+    </ClerkProvider>
   );
 }

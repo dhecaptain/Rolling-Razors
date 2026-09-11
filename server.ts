@@ -8,6 +8,7 @@ import cors from "cors";
 import rateLimit from "express-rate-limit";
 import pinoHttp from "pino-http";
 import cookieParser from "cookie-parser";
+import { clerkMiddleware, getAuth, clerkClient } from "@clerk/express";
 import { createServer as createViteServer } from "vite";
 import { env } from "./server/env";
 import { logger } from "./server/logger";
@@ -17,7 +18,7 @@ import { initSentry, Sentry } from "./server/sentry";
 import { requireCasbin } from "./server/casbin/enforcer";
 import { normalizePhoneKe, toDarajaPhone, phoneKey, phonesMatch, isValidKePhone } from "./server/phone";
 import { validate, adminLoginSchema, customerLoginSchema, customerRegisterSchema, stkPushSchema, bookingCreateSchema, vehicleCreateSchema } from "./server/validators";
-import { Booking, Customer, User, Vehicle, WorkOrder } from "./src/types";
+import { Booking, Customer, User, Vehicle, WorkOrder, UserRole } from "./src/types";
 
 initSentry();
 const app = express();
@@ -40,8 +41,19 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https://images.unsplash.com", "https:", "blob:"],
-      scriptSrc: ["'self'"],
-      connectSrc: ["'self'", "https://api.safaricom.co.ke", "https://sandbox.safaricom.co.ke"],
+      // Clerk bundles clerk-js via the React SDK, but hosted components / bot
+      // protection (Turnstile) load resources from Clerk + Cloudflare origins.
+      scriptSrc: ["'self'", "https://*.clerk.accounts.dev", "https://*.clerk.com", "https://challenges.cloudflare.com"],
+      connectSrc: [
+        "'self'",
+        "https://api.safaricom.co.ke",
+        "https://sandbox.safaricom.co.ke",
+        "https://*.clerk.accounts.dev",
+        "https://*.clerk.com",
+        "https://clerk.rollingrazors.co.ke",
+      ],
+      frameSrc: ["'self'", "https://*.clerk.accounts.dev", "https://*.clerk.com", "https://challenges.cloudflare.com"],
+      workerSrc: ["'self'", "blob:"],
       frameAncestors: ["'none'"],
     },
   } : false,
@@ -67,10 +79,19 @@ app.use(pinoHttp({
 }));
 app.set("trust proxy", 1);
 
-const generalLimiter = rateLimit({ windowMs: 60_000, max: 120, standardHeaders: true, legacyHeaders: false });
-const customerAuthLimiter = rateLimit({ windowMs: 60_000, max: 10, standardHeaders: true, legacyHeaders: false, message: { success:false, error:"Too many customer attempts. Try again shortly." } });
-const adminAuthLimiter = rateLimit({ windowMs: 60_000, max: 5, standardHeaders: true, legacyHeaders: false, message: { success:false, error:"Too many admin attempts. Try again in 5 minutes." } });
-const mpesaLimiter = rateLimit({ windowMs: 60_000, max: 6, standardHeaders: true, legacyHeaders: false, message: { success:false, error:"M-Pesa rate limit: please wait." } });
+// Clerk session verification. Only mounted when Clerk is the active provider so
+// that environments without Clerk credentials keep working via the legacy path.
+if (env.AUTH_PROVIDER === "clerk") {
+  app.use("/api", clerkMiddleware());
+  logger.info("[AUTH] Clerk middleware enabled (server-side session verification)");
+} else {
+  logger.info("[AUTH] Legacy JWT provider active — set AUTH_PROVIDER=clerk and CLERK_SECRET_KEY to switch");
+}
+
+const generalLimiter = rateLimit({ windowMs: 60_000, max: env.RATE_LIMIT_GENERAL_MAX, standardHeaders: true, legacyHeaders: false });
+const customerAuthLimiter = rateLimit({ windowMs: 60_000, max: env.RATE_LIMIT_AUTH_MAX, standardHeaders: true, legacyHeaders: false, message: { success:false, error:"Too many customer attempts. Try again shortly." } });
+const adminAuthLimiter = rateLimit({ windowMs: 60_000, max: env.RATE_LIMIT_ADMIN_MAX, standardHeaders: true, legacyHeaders: false, message: { success:false, error:"Too many admin attempts. Try again in 5 minutes." } });
+const mpesaLimiter = rateLimit({ windowMs: 60_000, max: env.RATE_LIMIT_MPESA_MAX, standardHeaders: true, legacyHeaders: false, message: { success:false, error:"M-Pesa rate limit: please wait." } });
 const otpLimiter = rateLimit({ windowMs: 60_000, max: 5, standardHeaders: true, legacyHeaders: false });
 const callbackLimiter = rateLimit({ windowMs: 60_000, max: 60, standardHeaders: true, legacyHeaders: false });
 app.use("/api/", generalLimiter);
@@ -105,6 +126,109 @@ function authenticateOptional(req: express.Request,_res: express.Response,next: 
   if(token){ const d=verifyToken(token); if(d && !(d.jti && tokenDenylist.has(d.jti))) (req as any).user=d; } next();
 }
 function requireAdmin(req: express.Request,res: express.Response,next: express.NextFunction){ const u=(req as any).user; if(!u||u.role!=="admin") return res.status(403).json({ success:false, error:"Admin access required." }); next(); }
+
+// ---------------------------------------------------------------------------
+// Clerk authentication boundary (server-side verification).
+// The frontend never proves identity on its own: every protected request is
+// verified against Clerk's JWKS via clerkMiddleware/getAuth, the role is derived
+// from Clerk publicMetadata (never from the client), and the app profile is
+// lazily synced keyed by the Clerk user id.
+// ---------------------------------------------------------------------------
+const clerkRoleCache = new Map<string, { role: UserRole; expiresAt: number }>();
+
+async function resolveClerkRole(clerkId: string, sessionClaims: any): Promise<UserRole> {
+  if (env.ADMIN_CLERK_IDS.includes(clerkId)) return "admin";
+  const claimRole = sessionClaims?.publicMetadata?.role ?? sessionClaims?.public_metadata?.role;
+  if (claimRole === "admin") return "admin";
+  if (typeof claimRole === "string" && claimRole.length) return "customer";
+  const cached = clerkRoleCache.get(clerkId);
+  if (cached && cached.expiresAt > Date.now()) return cached.role;
+  let role: UserRole = "customer";
+  try {
+    const clerkUser = await clerkClient.users.getUser(clerkId);
+    if (clerkUser.publicMetadata?.role === "admin") role = "admin";
+  } catch (err) {
+    logger.warn({ err }, "[Clerk] role lookup failed; defaulting to customer");
+  }
+  clerkRoleCache.set(clerkId, { role, expiresAt: Date.now() + 60_000 });
+  return role;
+}
+
+async function syncClerkProfile(clerkId: string, sessionClaims: any, role: UserRole): Promise<User> {
+  let clerkUser: any = null;
+  try { clerkUser = await clerkClient.users.getUser(clerkId); } catch { /* tolerate backend lookup failure */ }
+  const name = clerkUser
+    ? ([clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") || clerkUser.username || "Driver")
+    : (sessionClaims?.name || "Driver");
+  const email = clerkUser?.primaryEmailAddress?.emailAddress || sessionClaims?.email || "";
+  const phone = clerkUser?.primaryPhoneNumber?.phoneNumber || sessionClaims?.phone_number || "";
+
+  // Link to an existing application profile (phone/email) before creating a new one.
+  let existing: User | undefined;
+  if (phone) existing = (await serverDb.findUser(phone)) || undefined;
+  if (!existing && email) existing = (await serverDb.findUser(email)) || undefined;
+  // Never hijack a profile that is already bound to a different Clerk identity.
+  if (existing && existing.clerkId && existing.clerkId !== clerkId) existing = undefined;
+
+  const appUser: User = existing
+    ? { ...existing, clerkId, role, name: existing.name || name, email: existing.email || email, phone: existing.phone || phone }
+    : {
+        id: `cust-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`,
+        clerkId,
+        name,
+        phone,
+        email,
+        role,
+        avatar: clerkUser?.imageUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
+        location: "Nairobi, Kenya",
+      };
+  await serverDb.upsertUser(appUser);
+
+  // Ensure a CRM Customer row exists for customers (bookings reference Customer.id).
+  if (appUser.role === "customer") {
+    const existingCustomer = await serverDb.getCustomer(appUser.id);
+    if (!existingCustomer) {
+      await serverDb.saveCustomer({
+        id: appUser.id, name: appUser.name, phone: appUser.phone || "", email: appUser.email || "",
+        avatar: appUser.avatar, totalSpent: 0, status: "New", address: appUser.location || "Nairobi, Kenya", savedVehicles: [],
+      });
+    }
+  }
+  return appUser;
+}
+
+async function requireClerkAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+  try {
+    const { userId, sessionClaims } = getAuth(req);
+    if (!userId) return res.status(401).json({ success:false, error:"Authorization token required." });
+    const role = await resolveClerkRole(userId, sessionClaims);
+    let appUser = await serverDb.getUserByClerkId(userId);
+    if (!appUser) {
+      appUser = await syncClerkProfile(userId, sessionClaims, role);
+    } else if (appUser.role !== role) {
+      appUser = { ...appUser, role };
+      await serverDb.upsertUser(appUser);
+    }
+    (req as any).user = { id: appUser.id, clerkId: userId, role: appUser.role, name: appUser.name, phone: appUser.phone, email: appUser.email };
+    next();
+  } catch (err) {
+    logger.warn({ err }, "[Clerk] authentication failed");
+    return res.status(401).json({ success:false, error:"Invalid or expired session token." });
+  }
+}
+
+// Active authentication boundary used by every protected route.
+const authenticate: express.RequestHandler = (env.AUTH_PROVIDER === "clerk" ? requireClerkAuth : authenticateToken) as express.RequestHandler;
+
+function legacyAuthOnly(_req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (env.AUTH_PROVIDER === "clerk") return res.status(404).json({ success:false, error:"Legacy auth endpoint disabled (AUTH_PROVIDER=clerk)." });
+  next();
+}
+function clerkAuthOnly(_req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (env.AUTH_PROVIDER !== "clerk") return res.status(404).json({ success:false, error:"Clerk auth endpoint disabled (AUTH_PROVIDER=legacy)." });
+  next();
+}
+
 function checkAdminIpAllowlist(req: express.Request,res: express.Response,next: express.NextFunction){
   if(!env.ADMIN_IP_ALLOWLIST) return next();
   const allowlist=env.ADMIN_IP_ALLOWLIST.split(",").map(s=>s.trim()).filter(Boolean);
@@ -116,7 +240,25 @@ function checkAdminIpAllowlist(req: express.Request,res: express.Response,next: 
 
 function getPagination(req: express.Request){ const page=Math.max(1, parseInt(req.query.page as string)||1); const limit=Math.min(100, Math.max(1, parseInt(req.query.limit as string)||20)); const offset=(page-1)*limit; return { page, limit, offset }; }
 
-app.post("/api/auth/admin/login", adminAuthLimiter, checkAdminIpAllowlist, async (req,res)=>{
+// Parses appointment date + time into a Date. Accepts 24h ("10:00") and 12h
+// ("10:00 AM", "2:30 PM") formats, and slot ranges ("10:00 AM - 12:00 PM") by
+// using the first time token. Returns an Invalid Date when unparsable so callers
+// can reject it explicitly.
+function parseAppointmentDateTime(date: string, time: string): Date {
+  const match = String(time || "").match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+  const parts = String(date || "").split("-").map(Number);
+  if (!match || parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return new Date(NaN);
+  let hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  const meridiem = (match[3] || "").toUpperCase();
+  if (meridiem === "PM" && hours < 12) hours += 12;
+  if (meridiem === "AM" && hours === 12) hours = 0;
+  if (hours > 23 || minutes > 59) return new Date(NaN);
+  const [y, m, d] = parts;
+  return new Date(y, m - 1, d, hours, minutes, 0, 0);
+}
+
+app.post("/api/auth/admin/login", legacyAuthOnly, adminAuthLimiter, checkAdminIpAllowlist, async (req,res)=>{
   const v=validate(adminLoginSchema, req.body); if(!v.success) return res.status(400).json({ success:false, error:v.error });
   const { identifier, password }=v.data as any; const cleanIdent=String(identifier).trim().toLowerCase(); const cleanPass=String(password).trim();
   const adminEmail=env.ADMIN_EMAIL; const adminPhone=env.ADMIN_PHONE; const adminPass=env.ADMIN_PASSWORD;
@@ -148,7 +290,7 @@ app.post("/api/auth/admin/login", adminAuthLimiter, checkAdminIpAllowlist, async
   return res.json({ success:true, user:{ ...adminUser, token }, token });
 });
 
-app.post("/api/auth/admin/verify-otp", adminAuthLimiter, checkAdminIpAllowlist, async (req,res)=>{
+app.post("/api/auth/admin/verify-otp", legacyAuthOnly, adminAuthLimiter, checkAdminIpAllowlist, async (req,res)=>{
   const { identifier, otp }=req.body; if(!identifier || !otp) return res.status(400).json({ success:false, error:"Identifier and OTP required." });
   const key=`admin:${String(identifier).trim().toLowerCase()}`;
   const record=await serverDb.getOtp(key);
@@ -168,7 +310,7 @@ app.post("/api/auth/admin/verify-otp", adminAuthLimiter, checkAdminIpAllowlist, 
   return res.json({ success:true, user:{ ...adminUser2, token }, token });
 });
 
-app.post("/api/auth/customer/login", customerAuthLimiter, async (req,res)=>{
+app.post("/api/auth/customer/login", legacyAuthOnly, customerAuthLimiter, async (req,res)=>{
   const v=validate(customerLoginSchema, req.body); if(!v.success) return res.status(400).json({ success:false, error:v.error });
   const { phone, otp }=v.data as any; const key=phoneKey(String(phone));
   if(otp){
@@ -183,7 +325,7 @@ app.post("/api/auth/customer/login", customerAuthLimiter, async (req,res)=>{
   const token=generateToken(customer, 24*7); return res.json({ success:true, user:{ ...customer, token }, token });
 });
 
-app.post("/api/auth/customer/register", customerAuthLimiter, async (req,res)=>{
+app.post("/api/auth/customer/register", legacyAuthOnly, customerAuthLimiter, async (req,res)=>{
   const v=validate(customerRegisterSchema, req.body); if(!v.success) return res.status(400).json({ success:false, error:v.error });
   const { name, phone, email }=v.data as any; const formattedPhone=normalizePhoneKe(String(phone));
   if(!isValidKePhone(String(phone))) return res.status(400).json({ success:false, error:"Invalid Kenyan phone number. Must be Safaricom 07... format." });
@@ -194,7 +336,7 @@ app.post("/api/auth/customer/register", customerAuthLimiter, async (req,res)=>{
   return res.status(201).json({ success:true, user:{ ...newUser, token }, token });
 });
 
-app.post("/api/auth/customer/send-otp", otpLimiter, async (req,res)=>{
+app.post("/api/auth/customer/send-otp", legacyAuthOnly, otpLimiter, async (req,res)=>{
   const { phone }=req.body; if(!phone||!String(phone).trim()) return res.status(400).json({ success:false, error:"Phone number is required." });
   if(!isValidKePhone(String(phone))) return res.status(400).json({ success:false, error:"Invalid Kenyan phone number." });
   const key=phoneKey(String(phone));
@@ -208,13 +350,32 @@ app.post("/api/auth/customer/send-otp", otpLimiter, async (req,res)=>{
   return res.json({ success:true, message:`OTP sent via SMS to ${normalizePhoneKe(String(phone))}.`, expiresInSeconds:300, debugOtp: env.NODE_ENV!=="production" ? otp : undefined });
 });
 
-app.post("/api/auth/logout", authenticateToken, async (req,res)=>{
-  const user=(req as any).user; if(user?.jti) tokenDenylist.add(user.jti);
+app.post("/api/auth/logout", async (req,res)=>{
+  // Clerk sessions end client-side via clerk.signOut(); Clerk tokens are short
+  // lived and stateless so no server-side denylist is required. We still clear
+  // the legacy admin cookie and revoke a legacy jti if one is presented.
+  const h=req.headers.authorization;
+  const legacyToken = h?.startsWith("Bearer ") ? h.split(" ")[1] : (req as any).cookies?.admin_token;
+  if(legacyToken){ const d=verifyToken(legacyToken); if(d?.jti) tokenDenylist.add(d.jti); }
   res.clearCookie("admin_token", { httpOnly:true, secure: env.NODE_ENV==="production", sameSite:"strict", path:"/" });
   return res.json({ success:true, message:"Logged out." });
 });
 
-app.get("/api/auth/verify", (req,res)=>{
+// Clerk profile sync/verify: returns the application profile for the verified Clerk session.
+app.post("/api/auth/sync", clerkAuthOnly, async (req,res)=>{
+  try {
+    const { userId, sessionClaims } = getAuth(req);
+    if(!userId) return res.status(401).json({ success:false, error:"Authentication required." });
+    const role = await resolveClerkRole(userId, sessionClaims);
+    const appUser = await syncClerkProfile(userId, sessionClaims, role);
+    return res.json({ success:true, valid:true, user:{ id:appUser.id, clerkId:userId, name:appUser.name, phone:appUser.phone, email:appUser.email, role:appUser.role, avatar:appUser.avatar, location:appUser.location } });
+  } catch(err) {
+    logger.warn({ err }, "[Clerk] profile sync failed");
+    return res.status(401).json({ success:false, error:"Unable to sync Clerk profile." });
+  }
+});
+
+app.get("/api/auth/verify", legacyAuthOnly, (req,res)=>{
   let token: string | undefined;
   const h=req.headers.authorization;
   if(h?.startsWith("Bearer ")) token=h.split(" ")[1];
@@ -225,7 +386,7 @@ app.get("/api/auth/verify", (req,res)=>{
   return res.json({ valid:true, user:d });
 });
 
-app.get("/api/bookings", authenticateToken, async (req,res)=>{
+app.get("/api/bookings", authenticate, async (req,res)=>{
   const { page, limit }=getPagination(req);
   const status=req.query.status as string|undefined; const q=req.query.q as string|undefined;
   const user=(req as any).user;
@@ -234,7 +395,7 @@ app.get("/api/bookings", authenticateToken, async (req,res)=>{
   res.json({ success:true, bookings, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
 });
 
-app.post("/api/bookings", authenticateToken, async (req,res)=>{
+app.post("/api/bookings", authenticate, async (req,res)=>{
   const v=validate(bookingCreateSchema, req.body); if(!v.success) return res.status(400).json({ success:false, error:v.error });
   const input=v.data as any;
   const user=(req as any).user;
@@ -244,7 +405,7 @@ app.post("/api/bookings", authenticateToken, async (req,res)=>{
   if (!customer) return res.status(404).json({ success:false, error:"Customer account not found." });
   const service = await prisma.service.findUnique({ where: { id: input.serviceId } });
   if (!service) return res.status(400).json({ success:false, error:"Selected service is no longer available." });
-  const appointment = new Date(`${input.appointmentDate}T${input.appointmentTime}`);
+  const appointment = parseAppointmentDateTime(input.appointmentDate, input.appointmentTime);
   if (Number.isNaN(appointment.getTime()) || appointment.getTime() < Date.now()) return res.status(400).json({ success:false, error:"Appointment must be a valid future date and time." });
   const conflictingBooking=await prisma.booking.findFirst({ where:{ appointmentDate:input.appointmentDate, appointmentTime:input.appointmentTime, status:{ in:["pending","confirmed","in_progress"] } } });
   if(conflictingBooking) return res.status(409).json({ success:false, error:"That appointment slot is already reserved. Please choose another time." });
@@ -266,7 +427,7 @@ app.post("/api/bookings", authenticateToken, async (req,res)=>{
   res.status(201).json({ success:true, booking:savedBooking, workOrder:savedWorkOrder });
 });
 
-app.patch("/api/bookings/:id", authenticateToken, requireAdmin, requireCasbin("bookings","update"), async (req,res)=>{
+app.patch("/api/bookings/:id", authenticate, requireAdmin, requireCasbin("bookings","update"), async (req,res)=>{
   const { id }=req.params; const existing=await serverDb.getBooking(id); if(!existing) return res.status(404).json({ success:false, error:"Booking not found." });
   const user=(req as any).user; if(user.role!=="admin" && existing.customerId && existing.customerId!==user.id && !phonesMatch(existing.customerPhone, user.phone||"")) return res.status(403).json({ success:false, error:"Forbidden." });
   const allowed=["status","assignedStaffId","assignedStaffName","paymentStatus","paymentMethod","mpesaReceiptNo","depositPaid","depositAmount","balanceAmount","internalNotes"];
@@ -293,7 +454,7 @@ app.patch("/api/bookings/:id", authenticateToken, requireAdmin, requireCasbin("b
   res.json({ success:true, booking:updated });
 });
 
-app.get("/api/vehicles", authenticateToken, async (req,res)=>{
+app.get("/api/vehicles", authenticate, async (req,res)=>{
   const { page, limit }=getPagination(req);
   const user=(req as any).user;
   const customerId=user.role === "admin" ? (req.query.customerId as string|undefined) : user.id;
@@ -301,7 +462,7 @@ app.get("/api/vehicles", authenticateToken, async (req,res)=>{
   res.json({ success:true, vehicles, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
 });
 
-app.post("/api/vehicles", authenticateToken, async (req,res)=>{
+app.post("/api/vehicles", authenticate, async (req,res)=>{
   const v=validate(vehicleCreateSchema, req.body); if(!v.success) return res.status(400).json({ success:false, error:v.error });
   const vehicleData=v.data as Vehicle; const user=(req as any).user;
   const customerId=user.role === "admin" ? vehicleData.customerId : user.id;
@@ -315,13 +476,13 @@ app.post("/api/vehicles", authenticateToken, async (req,res)=>{
   }
 });
 
-app.delete("/api/vehicles/:id", authenticateToken, async (req,res)=>{
+app.delete("/api/vehicles/:id", authenticate, async (req,res)=>{
   const { id }=req.params; const vehicles=await serverDb.getVehicles(); const target=vehicles.find(v=>v.id===id); if(!target) return res.status(404).json({ success:false, error:"Vehicle not found." });
   const user=(req as any).user; if(user.role!=="admin" && target.customerId && target.customerId!==user.id) return res.status(403).json({ success:false, error:"You can only delete your own vehicles." });
   const deleted=await serverDb.deleteVehicle(id); if(!deleted) return res.status(404).json({ success:false, error:"Vehicle not found." }); res.json({ success:true, message:"Vehicle deleted." });
 });
 
-app.get("/api/work-orders", authenticateToken, async (req,res)=>{
+app.get("/api/work-orders", authenticate, async (req,res)=>{
   const { page, limit }=getPagination(req);
   const user=(req as any).user;
   if (user.role === "admin") {
@@ -335,7 +496,7 @@ app.get("/api/work-orders", authenticateToken, async (req,res)=>{
   return res.json({ success:true, workOrders:scoped, pagination:{ page, limit, total:scoped.length, pages:Math.ceil(scoped.length/limit) } });
 });
 
-app.patch("/api/work-orders/:id", authenticateToken, requireAdmin, requireCasbin("work-orders","update"), async (req,res)=>{
+app.patch("/api/work-orders/:id", authenticate, requireAdmin, requireCasbin("work-orders","update"), async (req,res)=>{
   const { id }=req.params; const allowed=["stage","progressPercentage","assignedStaffId","assignedStaffName","priority","internalNotes","actualCost","version"]; const patch:any={}; for(const k of allowed) if(k in req.body) patch[k]=req.body[k];
   const user=(req as any).user;
   const result=await serverDb.updateWorkOrderWithVersion(id, patch, { id:user.id, name:user.name, role:user.role, ip:req.ip, requestId:(req as any).id });
@@ -348,7 +509,7 @@ app.patch("/api/work-orders/:id", authenticateToken, requireAdmin, requireCasbin
   res.json({ success:true, workOrder:result.workOrder });
 });
 
-app.get("/api/invoices", authenticateToken, async (req,res)=>{
+app.get("/api/invoices", authenticate, async (req,res)=>{
   const { page, limit }=getPagination(req);
   const user=(req as any).user;
   const customerId=user.role === "admin" ? (req.query.customerId as string|undefined) : user.id;
@@ -356,38 +517,38 @@ app.get("/api/invoices", authenticateToken, async (req,res)=>{
   res.json({ success:true, invoices, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
 });
 
-app.patch("/api/invoices/:id", authenticateToken, requireAdmin, requireCasbin("invoices","update"), async (req,res)=>{
+app.patch("/api/invoices/:id", authenticate, requireAdmin, requireCasbin("invoices","update"), async (req,res)=>{
   const { id }=req.params; const allowed=["paymentStatus","paymentMethod","mpesaRef","depositPaid","balanceDue"]; const patch:any={}; for(const key of allowed) if(key in req.body) patch[key]=req.body[key];
   if(!Object.keys(patch).length) return res.status(400).json({ success:false, error:"No supported invoice fields supplied." });
   if("balanceDue" in patch && (!Number.isInteger(patch.balanceDue)||patch.balanceDue<0)) return res.status(400).json({ success:false,error:"Balance due must be a non-negative whole number." });
   const updated=await serverDb.updateInvoice(id, patch); if(!updated) return res.status(404).json({ success:false, error:"Invoice not found." }); res.json({ success:true, invoice:updated });
 });
 
-app.get("/api/customers", authenticateToken, requireAdmin, async (req,res)=>{
+app.get("/api/customers", authenticate, requireAdmin, async (req,res)=>{
   const { page, limit }=getPagination(req);
   const { data: customers, total }=await serverDb.getCustomersPaginated(page, limit);
   res.json({ success:true, customers, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
 });
-app.get("/api/audit-logs", authenticateToken, requireAdmin, requireCasbin("audit-logs","read"), async (req,res)=>{
+app.get("/api/audit-logs", authenticate, requireAdmin, requireCasbin("audit-logs","read"), async (req,res)=>{
   const entityType=req.query.entityType as string|undefined; const entityId=req.query.entityId as string|undefined; const limit=Math.min(100, parseInt(req.query.limit as string)||20);
   const logs=await serverDb.getAuditLogs(entityType, entityId, limit);
   res.json({ success:true, logs });
 });
-app.get("/api/inventory", authenticateToken, requireAdmin, requireCasbin("inventory","read"), async (_req,res)=>{
+app.get("/api/inventory", authenticate, requireAdmin, requireCasbin("inventory","read"), async (_req,res)=>{
   const items=await serverDb.getInventory();
   const low=await serverDb.getLowStock();
   res.json({ success:true, inventory:items, lowStock:low });
 });
-app.get("/api/inventory/low", authenticateToken, requireAdmin, requireCasbin("inventory","read"), async (_req,res)=>{
+app.get("/api/inventory/low", authenticate, requireAdmin, requireCasbin("inventory","read"), async (_req,res)=>{
   const low=await serverDb.getLowStock();
   res.json({ success:true, lowStock:low });
 });
-app.get("/api/staff", authenticateToken, requireAdmin, async (_req,res)=>{ res.json({ success:true, staff: await serverDb.getStaff() }); });
+app.get("/api/staff", authenticate, requireAdmin, async (_req,res)=>{ res.json({ success:true, staff: await serverDb.getStaff() }); });
 app.get("/api/services", async (_req,res)=>{
   const services=await prisma.service.findMany({ orderBy:{ startingPrice:"asc" } });
   res.json({ success:true, services });
 });
-app.post("/api/services", authenticateToken, requireAdmin, requireCasbin("services","update"), async (req,res)=>{
+app.post("/api/services", authenticate, requireAdmin, requireCasbin("services","update"), async (req,res)=>{
   const body=req.body || {};
   if(typeof body.name!=="string" || body.name.trim().length<2 || !Number.isInteger(body.startingPrice) || body.startingPrice<0) return res.status(400).json({ success:false, error:"Service name and a non-negative whole-number price are required." });
   try {
@@ -395,7 +556,7 @@ app.post("/api/services", authenticateToken, requireAdmin, requireCasbin("servic
     res.status(201).json({ success:true, service });
   } catch(error:any) { if(error?.code==="P2002") return res.status(409).json({ success:false, error:"A service with this name already exists." }); throw error; }
 });
-app.patch("/api/services/:id", authenticateToken, requireAdmin, requireCasbin("services","update"), async (req,res)=>{
+app.patch("/api/services/:id", authenticate, requireAdmin, requireCasbin("services","update"), async (req,res)=>{
   const body=req.body || {}; const data:any={};
   if("startingPrice" in body){ if(!Number.isInteger(body.startingPrice)||body.startingPrice<0) return res.status(400).json({ success:false,error:"Price must be a non-negative whole number." }); data.startingPrice=body.startingPrice; }
   if("isFeatured" in body) data.isFeatured=Boolean(body.isFeatured);
@@ -443,7 +604,7 @@ async function queryDarajaStatus(checkoutRequestId:string): Promise<{ status:"SU
   return { status:"PENDING" };
 }
 
-app.post("/api/mpesa/stkpush", mpesaLimiter, authenticateToken, async (req,res)=>{
+app.post("/api/mpesa/stkpush", mpesaLimiter, authenticate, async (req,res)=>{
   const v=validate(stkPushSchema, req.body); if(!v.success) return res.status(400).json({ success:false, error:v.error });
   const { phone, amount, bookingId, invoiceId, accountReference, transactionDesc }=v.data as any; const formattedPhone=toDarajaPhone(String(phone));
   if(!isValidKePhone(String(phone))) return res.status(400).json({ success:false, error:"Invalid Kenyan phone number." });
@@ -499,7 +660,7 @@ app.post("/api/mpesa/callback", callbackLimiter, async (req,res)=>{
   return res.json({ ResultCode:0, ResultDesc:"Callback received successfully" });
 });
 
-app.get("/api/mpesa/query/:checkoutRequestId", authenticateToken, async (req,res)=>{
+app.get("/api/mpesa/query/:checkoutRequestId", authenticate, async (req,res)=>{
   const { checkoutRequestId }=req.params; let tx=await serverDb.getTransaction(checkoutRequestId); if(!tx) return res.status(404).json({ success:false, error:"Transaction not found." });
   const user=(req as any).user;
   if(user.role!=="admin" && tx.bookingId){ const booking=await serverDb.getBooking(tx.bookingId); if(!booking || booking.customerId!==user.id) return res.status(403).json({ success:false, error:"Not your transaction." }); }
@@ -522,12 +683,12 @@ app.get("/api/mpesa/query/:checkoutRequestId", authenticateToken, async (req,res
   return res.json({ success:true, transaction:tx });
 });
 
-app.get("/api/mpesa/transactions", authenticateToken, requireAdmin, async (req,res)=>{
+app.get("/api/mpesa/transactions", authenticate, requireAdmin, async (req,res)=>{
   const { page, limit }=getPagination(req);
   const { data: transactions, total }=await serverDb.getTransactionsPaginated(page, limit);
   res.json({ success:true, transactions, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
 });
-app.post("/api/mpesa/reconcile", authenticateToken, requireAdmin, async (_req,res)=>{
+app.post("/api/mpesa/reconcile", authenticate, requireAdmin, async (_req,res)=>{
   const pendings=await prisma.mpesaTransaction.findMany({ where:{ status:"PENDING", createdAt:{ gte: new Date(Date.now()-24*60*60*1000) } }, take:20 });
   let checked=0, updated=0;
   for(const tx of pendings){ const live=await queryDarajaStatus(tx.checkoutRequestId); if(live.status!=="PENDING"){ checked++; if(live.status==="SUCCESS"){ await prisma.$transaction(async (p)=>{ await p.mpesaTransaction.update({ where:{ checkoutRequestId:tx.checkoutRequestId }, data:{ status:"SUCCESS", receiptNumber:live.receiptNumber } }); if(tx.bookingId) await p.booking.update({ where:{ id:tx.bookingId }, data:{ paymentStatus:"deposit_paid", mpesaReceiptNo:live.receiptNumber, status:"confirmed" } }).catch(()=>{}); }); updated++; } else if(live.status==="FAILED"){ await prisma.mpesaTransaction.update({ where:{ checkoutRequestId:tx.checkoutRequestId }, data:{ status:"FAILED", failureReason:live.failureReason } }); updated++; } }
@@ -540,7 +701,7 @@ app.get("/api/health", async (_req,res)=>{
   const darajaCfg=getDarajaConfig(); checks.daraja= darajaCfg.consumerKey && darajaCfg.consumerSecret ? "configured" : "not_configured";
   checks.uptime=process.uptime(); checks.timestamp=new Date().toISOString(); checks.env=env.NODE_ENV;
   const status= checks.db==="connected" ? "ok" : "degraded";
-  res.status(status==="ok"?200:503).json({ status, service:"Rolling Razors Customs API", ...checks });
+  res.status(status==="ok"?200:503).json({ status, service:"Rolling Razors Customs API", authProvider: env.AUTH_PROVIDER, ...checks });
 });
 app.get("/api/openapi.json", (_req,res)=>{
   res.json({
