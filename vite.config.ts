@@ -23,11 +23,11 @@ export default defineConfig(() => {
       },
     },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
-      hmr: process.env.DISABLE_HMR !== 'true',
-      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      // Hosted previews proxy HTTP requests but do not keep a Vite WebSocket open.
+      // Disable HMR there to prevent the client from repeatedly logging failed sockets;
+      // local development keeps HMR unless explicitly disabled.
+      hmr: process.env.DISABLE_HMR !== 'true' && !process.env.VERCEL,
+      watch: process.env.DISABLE_HMR === 'true' || Boolean(process.env.VERCEL) ? null : {},
     },
   };
 });
