@@ -16,6 +16,13 @@ const clerkSecretKey = (process.env.CLERK_SECRET_KEY || "").trim();
 const clerkPublishableKey = (process.env.CLERK_PUBLISHABLE_KEY || "").trim();
 const configuredProvider = (process.env.AUTH_PROVIDER || "").trim().toLowerCase();
 
+// @clerk/express reads CLERK_PUBLISHABLE_KEY from process.env, but the Clerk CLI
+// writes the client-safe key as VITE_CLERK_PUBLISHABLE_KEY. Mirror it so the
+// server-side Clerk middleware can initialize from a single .env entry.
+if (!process.env.CLERK_PUBLISHABLE_KEY && process.env.VITE_CLERK_PUBLISHABLE_KEY) {
+  process.env.CLERK_PUBLISHABLE_KEY = process.env.VITE_CLERK_PUBLISHABLE_KEY;
+}
+
 // Auth provider selection:
 //  - explicit AUTH_PROVIDER=clerk|legacy wins
 //  - otherwise auto-detect: Clerk when a server secret key is present, else legacy

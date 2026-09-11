@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SignIn, SignUp } from '@clerk/clerk-react';
+import { SignIn, SignUp } from '@clerk/react';
 import { ArrowLeft, ShieldAlert, Lock } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Logo } from '../common/Logo';
@@ -61,13 +61,13 @@ export const ClerkAuthPanel: React.FC<ClerkAuthPanelProps> = ({ admin = false })
         <div className="flex justify-center">
           {mode === 'signIn' ? (
             <SignIn
-              routing="virtual"
-              appearance={{ variables: { colorPrimary: '#D6A62E', colorBackground: '#0B4035', colorText: '#F5F1E8' } }}
+              routing="hash"
+              appearance={{ variables: { colorPrimary: '#D6A62E', colorBackground: '#0B4035' } }}
             />
           ) : (
             <SignUp
-              routing="virtual"
-              appearance={{ variables: { colorPrimary: '#D6A62E', colorBackground: '#0B4035', colorText: '#F5F1E8' } }}
+              routing="hash"
+              appearance={{ variables: { colorPrimary: '#D6A62E', colorBackground: '#0B4035' } }}
             />
           )}
         </div>

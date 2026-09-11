@@ -31,7 +31,7 @@ import {
   INITIAL_VEHICLES 
 } from '../data/mockData';
 import { phoneKey, phonesMatch, normalizePhoneKe } from '../utils/phone';
-import { useUser, useAuth, useClerk } from '@clerk/clerk-react';
+import { useUser, useAuth, useClerk } from '@clerk/react';
 import { clerkEnabled } from '../auth/clerkConfig';
 import { setAuthToken, getAuthToken } from '../lib/authToken';
 

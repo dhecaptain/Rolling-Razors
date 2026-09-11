@@ -97,3 +97,22 @@ To run E2E against Clerk you need a **dedicated Clerk test instance** (never pro
 4. The current specs branch on `/api/health.authProvider`; add Clerk sign-in via `@clerk/testing` helpers for full coverage.
 
 Without a Clerk test instance, the following are still verified in legacy mode and share the same authorization boundary: unauthorized **401**, malformed/forged token **401**, authenticated non-admin **403**, and admin privileged operations.
+
+---
+
+## 6. Clerk CLI (link + key sync)
+
+This repo is linked to the Clerk application **`app_3JAoT6I6lYJYpEgGmkbnDJBlqgG`** ("Rolling-Razors").
+
+```bash
+clerk auth login                 # browser OAuth
+clerk init --app app_3JAoT6I6lYJYpEgGmkbnDJBlqgG   # link + write keys to .env
+clerk env pull --file .env       # refresh keys, or --instance prod for production
+clerk doctor                     # health-check the integration
+```
+
+Notes:
+- `clerk init` writes the client-safe key as **`VITE_CLERK_PUBLISHABLE_KEY`** and the secret as `CLERK_SECRET_KEY`. The server mirrors `VITE_CLERK_PUBLISHABLE_KEY` → `CLERK_PUBLISHABLE_KEY` at boot (`server/env.ts`) because `@clerk/express` reads the latter.
+- The frontend SDK is **`@clerk/react`** (v6, new generation). Do not add `@clerk/clerk-react`; the two must not be mixed.
+- `clerk init` may detect `bun` from the stray `bun.lock`. This project is **npm-based** (CI uses `npm ci`); if the CLI skips installing the SDK, run `npm install @clerk/react`.
+

@@ -28,6 +28,7 @@ export default defineConfig({
       ADMIN_PASSWORD: "ci-test-pass",
       // Tests use the legacy provider unless a Clerk test instance is configured.
       AUTH_PROVIDER: process.env.AUTH_PROVIDER || "legacy",
+      VITE_AUTH_PROVIDER: process.env.VITE_AUTH_PROVIDER || "legacy",
       // Raise rate limits so the suite's authenticated requests are not throttled
       // (production defaults remain in server/env.ts).
       RATE_LIMIT_GENERAL_MAX: "10000",
