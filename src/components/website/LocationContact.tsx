@@ -4,11 +4,7 @@ import {
   Phone, 
   MessageCircle, 
   Clock, 
-  Navigation, 
-  Calendar, 
-  ShieldCheck, 
-  Mail,
-  ExternalLink
+  Navigation
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { BUSINESS_CONFIG } from '../../config/business';

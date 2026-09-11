@@ -275,7 +275,9 @@ export const Navbar: React.FC = () => {
               id="toggle-mobile-menu-btn"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 rounded-xl bg-[#0B4035] text-white border border-white/10"
-              aria-label="Toggle Menu"
+              aria-label="Toggle navigation menu"
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-navigation-drawer"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>

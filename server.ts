@@ -26,8 +26,15 @@ const PORT = env.PORT;
 app.use(cookieParser());
 app.use((req, _res, next) => { (req as any).id = crypto.randomUUID(); next(); });
 
+const isProduction = env.NODE_ENV === "production";
+
 app.use(helmet({
-  contentSecurityPolicy: {
+  // In development Vite injects an inline React "preamble" script and opens an
+  // HMR WebSocket. The hardened production CSP blocks both (script-src 'self'
+  // and connect-src 'self'), which triggers
+  // "@vitejs/plugin-react can't detect preamble". Keep strict CSP in production
+  // and disable it in development only.
+  contentSecurityPolicy: isProduction ? {
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
@@ -37,8 +44,8 @@ app.use(helmet({
       connectSrc: ["'self'", "https://api.safaricom.co.ke", "https://sandbox.safaricom.co.ke"],
       frameAncestors: ["'none'"],
     },
-  },
-  hsts: { maxAge: 31536000, includeSubDomains: true },
+  } : false,
+  hsts: isProduction ? { maxAge: 31536000, includeSubDomains: true } : false,
 }));
 
 const allowedOrigins = env.CORS_ORIGIN ? env.CORS_ORIGIN.split(",").map(s => s.trim()).filter(Boolean) : [];

@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 
 export const FeaturedServiceSection: React.FC = () => {
-  const { setView, setBookingWizardInitialServiceId, setBookingWizardDraft } = useApp() as any;
+  const { setView, setBookingWizardInitialServiceId, setBookingWizardDraft } = useApp();
 
   const [activeMaterial, setActiveMaterial] = useState('Genuine Nappa Leather');
   const [activeColor, setActiveColor] = useState('Saddle Brown & Black');
@@ -49,11 +49,11 @@ export const FeaturedServiceSection: React.FC = () => {
   const handleStartCustomBuild = () => {
     setBookingWizardInitialServiceId('srv-1');
     try {
-      setBookingWizardDraft?.({
+      setBookingWizardDraft({
         material: activeMaterial,
         color: activeColor,
         pattern: activePattern,
-      } as any);
+      });
       localStorage.setItem('rr_visualizer_draft', JSON.stringify({ material: activeMaterial, color: activeColor, pattern: activePattern }));
     } catch {}
     setView('booking');
@@ -99,7 +99,7 @@ export const FeaturedServiceSection: React.FC = () => {
                 } as any}
               >
                 <motion.img
-                  key={`${activeMaterial}-${activeColor}-${activePattern}`}
+                  key={`seat-img-${activeMaterial}-${activeColor}-${activePattern}`}
                   src={cdnUrl(activeMaterialData.image, { w: 1200 })}
                   alt={`Seats in ${activeMaterial}, ${activeColor}, with ${activePattern} stitching`}
                   initial={{ opacity: 0, scale: 1.05 }}
@@ -114,7 +114,7 @@ export const FeaturedServiceSection: React.FC = () => {
                   decoding="async"
                 />
                 <motion.div
-                  key={`${activeMaterial}-${activeColor}`}
+                  key={`seat-color-${activeMaterial}-${activeColor}`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.5 }}
@@ -126,7 +126,7 @@ export const FeaturedServiceSection: React.FC = () => {
                   } as any}
                 />
                 <motion.div
-                  key={`${activeMaterial}-${activeColor}-${activePattern}`}
+                  key={`seat-pattern-${activeMaterial}-${activeColor}-${activePattern}`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.4 }}

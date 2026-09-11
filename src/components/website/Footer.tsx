@@ -6,16 +6,20 @@ import {
   Phone, 
   MapPin, 
   Clock, 
-  MessageCircle, 
-  ShieldCheck, 
   Calendar,
   ArrowUp,
-  Mail,
-  ExternalLink
+  Mail
 } from 'lucide-react';
 
 export const Footer: React.FC = () => {
-  const { setView, setBookingWizardInitialServiceId, openLegalModal } = useApp();
+  const { setView, setBookingWizardInitialServiceId, setBookingWizardDraft, openLegalModal } = useApp();
+
+  const startBooking = () => {
+    setBookingWizardInitialServiceId(null);
+    setBookingWizardDraft(null);
+    setView('booking');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
@@ -140,7 +144,7 @@ export const Footer: React.FC = () => {
 
             <button
               id="footer-book-now-btn"
-              onClick={() => setView('booking')}
+              onClick={startBooking}
               className="w-full py-2.5 px-4 rounded-xl bg-[#D6A62E] hover:bg-[#c39626] text-[#073B32] font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer"
             >
               <Calendar className="w-3.5 h-3.5" /> Book a Service

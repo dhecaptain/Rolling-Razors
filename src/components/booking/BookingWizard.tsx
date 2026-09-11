@@ -32,7 +32,8 @@ export const BookingWizard: React.FC = () => {
     bookingWizardInitialServiceId,
     setBookingWizardInitialServiceId,
     bookingWizardDraft,
-    setCustomerTab
+    setCustomerTab,
+    addToast
   } = useApp();
 
   // Wizard Steps: 1: Service, 2: Vehicle & Customization, 3: Date & Details, 4: Deposit & M-Pesa, 5: Confirmed
@@ -56,7 +57,7 @@ export const BookingWizard: React.FC = () => {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const [selectedDate, setSelectedDate] = useState<string>(tomorrow.toISOString().split('T')[0]);
-  const [selectedTime, setSelectedTime] = useState<string>('10:00 AM');
+  const [selectedTime, setSelectedTime] = useState<string>('10:00 AM - 12:00 PM');
   const [locationType, setLocationType] = useState<'workshop' | 'customer_location'>('workshop');
   const [customerLocationAddress, setCustomerLocationAddress] = useState<string>('Kilimani, Nairobi');
 
@@ -146,13 +147,13 @@ export const BookingWizard: React.FC = () => {
       setCurrentStep(2);
     } else if (currentStep === 2) {
       if (!vehicleMake || !vehicleModel || !vehicleReg) {
-        alert('Please fill in vehicle make, model and registration plate number.');
+        addToast('warning', 'Missing Vehicle Details', 'Please fill in vehicle make, model and registration plate number.');
         return;
       }
       setCurrentStep(3);
     } else if (currentStep === 3) {
       if (!customerName || !customerPhone || !selectedDate) {
-        alert('Please provide your name, Kenyan phone number, and appointment date.');
+        addToast('warning', 'Missing Contact Details', 'Please provide your name, Kenyan phone number, and appointment date.');
         return;
       }
       setCurrentStep(4);

@@ -23,21 +23,16 @@ export const QuickBookingWidget: React.FC = () => {
   const defaultDateStr = tomorrow.toISOString().split('T')[0];
 
   const [preferredDate, setPreferredDate] = useState<string>(defaultDateStr);
-  const [preferredTime, setPreferredTime] = useState<string>('10:00 AM');
+  const [preferredTime, setPreferredTime] = useState<string>('10:00 AM - 12:00 PM');
   const [locationType, setLocationType] = useState<'workshop' | 'customer_location'>('workshop');
 
   const vehicleOptions: VehicleType[] = ['Car', 'SUV', 'Van', 'Truck', 'Matatu', 'Other'];
 
   const timeSlots = [
-    '8:00 AM',
-    '9:00 AM',
-    '10:00 AM',
-    '11:00 AM',
-    '12:00 PM',
-    '2:00 PM',
-    '3:00 PM',
-    '4:00 PM',
-    '5:00 PM'
+    '8:00 AM - 10:00 AM',
+    '10:00 AM - 12:00 PM',
+    '1:00 PM - 3:00 PM',
+    '3:00 PM - 5:00 PM'
   ];
 
   const handleCheckAvailability = (e: React.FormEvent) => {

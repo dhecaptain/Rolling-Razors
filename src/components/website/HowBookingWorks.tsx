@@ -5,12 +5,18 @@ import {
   Calendar, 
   Car, 
   Sparkles, 
-  ArrowRight,
-  ShieldAlert
+  ArrowRight
 } from 'lucide-react';
 
 export const HowBookingWorks: React.FC = () => {
-  const { setView } = useApp();
+  const { setView, setBookingWizardInitialServiceId, setBookingWizardDraft } = useApp();
+
+  const startBooking = () => {
+    setBookingWizardInitialServiceId(null);
+    setBookingWizardDraft(null);
+    setView('booking');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const steps = [
     {
@@ -106,7 +112,7 @@ export const HowBookingWorks: React.FC = () => {
           </div>
           <button
             id="how-it-works-book-btn"
-            onClick={() => setView('booking')}
+            onClick={startBooking}
             className="py-3 px-6 rounded-xl bg-[#D6A62E] hover:bg-[#c39626] text-[#073B32] font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg whitespace-nowrap cursor-pointer"
           >
             <span>Book Your Service Now</span>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { CheckCircle2, AlertCircle, Loader2, Smartphone, ShieldCheck, ArrowRight, X, Copy, Check, Lock, Radio } from 'lucide-react';
 import { BUSINESS_CONFIG } from '../../config/business';
+import { useModalA11y } from '../../utils/useModalA11y';
 import confetti from 'canvas-confetti';
 
 export const MpesaModal: React.FC = () => {
@@ -166,6 +167,8 @@ export const MpesaModal: React.FC = () => {
     }
   }, [step, countdown]);
 
+  const modalRef = useModalA11y(mpesaPrompt.isOpen, closeMpesaPayment);
+
   if (!mpesaPrompt.isOpen) return null;
 
   const handleCopyReceipt = async () => {
@@ -180,8 +183,13 @@ export const MpesaModal: React.FC = () => {
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
     >
       <div 
+        ref={modalRef}
         id="mpesa-payment-modal-card"
-        className="w-full max-w-md bg-[#073B32] border border-[#D6A62E]/40 rounded-2xl shadow-2xl overflow-hidden text-[#F5F1E8]"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Lipa na M-Pesa payment"
+        tabIndex={-1}
+        className="w-full max-w-md bg-[#073B32] border border-[#D6A62E]/40 rounded-2xl shadow-2xl overflow-hidden text-[#F5F1E8] focus:outline-none"
       >
         {/* Modal Top Bar */}
         <div className="bg-[#0B4035] px-6 py-4 border-b border-[#D6A62E]/30 flex items-center justify-between">
@@ -199,6 +207,7 @@ export const MpesaModal: React.FC = () => {
             id="close-mpesa-modal-btn"
             onClick={closeMpesaPayment}
             className="text-white/60 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+            aria-label="Close payment dialog"
           >
             <X className="w-5 h-5" />
           </button>

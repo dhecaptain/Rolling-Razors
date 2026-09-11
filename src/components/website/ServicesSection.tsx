@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Service } from '../../types';
 import { cdnUrl, srcSet } from '../../utils/image';
+import { useModalA11y } from '../../utils/useModalA11y';
 import { 
   Car, 
   Armchair, 
@@ -23,6 +24,7 @@ import {
 export const ServicesSection: React.FC = () => {
   const { services, setView, setBookingWizardInitialServiceId } = useApp();
   const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const serviceModalRef = useModalA11y(Boolean(selectedService), () => setSelectedService(null));
 
   const getServiceIcon = (name: string) => {
     switch (name) {
@@ -141,6 +143,7 @@ export const ServicesSection: React.FC = () => {
                       onClick={() => handleBookSpecificService(service.id)}
                       className="p-2 rounded-xl bg-[#0B4035] hover:bg-[#D6A62E] text-[#D6A62E] hover:text-[#073B32] border border-[#D6A62E]/40 transition-colors"
                       title="Book this service"
+                      aria-label={`Book ${service.name}`}
                     >
                       <ArrowRight className="w-4 h-4" />
                     </button>
@@ -158,8 +161,17 @@ export const ServicesSection: React.FC = () => {
         <div 
           id="service-detail-modal"
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in"
+          onClick={() => setSelectedService(null)}
         >
-          <div className="bg-[#073B32] border-2 border-[#D6A62E]/50 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto text-[#F5F1E8] shadow-2xl">
+          <div
+            ref={serviceModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${selectedService.name} service details`}
+            tabIndex={-1}
+            className="bg-[#073B32] border-2 border-[#D6A62E]/50 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto text-[#F5F1E8] shadow-2xl focus:outline-none"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Image Header */}
             <div className="relative h-60 w-full overflow-hidden">
               <img 
@@ -176,6 +188,7 @@ export const ServicesSection: React.FC = () => {
                 id="close-service-modal-btn"
                 onClick={() => setSelectedService(null)}
                 className="absolute top-4 right-4 p-2 rounded-full bg-black/60 text-white hover:bg-black/90 transition-colors"
+                aria-label="Close service details"
               >
                 <X className="w-5 h-5" />
               </button>

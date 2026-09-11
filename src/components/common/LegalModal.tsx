@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, ShieldCheck, FileText, RefreshCw, Lock, CheckCircle2 } from 'lucide-react';
 import { BUSINESS_CONFIG } from '../../config/business';
+import { useModalA11y } from '../../utils/useModalA11y';
 
 export type LegalDocType = 'privacy' | 'terms' | 'refund';
 
@@ -17,6 +18,8 @@ export const LegalModal: React.FC<LegalModalProps> = ({
   onClose,
   onSwitchType
 }) => {
+  const modalRef = useModalA11y(isOpen, onClose);
+
   if (!isOpen) return null;
 
   return (
@@ -26,8 +29,13 @@ export const LegalModal: React.FC<LegalModalProps> = ({
       onClick={onClose}
     >
       <div 
+        ref={modalRef}
         id="legal-modal-content"
-        className="bg-[#073B32] border-2 border-[#D6A62E]/40 rounded-3xl max-w-3xl w-full max-h-[85vh] flex flex-col text-[#F5F1E8] shadow-2xl overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Rolling Razors legal policies"
+        tabIndex={-1}
+        className="bg-[#073B32] border-2 border-[#D6A62E]/40 rounded-3xl max-w-3xl w-full max-h-[85vh] flex flex-col text-[#F5F1E8] shadow-2xl overflow-hidden focus:outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
