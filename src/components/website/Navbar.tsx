@@ -71,29 +71,29 @@ export const Navbar: React.FC = () => {
 
         <div className="hidden items-center gap-2 sm:flex">
           {isLoggedIn && currentUser ? (
-            <button type="button" onClick={() => setView(canAccessAdmin(currentUser.role) ? 'admin_dashboard' : 'customer_dashboard')} className="hidden items-center gap-2 border border-[#F5F1E8]/25 px-4 py-2 text-[11px] font-bold text-[#F5F1E8] transition-colors hover:border-[#D6A62E] hover:text-[#D6A62E] md:inline-flex">
+            <button id="header-active-dashboard-link-btn" type="button" onClick={() => setView(canAccessAdmin(currentUser.role) ? 'admin_dashboard' : 'customer_dashboard')} className="hidden items-center gap-2 border border-[#F5F1E8]/25 px-4 py-2 text-[11px] font-bold text-[#F5F1E8] transition-colors hover:border-[#D6A62E] hover:text-[#D6A62E] md:inline-flex">
               {canAccessAdmin(currentUser.role) ? <ShieldAlert aria-hidden="true" className="h-3.5 w-3.5" /> : <Car aria-hidden="true" className="h-3.5 w-3.5" />}
               {canAccessAdmin(currentUser.role) ? 'Workshop hub' : 'Driver garage'}
             </button>
           ) : (
             <>
-              <button type="button" onClick={() => openAuth('customer')} className="hidden min-h-11 items-center gap-2 border border-[#F5F1E8]/25 px-4 py-2 text-[12px] font-bold text-[#F5F1E8] transition-colors hover:border-[#D6A62E] hover:text-[#D6A62E] md:inline-flex"><UserRound aria-hidden="true" className="h-3.5 w-3.5" />Driver sign in</button>
-              <button type="button" onClick={() => openAuth('admin')} aria-label="Workshop staff sign in" title="Workshop staff sign in" className="inline-flex h-11 w-11 items-center justify-center border border-[#F5F1E8]/15 text-[#F5F1E8]/65 transition-colors hover:border-[#D6A62E] hover:text-[#D6A62E]"><ShieldAlert aria-hidden="true" className="h-4 w-4" /></button>
+              <button id="nav-driver-signin-btn" type="button" onClick={() => openAuth('customer')} className="hidden min-h-11 items-center gap-2 border border-[#F5F1E8]/25 px-4 py-2 text-[12px] font-bold text-[#F5F1E8] transition-colors hover:border-[#D6A62E] hover:text-[#D6A62E] md:inline-flex"><UserRound aria-hidden="true" className="h-3.5 w-3.5" />Driver sign in</button>
+              <button id="nav-workshop-staff-btn" type="button" onClick={() => openAuth('admin')} aria-label="Workshop staff sign in" title="Workshop staff sign in" className="inline-flex h-11 w-11 items-center justify-center border border-[#F5F1E8]/15 text-[#F5F1E8]/65 transition-colors hover:border-[#D6A62E] hover:text-[#D6A62E]"><ShieldAlert aria-hidden="true" className="h-4 w-4" /></button>
             </>
           )}
           <button type="button" onClick={startBooking} className="inline-flex h-11 items-center gap-2 bg-[#D6A62E] px-4 text-[12px] font-black tracking-[.08em] text-[#073B32] transition-colors hover:bg-[#e0b340]">BOOK A FITTING <ArrowUpRightIcon /></button>
           {isLoggedIn && currentUser && (
             <div className="relative">
-              <button type="button" onClick={() => setAuthDropdownOpen((open) => !open)} aria-expanded={authDropdownOpen} className="flex h-10 items-center gap-2 border border-[#F5F1E8]/15 px-2 text-[11px] text-[#F5F1E8]">
+              <button id="user-profile-menu-btn" type="button" onClick={() => setAuthDropdownOpen((open) => !open)} aria-expanded={authDropdownOpen} className="flex h-10 items-center gap-2 border border-[#F5F1E8]/15 px-2 text-[11px] text-[#F5F1E8]">
                 <span className="grid h-6 w-6 place-items-center bg-[#D6A62E] text-[10px] font-black text-[#073B32]">{currentUser.name.slice(0, 1).toUpperCase()}</span>
                 <span className="hidden max-w-[80px] truncate xl:inline">{currentUser.name.split(' ')[0]}</span>
                 <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 text-[#D6A62E]" />
               </button>
               {authDropdownOpen && (
-                <div className="absolute right-0 top-12 w-56 border border-[#D6A62E]/30 bg-[#073B32] p-2 shadow-2xl">
+                <div id="auth-profile-dropdown" className="absolute right-0 top-12 w-56 border border-[#D6A62E]/30 bg-[#073B32] p-2 shadow-2xl">
                   <p className="border-b border-[#F5F1E8]/10 px-3 py-2 text-xs font-bold text-[#F5F1E8]">{currentUser.name}</p>
                   <button type="button" onClick={() => { setAuthDropdownOpen(false); if (canAccessAdmin(currentUser.role)) { setAdminTab('overview'); setView('admin_dashboard'); } else { setCustomerTab('dashboard'); setView('customer_dashboard'); } }} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs text-[#F5F1E8]/85 hover:bg-[#0B4035]"><Car aria-hidden="true" className="h-3.5 w-3.5 text-[#D6A62E]" />Open dashboard</button>
-                  <button type="button" onClick={() => { setAuthDropdownOpen(false); logout(); }} className="flex w-full items-center gap-2 border-t border-[#F5F1E8]/10 px-3 py-2.5 text-left text-xs font-bold text-rose-300 hover:bg-rose-500/10"><LogOut aria-hidden="true" className="h-3.5 w-3.5" />Sign out</button>
+                  <button id="navbar-signout-btn" type="button" onClick={() => { setAuthDropdownOpen(false); logout(); }} className="flex w-full items-center gap-2 border-t border-[#F5F1E8]/10 px-3 py-2.5 text-left text-xs font-bold text-rose-300 hover:bg-rose-500/10"><LogOut aria-hidden="true" className="h-3.5 w-3.5" />Sign out</button>
                 </div>
               )}
             </div>

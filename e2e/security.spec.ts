@@ -86,8 +86,8 @@ test.describe("Authorization boundary (browser)", () => {
 
     // Navbar must show the customer dashboard link, never workshop-admin branding.
     await expect(page.locator("#header-active-dashboard-link-btn")).toBeVisible();
-    await expect(page.locator("#header-active-dashboard-link-btn")).toContainText("My Driver Garage");
-    await expect(page.locator("#header-active-dashboard-link-btn")).not.toContainText("Workshop Admin");
+    await expect(page.locator("#header-active-dashboard-link-btn")).toContainText("Driver garage");
+    await expect(page.locator("#header-active-dashboard-link-btn")).not.toContainText("Workshop hub");
     // No staff entry is exposed to a logged-in driver.
     await expect(page.locator("#nav-workshop-staff-btn")).toHaveCount(0);
     // The admin dashboard must never render.
@@ -104,8 +104,8 @@ test.describe("Authorization boundary (browser)", () => {
 
     await expect(page.locator("#admin-dashboard-container")).toHaveCount(0);
     // Server re-verification downgraded the account: the driver UI is preserved.
-    await expect(page.locator("#header-active-dashboard-link-btn")).toContainText("My Driver Garage");
-    await expect(page.locator("#header-active-dashboard-link-btn")).not.toContainText("Workshop");
+    await expect(page.locator("#header-active-dashboard-link-btn")).toContainText("Driver garage");
+    await expect(page.locator("#header-active-dashboard-link-btn")).not.toContainText("Workshop hub");
     // Navbar staff entry must not appear even though localStorage claimed admin.
     await expect(page.locator("#nav-workshop-staff-btn")).toHaveCount(0);
   });
@@ -116,7 +116,7 @@ test.describe("Authorization boundary (browser)", () => {
 
     await seedSession(page, await adminSessionValue(request));
 
-    await expect(page.locator("#header-active-dashboard-link-btn")).toContainText("Workshop Admin Hub");
+    await expect(page.locator("#header-active-dashboard-link-btn")).toContainText("Workshop hub");
     await page.locator("#header-active-dashboard-link-btn").click();
     await expect(page.locator("#admin-dashboard-container")).toBeVisible();
 
@@ -135,8 +135,28 @@ test.describe("Authorization boundary (browser)", () => {
     await seedSession(page, sessionFor(customer, { role: "admin" }));
 
     await page.reload();
-    await expect(page.locator("#header-active-dashboard-link-btn")).toContainText("My Driver Garage");
+    await expect(page.locator("#header-active-dashboard-link-btn")).toContainText("Driver garage");
     await expect(page.locator("#admin-dashboard-container")).toHaveCount(0);
+  });
+
+  test("customer cannot escalate by URL/hash direct admin navigation", async ({ page, request }) => {
+    const provider = await getAuthProvider(request);
+    test.skip(provider === "clerk", "Legacy browser flow required for this security test");
+
+    const customer = await registerCustomer(request);
+    await seedSession(page, sessionFor(customer));
+
+    await page.goto("/#admin_dashboard");
+    await expect(page.locator("#admin-dashboard-container")).toHaveCount(0);
+    await expect(page.locator("#header-active-dashboard-link-btn")).toContainText("Driver garage");
+
+    await page.goto("/?view=admin_dashboard#admin-dashboard");
+    await expect(page.locator("#admin-dashboard-container")).toHaveCount(0);
+    await expect(page.locator("#header-active-dashboard-link-btn")).toContainText("Driver garage");
+
+    await page.goto("/admin");
+    await expect(page.locator("#admin-dashboard-container")).toHaveCount(0);
+    await expect(page.locator("#header-active-dashboard-link-btn")).toContainText("Driver garage");
   });
 
   test("logout removes access to authenticated views", async ({ page, request }) => {
@@ -260,6 +280,39 @@ test.describe("Authorization boundary (API)", () => {
     expect(body.success).toBe(true);
     const inventory = await request.get("/api/inventory", { headers: authHeaders(token) });
     expect(inventory.status()).toBe(200);
+  });
+
+  test("customer cannot invoke admin mutation endpoints", async ({ request }) => {
+    const customer = await registerCustomer(request);
+
+    const bookingsPatch = await request.patch("/api/bookings/RR-DOES-NOT-EXIST", {
+      headers: authHeaders(customer.token),
+      data: { status: "confirmed" },
+    });
+    expect(bookingsPatch.status()).toBe(403);
+
+    const workOrderPatch = await request.patch("/api/work-orders/RR-WO-DOES-NOT-EXIST", {
+      headers: authHeaders(customer.token),
+      data: { stage: "IN_PROGRESS" },
+    });
+    expect(workOrderPatch.status()).toBe(403);
+
+    const invoicePatch = await request.patch("/api/invoices/RR-INV-DOES-NOT-EXIST", {
+      headers: authHeaders(customer.token),
+      data: { paymentStatus: "Paid" },
+    });
+    expect(invoicePatch.status()).toBe(403);
+
+    const serviceCreate = await request.post("/api/services", {
+      headers: authHeaders(customer.token),
+      data: { name: "Escalation Attempt", startingPrice: 1 },
+    });
+    expect(serviceCreate.status()).toBe(403);
+
+    const ledgerRead = await request.get("/api/mpesa/transactions?page=1&limit=5", {
+      headers: authHeaders(customer.token),
+    });
+    expect(ledgerRead.status()).toBe(403);
   });
 
   test("invalid, malformed, and expired authentication is rejected", async ({ request }) => {

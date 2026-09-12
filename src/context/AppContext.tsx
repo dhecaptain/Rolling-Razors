@@ -183,7 +183,7 @@ interface ClerkApi {
 
 const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }> = ({ children, clerk }) => {
   const clerkMode = Boolean(clerk);
-  const [view, setView] = useState<AppView>('website');
+  const [view, setViewState] = useState<AppView>('website');
   const [customerTab, setCustomerTab] = useState<string>('dashboard');
   const [adminTab, setAdminTab] = useState<string>('overview');
   const [websiteSection, setWebsiteSection] = useState<string>('hero');
@@ -302,6 +302,40 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
   }, [clerkMode, legacyVerifying]);
 
   const role: UserRole = currentUser?.role || 'customer';
+
+  const resolveSafeView = React.useCallback((): AppView => {
+    if (isLoggedIn && currentUser) {
+      return canAccessAdmin(role) ? 'admin_dashboard' : 'customer_dashboard';
+    }
+    return 'website';
+  }, [isLoggedIn, currentUser, role]);
+
+  const isViewAllowed = React.useCallback((nextView: AppView): boolean => {
+    if (nextView === 'admin_dashboard') {
+      return canAccessAdmin(role);
+    }
+    if (nextView === 'admin_auth') {
+      return !(isLoggedIn && !canAccessAdmin(role));
+    }
+    if (nextView === 'customer_dashboard') {
+      return isLoggedIn;
+    }
+    return true;
+  }, [isLoggedIn, role]);
+
+  const setView = React.useCallback((nextView: AppView) => {
+    if (isViewAllowed(nextView)) {
+      setViewState(nextView);
+      return;
+    }
+    setViewState(resolveSafeView());
+  }, [isViewAllowed, resolveSafeView]);
+
+  useEffect(() => {
+    if (!isViewAllowed(view)) {
+      setViewState(resolveSafeView());
+    }
+  }, [view, isViewAllowed, resolveSafeView]);
 
   // --- Clerk session synchronization (server-verified via /api/auth/sync) ---
   const clerkUserId = clerk?.user?.id;
