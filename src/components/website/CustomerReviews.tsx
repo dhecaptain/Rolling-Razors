@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
+import { Reveal } from './Reveal';
 import { Star, Quote, CheckCircle, MapPin, Car } from 'lucide-react';
 
 export const CustomerReviews: React.FC = () => {
@@ -25,8 +26,8 @@ export const CustomerReviews: React.FC = () => {
         {/* Testimonials Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {reviews.map((rev) => (
+            <Reveal key={rev.id} delay={0}>
             <div
-              key={rev.id}
               className="p-6 rounded-2xl bg-[#0B4035] border border-[#D6A62E]/25 flex flex-col justify-between space-y-4 shadow-xl hover:border-[#D6A62E] transition-all hover:-translate-y-1"
             >
               <div className="space-y-3">
@@ -61,6 +62,7 @@ export const CustomerReviews: React.FC = () => {
                 </div>
               </div>
             </div>
+            </Reveal>
           ))}
         </div>
 

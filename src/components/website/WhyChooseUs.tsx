@@ -1,4 +1,6 @@
 import React from 'react';
+import { motion, useReducedMotion } from 'motion/react';
+import { Reveal } from './Reveal';
 import { 
   ShieldCheck, 
   Scissors, 
@@ -11,6 +13,7 @@ import {
 } from 'lucide-react';
 
 export const WhyChooseUs: React.FC = () => {
+  const reduce = useReducedMotion();
   const cards = [
     {
       title: 'Premium Materials',
@@ -59,11 +62,10 @@ export const WhyChooseUs: React.FC = () => {
         {/* 5 Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {cards.map((card, idx) => (
-            <div
-              key={idx}
-              className={`p-7 rounded-2xl bg-[#073B32] border border-[#D6A62E]/20 hover:border-[#D6A62E] transition-all duration-300 shadow-xl flex flex-col justify-between space-y-4 hover:-translate-y-1 ${
-                idx === 4 ? 'md:col-span-2 lg:col-span-1' : ''
-              }`}
+            <Reveal key={idx} delay={idx * 0.08} className={`h-full ${idx === 4 ? 'md:col-span-2 lg:col-span-1' : ''}`}>
+            <motion.div
+              whileHover={reduce ? {} : { y: -5 }}
+              className={`p-7 rounded-2xl bg-[#073B32] border border-[#D6A62E]/20 hover:border-[#D6A62E] transition-colors duration-300 shadow-xl flex flex-col justify-between space-y-4 h-full`}
             >
               <div className="space-y-3">
                 <div className="w-12 h-12 rounded-xl bg-[#0B4035] border border-[#D6A62E]/30 flex items-center justify-center shadow-inner">
@@ -83,7 +85,8 @@ export const WhyChooseUs: React.FC = () => {
                 <CheckCircle2 className="w-4 h-4 text-[#25D366]" />
                 <span>Rolling Razors Standard</span>
               </div>
-            </div>
+            </motion.div>
+            </Reveal>
           ))}
         </div>
 

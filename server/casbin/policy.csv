@@ -5,6 +5,7 @@ p, admin, work-orders, update
 p, admin, invoices, read
 p, admin, invoices, update
 p, admin, customers, read
+p, admin, services, update
 p, admin, inventory, read
 p, admin, inventory, update
 p, admin, audit-logs, read

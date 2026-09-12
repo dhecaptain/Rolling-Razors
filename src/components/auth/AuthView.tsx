@@ -21,6 +21,7 @@ export const AuthView: React.FC = () => {
     authInitialMode,
     loginCustomer,
     registerCustomer,
+    isLoggedIn,
   } = useApp();
 
   const [isRegister, setIsRegister] = useState(false);
@@ -93,7 +94,16 @@ export const AuthView: React.FC = () => {
           <p className="text-xs text-white/70">
             {isRegister ? 'Join Kenyan vehicle owners managing custom leather & upholstery jobs.' : 'Track job stitching status, view invoices, and settle M-Pesa deposits.'}
           </p>
-          <p className="text-[11px] text-white/40">Workshop staff? <button onClick={()=>setView('admin_auth' as any)} className="text-[#D6A62E] underline">Sign in to Workshop Hub →</button></p>
+          <p className="text-[11px] text-white/40">
+            Workshop staff?{' '}
+            {!isLoggedIn ? (
+              <button onClick={() => setView('admin_auth' as any)} className="text-[#D6A62E] underline">
+                Sign in to Workshop Hub →
+              </button>
+            ) : (
+              <span className="text-white/30">Use the Staff button in the navigation bar.</span>
+            )}
+          </p>
         </div>
 
         {errorMessage && (

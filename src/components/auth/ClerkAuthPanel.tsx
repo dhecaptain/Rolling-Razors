@@ -91,8 +91,35 @@ const clerkAppearance = {
  * Uses hash routing so it does not depend on a client-side router.
  */
 export const ClerkAuthPanel: React.FC<ClerkAuthPanelProps> = ({ admin = false }) => {
-  const { setView } = useApp();
+  const { setView, currentUser, isLoggedIn } = useApp();
   const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn');
+
+  // A signed-in customer must never be presented the workshop (admin) sign-in.
+  if (admin && isLoggedIn && currentUser && currentUser.role !== 'admin') {
+    return (
+      <div
+        id="admin-auth-page"
+        className="min-h-screen pt-24 pb-16 flex items-center justify-center bg-[#073B32] text-[#F5F1E8] px-4 relative"
+      >
+        <div className="absolute inset-0 bg-leather-texture opacity-10 pointer-events-none" />
+        <div className="w-full max-w-md bg-[#0B4035] border-2 border-rose-500/40 rounded-3xl p-8 text-center shadow-2xl space-y-4 relative z-10">
+          <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500 text-rose-400 flex items-center justify-center mx-auto">
+            <ShieldAlert className="w-7 h-7" />
+          </div>
+          <h2 className="text-xl font-black text-white">Access Restricted</h2>
+          <p className="text-xs text-white/70 leading-relaxed">
+            Your current account is not authorized for the workshop area. Only authorized Rolling Razors staff can access the Workshop Hub.
+          </p>
+          <button
+            onClick={() => setView('customer_dashboard')}
+            className="w-full py-3 rounded-xl bg-[#D6A62E] text-[#073B32] font-black text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <span>Return to Driver Portal</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

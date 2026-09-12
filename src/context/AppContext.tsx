@@ -37,6 +37,13 @@ import { setAuthToken, getAuthToken } from '../lib/authToken';
 
 export type AppView = 'website' | 'booking' | 'customer_dashboard' | 'admin_dashboard' | 'auth' | 'admin_auth';
 
+/** Centralized role-check helpers. Use these instead of inline `role === 'admin'`. */
+export const isStaff = (role: UserRole): boolean => role === 'admin';
+export const isCustomer = (role: UserRole): boolean => role === 'customer';
+export const canAccessAdmin = (role: UserRole): boolean => isStaff(role);
+export const STAFF_VIEWS: AppView[] = ['admin_dashboard', 'admin_auth'];
+export const CUSTOMER_VIEWS: AppView[] = ['customer_dashboard'];
+
 export interface ToastItem {
   id: string;
   type: 'success' | 'info' | 'warning' | 'error';
@@ -78,6 +85,9 @@ interface AppContextType {
 
   // Auth provider metadata + authenticated fetch helper
   authProvider: 'clerk' | 'legacy';
+  /** True while the auth provider's session is still being resolved server-side. */
+  authVerifying: boolean;
+  clerkLoaded: boolean;
   authFetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
   
   // Data Collections
@@ -187,6 +197,9 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
     if (saved) {
       try {
         const session = JSON.parse(saved);
+        // UX-optimistic only: the stored identity is re-verified against
+        // /api/auth/verify immediately after boot, and the server-returned
+        // role is authoritative. Never trust a locally-tampered role.
         if (session && session.user && (!session.expiresAt || session.expiresAt > Date.now())) {
           return session.user;
         }
@@ -210,6 +223,83 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
     }
     return false;
   });
+
+  // Legacy boot re-verification. While true, the stored identity (whose role may
+  // have been tampered with in localStorage) is being checked against the server.
+  // Staff-only views must not render until this completes.
+  const [legacyVerifying, setLegacyVerifying] = useState<boolean>(() => {
+    if (clerkMode) return false;
+    const saved = localStorage.getItem('rr_auth_session');
+    if (saved) {
+      try {
+        const session = JSON.parse(saved);
+        return Boolean(session?.token);
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (clerkMode || !legacyVerifying) return;
+    let active = true;
+    let token: string | null = null;
+    try {
+      const raw = localStorage.getItem('rr_auth_session');
+      if (raw) {
+        const s = JSON.parse(raw);
+        token = s?.token || null;
+      }
+    } catch {
+      token = null;
+    }
+    if (!token) {
+      localStorage.removeItem('rr_auth_session');
+      setCurrentUser(null);
+      setIsLoggedIn(false);
+      setLegacyVerifying(false);
+      return;
+    }
+    fetch('/api/auth/verify', { headers: { Authorization: `Bearer ${token}` }, credentials: 'include' })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!active) return;
+        if (res.ok && data?.valid && data.user) {
+          // Authoritative identity + role come from the signature-verified JWT,
+          // never from the localStorage copy.
+          setAuthToken(token);
+          setCurrentUser(data.user);
+          setIsLoggedIn(true);
+          try {
+            const raw = localStorage.getItem('rr_auth_session');
+            if (raw) {
+              const s = JSON.parse(raw);
+              s.user = data.user;
+              localStorage.setItem('rr_auth_session', JSON.stringify(s));
+            }
+          } catch {}
+        } else {
+          setAuthToken(null);
+          localStorage.removeItem('rr_auth_session');
+          setCurrentUser(null);
+          setIsLoggedIn(false);
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        // Network failure: refuse to trust a stored role that could not be
+        // re-verified. Treat the user as signed out rather than risk elevation.
+        setAuthToken(null);
+        localStorage.removeItem('rr_auth_session');
+        setCurrentUser(null);
+        setIsLoggedIn(false);
+      })
+      .finally(() => {
+        if (active) setLegacyVerifying(false);
+      });
+    return () => { active = false; };
+  }, [clerkMode, legacyVerifying]);
 
   const role: UserRole = currentUser?.role || 'customer';
 
@@ -576,7 +666,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
           name: resData.user.name,
           phone: resData.user.phone,
           email: resData.user.email || `${data.name.toLowerCase().replace(/\s+/g, '.')}@gmail.com`,
-          avatar: resData.user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+          avatar: resData.user.avatar || '',
           totalSpent: 0,
           status: 'New',
           address: 'Nairobi, Kenya',
@@ -1331,6 +1421,12 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
         registerCustomer,
         logout,
         authProvider: clerkEnabled ? 'clerk' : 'legacy',
+        authVerifying: clerkMode
+          ? clerk
+            ? !(clerk.isLoaded && (!clerk.isSignedIn || Boolean(currentUser)))
+            : true
+          : legacyVerifying,
+        clerkLoaded: clerkMode ? Boolean(clerk?.isLoaded) : true,
         authFetch,
         services,
         bookings,

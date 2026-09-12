@@ -12,12 +12,13 @@ export default defineConfig(() => {
       },
     },
     build: {
-      chunkSizeWarningLimit: 600,
+      chunkSizeWarningLimit: 800,
       rollupOptions: {
         output: {
           manualChunks: {
             react: ['react', 'react-dom'],
             vendor: ['motion', 'lucide-react', 'canvas-confetti'],
+            'three': ['three', '@react-three/fiber', '@react-three/drei'],
           },
         },
       },

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useApp } from '../../context/AppContext';
+import { useApp, canAccessAdmin } from '../../context/AppContext';
 import {
   BarChart3, Calendar as CalendarIcon, Car, CheckCircle2, Clock, DollarSign, FileText, Filter, Layers, MapPin, Plus, Scissors, ShieldAlert, Smartphone, Trash2, UserCheck, Users, X, TrendingUp, Search, Check, Phone, ArrowRight, AlertTriangle, History
 } from 'lucide-react';
@@ -62,7 +62,7 @@ export const AdminDashboard: React.FC = () => {
       .then(r=>r.json()).then(d=>{ if(d.success) setAuditLogs(d.logs); else setAuditLogs([]); }).catch(()=>setAuditLogs([]));
   }, [selectedBookingForAdmin]);
 
-  if (!currentUser || currentUser.role !== 'admin') {
+  if (!currentUser || !canAccessAdmin(currentUser.role)) {
     return (
       <div className="min-h-screen pt-32 pb-20 flex items-center justify-center bg-[#073B32] text-[#F5F1E8] px-4">
         <div className="max-w-md w-full bg-[#0B4035] border-2 border-rose-500/40 rounded-3xl p-8 text-center space-y-4 shadow-2xl">
@@ -126,7 +126,7 @@ export const AdminDashboard: React.FC = () => {
       longDesc: newServiceDesc || 'High quality tailoring for Kenyan vehicles.',
       startingPrice: newServicePrice,
       estimatedDuration: newServiceDuration,
-      image: 'https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=800&q=80',
+      image: '/images/upholstery/upholstery-09.jpg',
       iconName: 'Scissors',
       includedFeatures: ['Custom measurement', 'High density foam', '1 Year warranty'],
       materialsAvailable: ['Nappa Leather', 'Vinyl', 'Alcantara']

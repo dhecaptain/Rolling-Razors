@@ -3,20 +3,22 @@ import { useApp } from '../../context/AppContext';
 import { Service } from '../../types';
 import { cdnUrl, srcSet } from '../../utils/image';
 import { useModalA11y } from '../../utils/useModalA11y';
-import { 
-  Car, 
-  Armchair, 
-  Layers, 
-  Scissors, 
-  Compass, 
-  Grid, 
-  Shield, 
-  Tent, 
-  Briefcase, 
-  Sparkles, 
-  ArrowRight, 
-  Clock, 
-  Check, 
+import { Reveal } from './Reveal';
+import {
+  Car,
+  Armchair,
+  Layers,
+  Scissors,
+  Compass,
+  Grid,
+  Shield,
+  Tent,
+  Briefcase,
+  Sparkles,
+  Palette,
+  ArrowRight,
+  Clock,
+  Check,
   X,
   Calendar
 } from 'lucide-react';
@@ -37,6 +39,7 @@ export const ServicesSection: React.FC = () => {
       case 'Shield': return <Shield className="w-5 h-5 text-[#D6A62E]" />;
       case 'Tent': return <Tent className="w-5 h-5 text-[#D6A62E]" />;
       case 'Briefcase': return <Briefcase className="w-5 h-5 text-[#D6A62E]" />;
+      case 'Palette': return <Palette className="w-5 h-5 text-[#D6A62E]" />;
       default: return <Sparkles className="w-5 h-5 text-[#D6A62E]" />;
     }
   };
@@ -73,10 +76,10 @@ export const ServicesSection: React.FC = () => {
         {/* 10 Services Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
           {services.map((service, index) => (
+            <Reveal key={service.id} delay={(index % 3) * 0.08} className="h-full">
             <div
-              key={service.id}
               id={`service-card-${service.id}`}
-              className="group rounded-2xl bg-[#073B32] border border-[#D6A62E]/20 hover:border-[#D6A62E] transition-all duration-300 overflow-hidden flex flex-col shadow-lg hover:shadow-2xl hover:-translate-y-1"
+              className="group rounded-2xl bg-[#073B32] border border-[#D6A62E]/20 hover:border-[#D6A62E] transition-all duration-300 overflow-hidden flex flex-col shadow-lg hover:shadow-2xl hover:-translate-y-1 h-full"
             >
               {/* Image Container with Zoom Effect */}
               <div className="relative h-48 overflow-hidden">
@@ -151,6 +154,7 @@ export const ServicesSection: React.FC = () => {
                 </div>
               </div>
             </div>
+            </Reveal>
           ))}
         </div>
 
