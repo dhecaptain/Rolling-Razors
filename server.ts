@@ -30,6 +30,7 @@ app.use((req, _res, next) => { (req as any).id = crypto.randomUUID(); next(); })
 const isProduction = env.NODE_ENV === "production";
 
 app.use(helmet({
+  frameguard: false,
   // In development Vite injects an inline React "preamble" script and opens an
   // HMR WebSocket. The hardened production CSP blocks both (script-src 'self'
   // and connect-src 'self'), which triggers

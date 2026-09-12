@@ -1,7 +1,5 @@
 import React from 'react';
-import { motion, useReducedMotion } from 'motion/react';
 import { useApp } from '../../context/AppContext';
-import { Reveal } from './Reveal';
 import { 
   CheckCircle, 
   Calendar, 
@@ -12,7 +10,6 @@ import {
 
 export const HowBookingWorks: React.FC = () => {
   const { setView, setBookingWizardInitialServiceId, setBookingWizardDraft } = useApp();
-  const reduce = useReducedMotion();
 
   const startBooking = () => {
     setBookingWizardInitialServiceId(null);
@@ -68,10 +65,9 @@ export const HowBookingWorks: React.FC = () => {
         {/* 4 Steps Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {steps.map((step, idx) => (
-            <Reveal key={idx} delay={idx * 0.1} className="h-full">
-            <motion.div
-              whileHover={reduce ? {} : { y: -6 }}
-              className="relative bg-[#073B32] border border-[#D6A62E]/20 rounded-2xl p-6 flex flex-col justify-between space-y-6 shadow-xl group hover:border-[#D6A62E] transition-colors h-full"
+            <div 
+              key={idx}
+              className="relative bg-[#073B32] border border-[#D6A62E]/20 rounded-2xl p-6 flex flex-col justify-between space-y-6 shadow-xl group hover:border-[#D6A62E] transition-all hover:-translate-y-1"
             >
               {/* Step Number & Icon */}
               <div className="flex items-center justify-between">
@@ -95,15 +91,12 @@ export const HowBookingWorks: React.FC = () => {
 
               {/* Progress Indicator line */}
               <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden">
-                <Reveal delay={0.3}>
-                <div
-                  className="bg-[#D6A62E] h-full rounded-full transition-all duration-500"
-                  style={{ width: `${(idx + 1) * 25}%` }}
+                <div 
+                  className="bg-[#D6A62E] h-full rounded-full transition-all duration-500" 
+                  style={{ width: `${(idx + 1) * 25}%` }} 
                 />
-                </Reveal>
               </div>
-            </motion.div>
-            </Reveal>
+            </div>
           ))}
         </div>
 

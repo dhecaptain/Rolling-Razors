@@ -20,10 +20,10 @@ export const FeaturedServiceSection: React.FC = () => {
   const [isSeatsFocused, setIsSeatsFocused] = useState(false);
 
   const materials = [
-    { name: 'Genuine Nappa Leather', desc: 'Silky smooth, high durability', image: '/images/upholstery/upholstery-02.jpg' },
-    { name: 'Italian Full Grain', desc: 'Full grain natural cowhide', image: '/images/upholstery/upholstery-10.jpg' },
-    { name: 'Heavy-Duty Commercial Vinyl', desc: '100% waterproof, tear resistant', image: '/images/cushioning/cushioning-01.jpeg' },
-    { name: 'Alcantara Suede & Leather Combo', desc: 'Velvety grip, heat dissipating', image: '/images/upholstery/upholstery-06.jpg' }
+    { name: 'Genuine Nappa Leather', desc: 'Silky smooth, high durability', image: 'https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=1200&q=80' },
+    { name: 'Italian Full Grain', desc: 'Full grain natural cowhide', image: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80' },
+    { name: 'Heavy-Duty Commercial Vinyl', desc: '100% waterproof, tear resistant', image: 'https://images.unsplash.com/photo-1541348263662-e0c8de4259ba?auto=format&fit=crop&w=1200&q=80' },
+    { name: 'Alcantara Suede & Leather Combo', desc: 'Velvety grip, heat dissipating', image: 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=1200&q=80' }
   ];
 
   const colors = [
@@ -84,7 +84,7 @@ export const FeaturedServiceSection: React.FC = () => {
           <div className="lg:col-span-6 space-y-4">
             <div className="relative rounded-2xl overflow-hidden border-2 border-[#D6A62E]/40 shadow-2xl group bg-[#052822] h-[400px] sm:h-[480px]">
               <img
-                src={cdnUrl('/images/upholstery/upholstery-09.jpg', { w: 1200 })}
+                src={cdnUrl('https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=1200&q=80', { w: 1200 })}
                 alt="Vehicle cabin background"
                 className="absolute inset-0 w-full h-full object-cover opacity-40"
                 loading="lazy"

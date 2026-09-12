@@ -35,7 +35,7 @@ const authProvider: "clerk" | "legacy" =
 
 export const env = {
   NODE_ENV: process.env.NODE_ENV || "development",
-  PORT: Number(process.env.PORT || 3000),
+  PORT: 3000,
   DATABASE_URL: requireEnv("DATABASE_URL", "postgresql://rolling_razors:rolling_razors_pass@localhost:5435/rolling_razors"),
 
   // --- Authentication provider ---
@@ -49,12 +49,12 @@ export const env = {
   ADMIN_CLERK_IDS: (process.env.ADMIN_CLERK_IDS || "").split(",").map(s => s.trim()).filter(Boolean),
 
   // --- Legacy custom auth (used only when AUTH_PROVIDER=legacy) ---
-  AUTH_SECRET: (process.env.AUTH_SECRET || "").trim(),
-  ADMIN_EMAIL: (process.env.ADMIN_EMAIL || "").trim().toLowerCase(),
-  ADMIN_PHONE: (process.env.ADMIN_PHONE || "").trim().replace(/\s+/g, ""),
-  ADMIN_PASSWORD: (process.env.ADMIN_PASSWORD || "").trim(),
-  ADMIN_NAME: (process.env.ADMIN_NAME || "").trim(),
-  OTP_HASH_SECRET: (process.env.OTP_HASH_SECRET || process.env.AUTH_SECRET || "").trim(),
+  AUTH_SECRET: (process.env.AUTH_SECRET || "rolling-razors-kenya-customs-secret-key-2026-auth-secure").trim(),
+  ADMIN_EMAIL: (process.env.ADMIN_EMAIL || "james@rollingrazors.co.ke").trim().toLowerCase(),
+  ADMIN_PHONE: (process.env.ADMIN_PHONE || "+254 712 345 678").trim().replace(/\s+/g, ""),
+  ADMIN_PASSWORD: (process.env.ADMIN_PASSWORD || "RollingRazors@2026!").trim(),
+  ADMIN_NAME: (process.env.ADMIN_NAME || "James Kimani (Owner)").trim(),
+  OTP_HASH_SECRET: (process.env.OTP_HASH_SECRET || process.env.AUTH_SECRET || "rolling-razors-kenya-customs-secret-key-2026-auth-secure").trim(),
 
   APP_URL: (process.env.APP_URL || "https://rollingrazors.co.ke").trim(),
   MPESA_CONSUMER_KEY: (process.env.MPESA_CONSUMER_KEY || "").trim(),

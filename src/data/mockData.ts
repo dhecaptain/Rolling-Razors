@@ -9,7 +9,7 @@ export const INITIAL_SERVICES: Service[] = [
     longDesc: 'Our signature full interior service revitalizes your entire vehicle cabin. We strip worn materials down to the structural frame, inspect ergonomics, and re-craft your seats, door cards, center consoles, and pillar trims with millimeter precision.',
     startingPrice: 18000,
     estimatedDuration: '2 - 3 Days',
-    image: '/images/upholstery/upholstery-02.jpg',
+    image: 'https://images.unsplash.com/photo-1541348263662-e0c8de4259ba?auto=format&fit=crop&w=1200&q=80',
     iconName: 'Car',
     isFeatured: true,
     popular: true,
@@ -24,7 +24,7 @@ export const INITIAL_SERVICES: Service[] = [
     longDesc: 'Tailored specifically to your driving ergonomics and style preferences. We redesign seat bolsters for high lateral support, add dual-density orthopedic foam, and stitch custom geometric diamond or hexagonal patterns.',
     startingPrice: 14500,
     estimatedDuration: '1 - 2 Days',
-    image: '/images/upholstery/upholstery-06.jpg',
+    image: 'https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=1200&q=80',
     iconName: 'Armchair',
     isFeatured: true,
     popular: true,
@@ -39,7 +39,7 @@ export const INITIAL_SERVICES: Service[] = [
     longDesc: 'From vehicle bench seats and matatu commuter cushions to residential patio daybeds and luxury couches. We use premium high-density bonded foam with moisture barrier linings and removable washable covers.',
     startingPrice: 6500,
     estimatedDuration: '24 - 48 Hours',
-    image: '/images/cushioning/cushioning-12.jpeg',
+    image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=1200&q=80',
     iconName: 'Layers',
     isFeatured: false,
     popular: true,
@@ -54,7 +54,7 @@ export const INITIAL_SERVICES: Service[] = [
     longDesc: 'Experience luxury automotive leather crafted with traditional saddle-stitching and modern CNC precision. Our leather hides are sourced for maximum heat and sun resistance in the Kenyan climate.',
     startingPrice: 22000,
     estimatedDuration: '3 - 4 Days',
-    image: '/images/upholstery/upholstery-10.jpg',
+    image: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80',
     iconName: 'Scissors',
     isFeatured: true,
     popular: false,
@@ -69,7 +69,7 @@ export const INITIAL_SERVICES: Service[] = [
     longDesc: 'Upgrade your driving touchpoint. We wrap your steering wheel in butter-smooth perforated leather or plush alcantara with contrasting cross-stitching and motorsport 12 o’clock center ring.',
     startingPrice: 4500,
     estimatedDuration: '3 - 4 Hours',
-    image: '/images/steering/steering-13.jpg',
+    image: 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=1200&q=80',
     iconName: 'Compass',
     isFeatured: false,
     popular: true,
@@ -84,7 +84,7 @@ export const INITIAL_SERVICES: Service[] = [
     longDesc: 'Eliminate road noise and protect your floorboards from dirt and moisture. We custom mold sound-deadening underlay and install heavy-duty automotive loop or plush cut-pile carpeting.',
     startingPrice: 8500,
     estimatedDuration: '1 Day',
-    image: '/images/upholstery/upholstery-09.jpg',
+    image: 'https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?auto=format&fit=crop&w=1200&q=80',
     iconName: 'Grid',
     isFeatured: false,
     popular: false,
@@ -99,7 +99,7 @@ export const INITIAL_SERVICES: Service[] = [
     longDesc: 'Protect vehicle paint and interiors from harsh equatorial sun and heavy tropical rain. Built with powder-coated galvanized steel frames and 98% UV-block waterproof shade net fabric.',
     startingPrice: 35000,
     estimatedDuration: '2 - 4 Days',
-    image: '/images/tent/tent-02.jpeg',
+    image: 'https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?auto=format&fit=crop&w=1200&q=80',
     iconName: 'Shield',
     isFeatured: false,
     popular: true,
@@ -114,7 +114,7 @@ export const INITIAL_SERVICES: Service[] = [
     longDesc: 'Heavy-duty canvas fabrication built to withstand the toughest African terrain. We manufacture custom vehicle pop-up awnings, safari camp tents, truck canopies, and specialized storage bags.',
     startingPrice: 28000,
     estimatedDuration: '3 - 5 Days',
-    image: '/images/tent/tent-04.jpeg',
+    image: 'https://images.unsplash.com/photo-1510312305653-8ed496efae75?auto=format&fit=crop&w=1200&q=80',
     iconName: 'Tent',
     isFeatured: false,
     popular: false,
@@ -129,7 +129,7 @@ export const INITIAL_SERVICES: Service[] = [
     longDesc: 'Refresh your workspace without buying expensive new furniture. We rebuild internal cushioning, replace peeling faux leather with commercial-grade upholstery, and service gas lifts and casters.',
     startingPrice: 5500,
     estimatedDuration: '1 - 2 Days',
-    image: '/images/upholstery/upholstery-03.jpg',
+    image: 'https://images.unsplash.com/photo-1580481077195-7098744be650?auto=format&fit=crop&w=1200&q=80',
     iconName: 'Briefcase',
     isFeatured: false,
     popular: false,
@@ -144,27 +144,12 @@ export const INITIAL_SERVICES: Service[] = [
     longDesc: 'Fix sagging headliners permanently. We strip old deteriorated foam, prep the roof board with heat-resistant contact adhesive, and install plush foam-backed suede, knit fabric, or custom starlight ambient LEDs.',
     startingPrice: 9500,
     estimatedDuration: '1 Day',
-    image: '/images/upholstery/upholstery-08.jpg',
+    image: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=1200&q=80',
     iconName: 'Sparkles',
     isFeatured: true,
     popular: true,
     includedFeatures: ['High-temp automotive adhesive (no sagging)', 'Foam-backed headliner cloth', 'Sun visor & pillar matching', 'Starlight optic fiber option', 'Sunroof cassette sealing'],
     materialsAvailable: ['Foam-Backed Headliner Fabric', 'Black Alcantara Suede', 'Diamond Quilted Headliner', 'Perforated Vinyl']
-  },
-  {
-    id: 'srv-11',
-    name: 'Car Painting & Spraying',
-    category: 'automotive',
-    shortDesc: 'Full-body spray painting, color changes & clear-coat finishing for a flawless showroom shine.',
-    longDesc: 'Transform your vehicle with a factory-grade spray finish. From minor panel resprays to complete color changes, we use 2K automotive paint systems with precision booth curing for deep gloss, chip resistance, and long-lasting UV protection on Kenyan roads.',
-    startingPrice: 15000,
-    estimatedDuration: '1 - 3 Days',
-    image: '/images/car-painting/car-painting-02.jpeg',
-    iconName: 'Palette',
-    isFeatured: true,
-    popular: true,
-    includedFeatures: ['Full-body or panel-specific respray', '2K primer, base & clear-coat system', 'Oven booth curing for deep gloss', 'Color matching & custom metallics', '1-year paint warranty'],
-    materialsAvailable: ['2K Acrylic', 'Metallic Finish', 'Matte Black', 'Pearl Finish', 'Clear-Coat Gloss']
   }
 ];
 
@@ -178,7 +163,7 @@ export const INITIAL_VEHICLES: Vehicle[] = [
     year: 2018,
     registrationNo: 'KDA 123A',
     color: 'Silver Metallic',
-    image: '/images/upholstery/upholstery-01.jpg',
+    image: 'https://images.unsplash.com/photo-1541348263662-e0c8de4259ba?auto=format&fit=crop&w=800&q=80',
     previousServicesCount: 2,
     notes: 'Commercial daily run. Needs high durability heavy-duty vinyl upholstery.'
   },
@@ -191,7 +176,7 @@ export const INITIAL_VEHICLES: Vehicle[] = [
     year: 2021,
     registrationNo: 'KCY 456B',
     color: 'Pearl White',
-    image: '/images/upholstery/upholstery-02.jpg',
+    image: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80',
     previousServicesCount: 1,
     notes: 'Personal luxury vehicle. Premium Nappa leather with gold contrast stitching.'
   },
@@ -204,7 +189,7 @@ export const INITIAL_VEHICLES: Vehicle[] = [
     year: 2020,
     registrationNo: 'KDG 889C',
     color: 'Midnight Black',
-    image: '/images/upholstery/upholstery-03.jpg',
+    image: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80',
     previousServicesCount: 3,
     notes: 'Safari and off-road spec. Heavy water-resistant leather with double stitch.'
   },
@@ -217,7 +202,7 @@ export const INITIAL_VEHICLES: Vehicle[] = [
     year: 2019,
     registrationNo: 'KBZ 554M',
     color: 'Desert Sand',
-    image: '/images/tent/tent-01.jpeg',
+    image: 'https://images.unsplash.com/photo-1559416523-140ddc3d238c?auto=format&fit=crop&w=800&q=80',
     previousServicesCount: 1,
     notes: 'Custom canvas canopy + heavy seat covers.'
   }
@@ -232,7 +217,7 @@ export const INITIAL_STAFF: Staff[] = [
     specialization: 'Master Upholsterer & Business Lead',
     activeJobs: 2,
     completedJobs: 340,
-    avatar: '',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
     rating: 4.98
   },
   {
@@ -243,7 +228,7 @@ export const INITIAL_STAFF: Staff[] = [
     specialization: 'Full Vehicle Interior & Custom Seats',
     activeJobs: 3,
     completedJobs: 185,
-    avatar: '',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
     rating: 4.95
   },
   {
@@ -254,7 +239,7 @@ export const INITIAL_STAFF: Staff[] = [
     specialization: 'Precision Leather & Steering Stitching',
     activeJobs: 4,
     completedJobs: 210,
-    avatar: '',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=300&q=80',
     rating: 4.92
   },
   {
@@ -265,7 +250,7 @@ export const INITIAL_STAFF: Staff[] = [
     specialization: 'Car Shades, Tents & Heavy Canvas',
     activeJobs: 2,
     completedJobs: 142,
-    avatar: '',
+    avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=300&q=80',
     rating: 4.88
   },
   {
@@ -276,7 +261,7 @@ export const INITIAL_STAFF: Staff[] = [
     specialization: 'Workshop Supervisor & Quality Control',
     activeJobs: 5,
     completedJobs: 410,
-    avatar: '',
+    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=300&q=80',
     rating: 4.99
   },
   {
@@ -287,7 +272,7 @@ export const INITIAL_STAFF: Staff[] = [
     specialization: 'Client Service & M-Pesa Billing',
     activeJobs: 0,
     completedJobs: 520,
-    avatar: '',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
     rating: 4.96
   }
 ];
@@ -307,7 +292,7 @@ export const INITIAL_BOOKINGS: Booking[] = [
       model: 'Fielder',
       year: 2019,
       registrationNo: 'KCY 456B',
-      photoUrl: '/images/upholstery/upholstery-02.jpg'
+      photoUrl: 'https://images.unsplash.com/photo-1541348263662-e0c8de4259ba?auto=format&fit=crop&w=600&q=80'
     },
     requirementsDesc: 'Complete 5-seat transformation with tan brown Nappa leather, diamond quilted backrests, black side bolsters, and matching gear knob.',
     selectedMaterial: 'Nappa Automotive Leather (Tan & Black)',
@@ -358,7 +343,7 @@ export const INITIAL_BOOKINGS: Booking[] = [
       model: 'Land Cruiser Prado',
       year: 2020,
       registrationNo: 'KDG 889C',
-      photoUrl: '/images/upholstery/upholstery-06.jpg'
+      photoUrl: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=600&q=80'
     },
     requirementsDesc: 'Heavy lumbar support addition for front driver and passenger seats. Dark saddle brown leather with ventilated perforations.',
     selectedMaterial: 'Genuine Italian Leather (Saddle Brown)',
@@ -588,7 +573,7 @@ export const INITIAL_WORK_ORDERS: WorkOrder[] = [
     estimatedCost: 18000,
     actualCost: 18000,
     beforePhotos: [
-      '/images/upholstery/upholstery-02.jpg'
+      'https://images.unsplash.com/photo-1541348263662-e0c8de4259ba?auto=format&fit=crop&w=600&q=80'
     ],
     progressPhotos: [],
     afterPhotos: [],
@@ -614,10 +599,10 @@ export const INITIAL_WORK_ORDERS: WorkOrder[] = [
     estimatedCost: 24000,
     actualCost: 24000,
     beforePhotos: [
-      '/images/upholstery/upholstery-03.jpg'
+      'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=600&q=80'
     ],
     progressPhotos: [
-      '/images/upholstery/upholstery-05.jpg'
+      'https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=600&q=80'
     ],
     afterPhotos: [],
     internalNotes: 'Seats stripped, foam shaped, leather stitching currently on front driver seat.',
@@ -689,9 +674,9 @@ export const INITIAL_WORK_ORDERS: WorkOrder[] = [
     materialsRequired: ['14 Heavy Vinyl Seat Sets', 'High-Density Sponge', 'Industrial Zippers'],
     estimatedCost: 38000,
     actualCost: 38000,
-    beforePhotos: ['/images/cushioning/cushioning-06.jpeg'],
-    progressPhotos: ['/images/cushioning/cushioning-08.jpeg'],
-    afterPhotos: ['/images/cushioning/cushioning-12.jpeg'],
+    beforePhotos: ['https://images.unsplash.com/photo-1541348263662-e0c8de4259ba?auto=format&fit=crop&w=600&q=80'],
+    progressPhotos: ['https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=600&q=80'],
+    afterPhotos: ['https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=600&q=80'],
     internalNotes: 'Client inspected and paid full balance with M-Pesa. 6-month warranty card issued.',
     progressPercentage: 100,
     createdAt: '2026-08-26',
@@ -705,7 +690,7 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     name: 'Brian Mwangi',
     phone: '+254 712 901 234',
     email: 'brian.mwangi@gmail.com',
-    avatar: '',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
     vehiclesCount: 2,
     totalBookings: 3,
     totalSpent: 45500,
@@ -722,7 +707,7 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     name: 'Anthony Kiprotich',
     phone: '+254 722 345 678',
     email: 'a.kiprotich@transport.co.ke',
-    avatar: '',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
     vehiclesCount: 1,
     totalBookings: 2,
     totalSpent: 38000,
@@ -738,7 +723,7 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     name: 'Captain Mercy Njeri',
     phone: '+254 733 998 877',
     email: 'mercy.njeri@safari.com',
-    avatar: '',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
     vehiclesCount: 1,
     totalBookings: 1,
     totalSpent: 4500,
@@ -752,7 +737,7 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     name: 'Hassan Omar',
     phone: '+254 721 556 677',
     email: 'hassan.o@coastmatatu.ke',
-    avatar: '',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
     vehiclesCount: 3,
     totalBookings: 4,
     totalSpent: 124000,
@@ -766,7 +751,7 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     name: 'Dr. Evans Omondi',
     phone: '+254 715 889 900',
     email: 'evans.omondi@knh.or.ke',
-    avatar: '',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=200&q=80',
     vehiclesCount: 2,
     totalBookings: 1,
     totalSpent: 75000,
@@ -834,9 +819,9 @@ export const INITIAL_PORTFOLIO: PortfolioItem[] = [
     service: 'Full Upholstery',
     location: 'Nairobi, Kenya',
     vehicleModel: 'Toyota Probox 2018',
-    image: '/images/upholstery/upholstery-02.jpg',
-    beforeImage: '/images/upholstery/upholstery-07.jpg',
-    afterImage: '/images/upholstery/upholstery-10.jpg',
+    image: 'https://images.unsplash.com/photo-1541348263662-e0c8de4259ba?auto=format&fit=crop&w=1200&q=80',
+    beforeImage: 'https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&w=1200&q=80',
+    afterImage: 'https://images.unsplash.com/photo-1541348263662-e0c8de4259ba?auto=format&fit=crop&w=1200&q=80',
     description: 'Converted a tired commercial cabin into a luxury executive commuter with tan double-stitched leatherette, matching door trims, and noise-canceling floor carpet.',
     tags: ['Toyota Probox', 'Tan Leather', 'Diamond Stitch', 'Full Cabin'],
     isFeatured: true
@@ -848,9 +833,9 @@ export const INITIAL_PORTFOLIO: PortfolioItem[] = [
     service: 'Custom Car Seats & Leather',
     location: 'Karen, Kenya',
     vehicleModel: 'Toyota Prado TX-L 2021',
-    image: '/images/upholstery/upholstery-10.jpg',
-    beforeImage: '/images/upholstery/upholstery-04.jpg',
-    afterImage: '/images/upholstery/upholstery-06.jpg',
+    image: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80',
+    beforeImage: 'https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=1200&q=80',
+    afterImage: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80',
     description: 'Handcrafted top-grain Italian saddle leather with perforated cooling zones, custom headrest crest debossing, and gold-thread double French stitching.',
     tags: ['Land Cruiser', 'Genuine Leather', 'Italian Hide', 'Perforated'],
     isFeatured: true
@@ -862,7 +847,7 @@ export const INITIAL_PORTFOLIO: PortfolioItem[] = [
     service: 'Steering Wheel Stitching',
     location: 'Nairobi, Kenya',
     vehicleModel: 'Subaru WRX STI',
-    image: '/images/steering/steering-17.jpg',
+    image: 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=1200&q=80',
     description: 'Plush motorsport alcantara wrap with red 12-o’clock alignment stripe and cross-stitched thread with thumb-rest contouring.',
     tags: ['Steering', 'Alcantara', 'Motorsport', 'Hand Stitch'],
     isFeatured: true
@@ -874,7 +859,7 @@ export const INITIAL_PORTFOLIO: PortfolioItem[] = [
     service: 'Cushion Customization',
     location: 'Mombasa Road, Kenya',
     vehicleModel: 'Nissan Caravan NV350',
-    image: '/images/cushioning/cushioning-06.jpeg',
+    image: 'https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=1200&q=80',
     description: 'Custom high-resilience bonded foam cushions engineered for inter-county durability, wrapped in tear-resistant 1.2mm automotive vinyl.',
     tags: ['Matatu', 'Heavy Duty', 'Custom Foam', 'Transit'],
     isFeatured: false
@@ -886,7 +871,7 @@ export const INITIAL_PORTFOLIO: PortfolioItem[] = [
     service: 'Tents & Canvas Work',
     location: 'Naivasha, Kenya',
     vehicleModel: 'Land Cruiser 79 Series',
-    image: '/images/tent/tent-01.jpeg',
+    image: 'https://images.unsplash.com/photo-1510312305653-8ed496efae75?auto=format&fit=crop&w=1200&q=80',
     description: 'Custom wax-treated 550gsm ripstop canvas canopy with heavy duty YKK roll-up side doors and integrated fold-out safari awning.',
     tags: ['Overland', 'Safari Tent', 'Ripstop Canvas', '4x4 Rig'],
     isFeatured: true
@@ -898,9 +883,9 @@ export const INITIAL_PORTFOLIO: PortfolioItem[] = [
     service: 'Roofing & Headliner',
     location: 'Kilimani, Kenya',
     vehicleModel: 'Mercedes-Benz C200',
-    image: '/images/upholstery/upholstery-04.jpg',
-    beforeImage: '/images/upholstery/upholstery-01.jpg',
-    afterImage: '/images/upholstery/upholstery-04.jpg',
+    image: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=1200&q=80',
+    beforeImage: 'https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?auto=format&fit=crop&w=1200&q=80',
+    afterImage: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=1200&q=80',
     description: 'Eliminated sagged OEM roof lining and installed deep jet-black microfiber suede with 450-point twinkling optical fiber starlight ceiling.',
     tags: ['Starlight Roof', 'Suede Headliner', 'Luxury', 'Mercedes'],
     isFeatured: true

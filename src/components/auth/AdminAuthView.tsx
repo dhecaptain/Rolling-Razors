@@ -93,9 +93,21 @@ export const AdminAuthView: React.FC = () => {
 
         {!requiresOtp ? (
           <form onSubmit={handleAdminSubmit} className="space-y-4 text-xs">
-            <div className="bg-[#052822] p-3 rounded-xl border border-[#D6A62E]/20 space-y-1">
-              <div className="flex items-center gap-1.5 text-[#D6A62E] font-bold"><KeyRound className="w-3.5 h-3.5" /><span>Staff Verification</span></div>
-              <p className="text-[11px] text-white/70">Admin credentials are verified server-side with bcrypt + optional 2FA. Rate-limited 5/min.</p>
+            <div className="bg-[#052822] p-3 rounded-xl border border-[#D6A62E]/20 space-y-1.5">
+              <div className="flex items-center justify-between text-[#D6A62E]">
+                <div className="flex items-center gap-1.5 font-bold"><KeyRound className="w-3.5 h-3.5" /><span>Staff Verification</span></div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAdminIdentifier('james@rollingrazors.co.ke');
+                    setAdminPasscode('rolling2025');
+                  }}
+                  className="text-[11px] underline text-[#D6A62E] hover:text-amber-200 cursor-pointer font-medium"
+                >
+                  Fill Demo Admin
+                </button>
+              </div>
+              <p className="text-[11px] text-white/70">Workshop owner credentials: <code className="text-[#D6A62E] font-mono">james@rollingrazors.co.ke</code> / <code className="text-[#D6A62E] font-mono">rolling2025</code></p>
             </div>
             <div>
               <label className="block text-white/80 font-bold mb-1">Staff Identifier (Email or Phone)</label>

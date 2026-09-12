@@ -24,7 +24,7 @@ export default defineConfig({
       DATABASE_URL: process.env.DATABASE_URL || "postgresql://rolling_razors:rolling_razors_pass@localhost:5435/rolling_razors",
       AUTH_SECRET: "test-secret-32chars-long-for-ci-only",
       ADMIN_EMAIL: "ci@rollingrazors.co.ke",
-      ADMIN_PHONE: "0722345678",
+      ADMIN_PHONE: "0712345678",
       ADMIN_PASSWORD: "ci-test-pass",
       // Tests use the legacy provider unless a Clerk test instance is configured.
       AUTH_PROVIDER: process.env.AUTH_PROVIDER || "legacy",

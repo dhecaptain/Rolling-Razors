@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
-import { motion, useReducedMotion } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { cdnUrl, srcSet } from '../../utils/image';
-import { Reveal } from './Reveal';
 import { 
   MapPin, 
   Car, 
@@ -14,8 +12,7 @@ import {
 export const PortfolioGallery: React.FC = () => {
   const { portfolio, setView, setBookingWizardInitialServiceId } = useApp();
   const [activeCategory, setActiveCategory] = useState<string>('All');
-  const [sliderPosition, setSliderPosition] = useState<number>(50);
-  const reduce = useReducedMotion();
+  const [sliderPosition, setSliderPosition] = useState<number>(50); // 0 to 100% for Before/After
 
   const categories = ['All', 'Car Interiors', 'Seats', 'Leather', 'Cushions', 'Canvas', 'Before & After'];
 
@@ -45,7 +42,7 @@ export const PortfolioGallery: React.FC = () => {
   return (
     <section id="portfolio-section" className="py-20 lg:py-28 bg-[#073B32] text-[#F5F1E8] relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
+        
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
           <div className="space-y-3">
@@ -67,20 +64,13 @@ export const PortfolioGallery: React.FC = () => {
                 key={cat}
                 id={`filter-portfolio-${cat.toLowerCase().replace(/\s+/g, '-')}`}
                 onClick={() => setActiveCategory(cat)}
-                className={`relative py-1.5 px-3 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                className={`py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   activeCategory === cat
-                    ? 'text-[#073B32]'
-                    : 'text-[#F5F1E8]/70 hover:text-white'
+                    ? 'bg-[#D6A62E] text-[#073B32] shadow-sm'
+                    : 'text-[#F5F1E8]/70 hover:text-white hover:bg-white/5'
                 }`}
               >
-                {activeCategory === cat && (
-                  <motion.div
-                    layoutId="portfolioFilterPill"
-                    className="absolute inset-0 bg-[#D6A62E] rounded-lg"
-                    transition={reduce ? {} : { type: 'spring', stiffness: 400, damping: 28 }}
-                  />
-                )}
-                <span className="relative z-10">{cat}</span>
+                {cat}
               </button>
             ))}
           </div>
@@ -175,13 +165,9 @@ export const PortfolioGallery: React.FC = () => {
                 className="absolute top-0 bottom-0 w-1 bg-[#D6A62E] shadow-2xl z-20 pointer-events-none flex items-center justify-center"
                 style={{ left: `${sliderPosition}%` }}
               >
-                <motion.div
-                  whileHover={reduce ? {} : { scale: 1.15 }}
-                  transition={reduce ? {} : { type: 'spring', stiffness: 500, damping: 20 }}
-                  className="w-9 h-9 rounded-full bg-[#D6A62E] text-[#073B32] flex items-center justify-center shadow-2xl border-2 border-[#073B32] font-black text-xs"
-                >
+                <div className="w-9 h-9 rounded-full bg-[#D6A62E] text-[#073B32] flex items-center justify-center shadow-2xl border-2 border-[#073B32] font-black text-xs">
                   ↔
-                </motion.div>
+                </div>
               </div>
             </div>
           </div>
@@ -189,9 +175,9 @@ export const PortfolioGallery: React.FC = () => {
 
         {/* Gallery Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredItems.map((item, idx) => (
-            <Reveal key={item.id} delay={idx * 0.06}>
+          {filteredItems.map((item) => (
             <div
+              key={item.id}
               className="bg-[#0B4035] rounded-2xl overflow-hidden border border-[#D6A62E]/20 hover:border-[#D6A62E] transition-all duration-300 shadow-xl group flex flex-col justify-between"
             >
               <div className="relative h-60 overflow-hidden">
@@ -245,7 +231,6 @@ export const PortfolioGallery: React.FC = () => {
                 </div>
               </div>
             </div>
-            </Reveal>
           ))}
         </div>
 

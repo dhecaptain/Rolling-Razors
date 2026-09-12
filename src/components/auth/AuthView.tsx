@@ -21,7 +21,6 @@ export const AuthView: React.FC = () => {
     authInitialMode,
     loginCustomer,
     registerCustomer,
-    isLoggedIn,
   } = useApp();
 
   const [isRegister, setIsRegister] = useState(false);
@@ -94,16 +93,7 @@ export const AuthView: React.FC = () => {
           <p className="text-xs text-white/70">
             {isRegister ? 'Join Kenyan vehicle owners managing custom leather & upholstery jobs.' : 'Track job stitching status, view invoices, and settle M-Pesa deposits.'}
           </p>
-          <p className="text-[11px] text-white/40">
-            Workshop staff?{' '}
-            {!isLoggedIn ? (
-              <button onClick={() => setView('admin_auth' as any)} className="text-[#D6A62E] underline">
-                Sign in to Workshop Hub →
-              </button>
-            ) : (
-              <span className="text-white/30">Use the Staff button in the navigation bar.</span>
-            )}
-          </p>
+          <p className="text-[11px] text-white/40">Workshop staff? <button onClick={()=>setView('admin_auth' as any)} className="text-[#D6A62E] underline">Sign in to Workshop Hub →</button></p>
         </div>
 
         {errorMessage && (
@@ -145,11 +135,16 @@ export const AuthView: React.FC = () => {
                   className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-white font-bold placeholder-white/30 focus:outline-none focus:border-[#D6A62E] font-mono"
                 />
               </div>
-              {(import.meta as any).env?.DEV && (
-                <span className="text-[10px] text-[#D6A62E] mt-1 block">
-                  Default prototype customer: <strong className="font-mono">0712 901 234</strong>
-                </span>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setPhone('0712 901 234');
+                  setCustomerPassword('1234');
+                }}
+                className="text-[11px] text-[#D6A62E] hover:text-amber-200 hover:underline mt-1 block cursor-pointer font-medium"
+              >
+                Demo driver: <strong className="font-mono">0712 901 234</strong> (click to auto-fill)
+              </button>
             </div>
 
             {isRegister && (
