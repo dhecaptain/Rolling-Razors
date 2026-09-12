@@ -12,13 +12,8 @@ export const vehicleDetailsSchema = z.object({
 });
 
 export const bookingCreateSchema = z.object({
-  id: z.string().min(1).optional(),
   customerId: z.string().optional(),
-  customerName: z.string().min(2).max(100),
-  customerPhone: phoneSchema,
-  customerEmail: z.string().email().optional().or(z.literal("")),
   serviceId: z.string().min(1),
-  serviceName: z.string().min(1),
   vehicleDetails: vehicleDetailsSchema,
   requirementsDesc: z.string().max(2000).optional(),
   notes: z.string().max(2000).optional(),
@@ -31,18 +26,9 @@ export const bookingCreateSchema = z.object({
   locationType: z.enum(["workshop", "customer_location"]),
   customerLocation: z.string().optional(),
   customerLocationAddress: z.string().optional(),
-  estimatedPrice: z.number().min(0),
-  depositAmount: z.number().min(0),
-  balanceAmount: z.number().optional(),
-  depositPaid: z.boolean().optional(),
-  paymentStatus: z.enum(["pending", "processing", "deposit_paid", "paid", "failed", "refunded"]).optional(),
-  paymentMethod: z.string().optional(),
-  mpesaReceiptNo: z.string().optional(),
-  status: z.enum(["pending", "confirmed", "checked_in", "in_progress", "quality_check", "ready", "completed", "cancelled"]),
-  assignedStaffId: z.string().optional(),
-  assignedStaffName: z.string().optional(),
-  workOrderId: z.string().optional(),
-}).passthrough();
+  privacyAccepted: z.literal(true),
+  termsAccepted: z.literal(true),
+});
 
 export const vehicleCreateSchema = z.object({
   id: z.string().optional(),
@@ -83,6 +69,12 @@ export const stkPushSchema = z.object({
   invoiceId: z.string().optional(),
   accountReference: z.string().optional(),
   transactionDesc: z.string().optional(),
+});
+
+export const buildDraftSchema = z.object({
+  material: z.string().min(1).max(100),
+  color: z.string().min(1).max(100),
+  pattern: z.string().min(1).max(100),
 });
 
 export function validate<T>(schema: z.ZodSchema<T>, data: unknown): { success: boolean; data?: T; error?: string } {

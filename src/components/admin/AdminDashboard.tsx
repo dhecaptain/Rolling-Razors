@@ -139,7 +139,7 @@ export const AdminDashboard: React.FC = () => {
     <div id="admin-dashboard-container" className="min-h-screen pt-28 pb-20 bg-[#073B32] text-[#F5F1E8]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        <div className="bg-[#0B4035] border border-[#D6A62E]/30 rounded-3xl p-6 sm:p-8 shadow-2xl mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div className="rr-md-card border-[#D6A62E]/30 p-6 sm:p-8 shadow-2xl mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-[#073B32] border-2 border-[#D6A62E] flex items-center justify-center text-[#D6A62E] shadow-inner">
               <ShieldAlert className="w-8 h-8" />

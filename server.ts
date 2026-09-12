@@ -17,7 +17,7 @@ import { prisma } from "./server/prisma";
 import { initSentry, Sentry } from "./server/sentry";
 import { requireCasbin } from "./server/casbin/enforcer";
 import { normalizePhoneKe, toDarajaPhone, phoneKey, phonesMatch, isValidKePhone } from "./server/phone";
-import { validate, adminLoginSchema, customerLoginSchema, customerRegisterSchema, stkPushSchema, bookingCreateSchema, vehicleCreateSchema } from "./server/validators";
+import { validate, adminLoginSchema, customerLoginSchema, customerRegisterSchema, stkPushSchema, bookingCreateSchema, vehicleCreateSchema, buildDraftSchema } from "./server/validators";
 import { Booking, Customer, User, Vehicle, WorkOrder, UserRole } from "./src/types";
 
 initSentry();
@@ -115,6 +115,7 @@ function authenticateToken(req: express.Request,res: express.Response,next: expr
   let token: string | undefined;
   const h=req.headers.authorization;
   if(h?.startsWith("Bearer ")) token=h.split(" ")[1];
+  else if((req as any).cookies?.rr_auth_token) token=(req as any).cookies.rr_auth_token;
   else if((req as any).cookies?.admin_token) token=(req as any).cookies.admin_token;
   if(!token) return res.status(401).json({ success:false, error:"Authorization token required." });
   const d=verifyToken(token); if(!d) return res.status(401).json({ success:false, error:"Invalid or expired session token." }); if(d.jti && tokenDenylist.has(d.jti)) return res.status(401).json({ success:false, error:"Token revoked." }); (req as any).user=d; (req as any).token=token; next();
@@ -123,6 +124,7 @@ function authenticateOptional(req: express.Request,_res: express.Response,next: 
   let token: string | undefined;
   const h=req.headers.authorization;
   if(h?.startsWith("Bearer ")) token=h.split(" ")[1];
+  else if((req as any).cookies?.rr_auth_token) token=(req as any).cookies.rr_auth_token;
   else if((req as any).cookies?.admin_token) token=(req as any).cookies.admin_token;
   if(token){ const d=verifyToken(token); if(d && !(d.jti && tokenDenylist.has(d.jti))) (req as any).user=d; } next();
 }
@@ -323,7 +325,9 @@ app.post("/api/auth/customer/login", legacyAuthOnly, customerAuthLimiter, async 
   let customer=await serverDb.findUser(String(phone));
   if(!customer){ const custs=await serverDb.getCustomers(); const custRecord=custs.find(c=>phonesMatch(c.phone, String(phone))); if(custRecord){ customer={ id:custRecord.id, name:custRecord.name, phone:custRecord.phone, email:custRecord.email, role:"customer", avatar:custRecord.avatar||"", location:custRecord.address }; await serverDb.upsertUser(customer); } }
   if(!customer) return res.status(404).json({ success:false, error:"No driver account found with this phone number. Please register first." });
-  const token=generateToken(customer, 24*7); return res.json({ success:true, user:{ ...customer, token }, token });
+  const token=generateToken(customer, 24*7);
+  res.cookie("rr_auth_token", token, { httpOnly:true, secure: env.NODE_ENV==="production", sameSite:"strict", maxAge: 7*24*60*60*1000, path:"/" });
+  return res.json({ success:true, user:customer });
 });
 
 app.post("/api/auth/customer/register", legacyAuthOnly, customerAuthLimiter, async (req,res)=>{
@@ -334,7 +338,8 @@ app.post("/api/auth/customer/register", legacyAuthOnly, customerAuthLimiter, asy
   const newId=`cust-${Date.now()}-${crypto.randomUUID().slice(0,8)}`; const newUser: User={ id:newId, name:String(name).trim(), phone:formattedPhone, email: email?String(email).trim().toLowerCase():`${String(name).toLowerCase().replace(/\s+/g,".")}@gmail.com`, role:"customer", avatar:"https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80", location:"Nairobi, Kenya" };
   await serverDb.upsertUser(newUser); const newCustomer: Customer={ id:newId, name:newUser.name, phone:newUser.phone, email:newUser.email, avatar:newUser.avatar, totalSpent:0, status:"New", address:"Nairobi, Kenya", savedVehicles:[] };
   await serverDb.saveCustomer(newCustomer); const token=generateToken(newUser, 24*7);
-  return res.status(201).json({ success:true, user:{ ...newUser, token }, token });
+  res.cookie("rr_auth_token", token, { httpOnly:true, secure: env.NODE_ENV==="production", sameSite:"strict", maxAge: 7*24*60*60*1000, path:"/" });
+  return res.status(201).json({ success:true, user:newUser });
 });
 
 app.post("/api/auth/customer/send-otp", legacyAuthOnly, otpLimiter, async (req,res)=>{
@@ -356,9 +361,10 @@ app.post("/api/auth/logout", async (req,res)=>{
   // lived and stateless so no server-side denylist is required. We still clear
   // the legacy admin cookie and revoke a legacy jti if one is presented.
   const h=req.headers.authorization;
-  const legacyToken = h?.startsWith("Bearer ") ? h.split(" ")[1] : (req as any).cookies?.admin_token;
+  const legacyToken = h?.startsWith("Bearer ") ? h.split(" ")[1] : ((req as any).cookies?.rr_auth_token || (req as any).cookies?.admin_token);
   if(legacyToken){ const d=verifyToken(legacyToken); if(d?.jti) tokenDenylist.add(d.jti); }
   res.clearCookie("admin_token", { httpOnly:true, secure: env.NODE_ENV==="production", sameSite:"strict", path:"/" });
+  res.clearCookie("rr_auth_token", { httpOnly:true, secure: env.NODE_ENV==="production", sameSite:"strict", path:"/" });
   return res.json({ success:true, message:"Logged out." });
 });
 
@@ -376,10 +382,31 @@ app.post("/api/auth/sync", clerkAuthOnly, async (req,res)=>{
   }
 });
 
+app.get("/api/build-draft", authenticate, async (req,res)=>{
+  const user=(req as any).user;
+  const draft=await serverDb.getBuildDraft(user.id);
+  return res.json({ success:true, draft: draft || null });
+});
+
+app.put("/api/build-draft", authenticate, async (req,res)=>{
+  const v=validate(buildDraftSchema, req.body);
+  if(!v.success) return res.status(400).json({ success:false, error:v.error });
+  const user=(req as any).user;
+  const draft=await serverDb.saveBuildDraft(user.id, v.data as { material:string; color:string; pattern:string });
+  return res.json({ success:true, draft });
+});
+
+app.delete("/api/build-draft", authenticate, async (req,res)=>{
+  const user=(req as any).user;
+  await serverDb.deleteBuildDraft(user.id);
+  return res.json({ success:true });
+});
+
 app.get("/api/auth/verify", legacyAuthOnly, (req,res)=>{
   let token: string | undefined;
   const h=req.headers.authorization;
   if(h?.startsWith("Bearer ")) token=h.split(" ")[1];
+  else if((req as any).cookies?.rr_auth_token) token=(req as any).cookies.rr_auth_token;
   else if((req as any).cookies?.admin_token) token=(req as any).cookies.admin_token;
   if(!token) return res.status(401).json({ valid:false, error:"Missing Bearer token." });
   const d=verifyToken(token); if(!d) return res.status(401).json({ valid:false, error:"Token signature invalid or expired." });
@@ -415,12 +442,13 @@ app.post("/api/bookings", authenticate, async (req,res)=>{
   const estimatedPrice=Math.max(0, Math.round(service.startingPrice));
   const customerName=user.role === "admin" ? customer.name : user.name;
   const customerPhone=normalizePhoneKe(user.role === "admin" ? customer.phone : user.phone);
+  const consentTimestamp = new Date();
   const bookingData: Booking={
     id:bookingId, customerId, customerName, customerPhone, customerEmail:customer.email,
     serviceId:service.id, serviceName:service.name, vehicleDetails:{ ...input.vehicleDetails, registrationNo: input.vehicleDetails.registrationNo.toUpperCase() },
     requirementsDesc:input.requirementsDesc, notes:input.notes, customOptions:input.customOptions, referencePhotos:input.referencePhotos, selectedMaterial:input.selectedMaterial, stitchingStyle:input.stitchingStyle,
     appointmentDate:input.appointmentDate, appointmentTime:input.appointmentTime, locationType:input.locationType, customerLocation:input.customerLocation, customerLocationAddress:input.customerLocationAddress,
-    estimatedPrice, depositAmount: Math.round(estimatedPrice*0.35), balanceAmount: Math.round(estimatedPrice*0.65), depositPaid:false, paymentStatus:"pending", status:"pending", workOrderId, createdAt:new Date().toISOString(), timeline:[{ status:"pending", timestamp:new Date().toLocaleString(), title:"Booking Created", note:`Appointment requested for ${input.vehicleDetails.make} ${input.vehicleDetails.model}.`, updatedBy:customerName }],
+    estimatedPrice, depositAmount: Math.round(estimatedPrice*0.35), balanceAmount: Math.round(estimatedPrice*0.65), depositPaid:false, paymentStatus:"pending",     status:"pending", workOrderId, createdAt:new Date().toISOString(), privacyAcceptedAt:consentTimestamp.toISOString(), termsAcceptedAt:consentTimestamp.toISOString(), timeline:[{ status:"pending", timestamp:new Date().toLocaleString(), title:"Booking Created", note:`Appointment requested for ${input.vehicleDetails.make} ${input.vehicleDetails.model}.`, updatedBy:customerName }],
   };
   const dynamicMaterials:string[]=[bookingData.selectedMaterial||'Automotive Leather / Vinyl','High Density Ergonomic Foam Cushioning','Bonded Heavy-Duty Seam Thread'];
   const newWorkOrder: WorkOrder={ id:workOrderId, bookingId, customerId, customerName:bookingData.customerName, customerPhone:bookingData.customerPhone, vehicleDisplayName:`${bookingData.vehicleDetails.make} ${bookingData.vehicleDetails.model} (${bookingData.vehicleDetails.year})`, vehicleRegistration:bookingData.vehicleDetails.registrationNo, serviceName:bookingData.serviceName, assignedStaffId:bookingData.assignedStaffId, assignedStaffName:bookingData.assignedStaffName||'Unassigned', priority:'Normal', stage:'BOOKED', customerRequirements:bookingData.requirementsDesc||'Standard custom upholstery package', materialsRequired:dynamicMaterials, estimatedCost:bookingData.estimatedPrice, actualCost:undefined, beforePhotos:[], progressPhotos:[], afterPhotos:[], progressPercentage:10, createdAt:new Date().toISOString().split('T')[0], targetCompletionDate:bookingData.appointmentDate };

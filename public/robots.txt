@@ -1,5 +1,9 @@
 User-agent: *
 Allow: /
 Disallow: /api/
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /auth
+Disallow: /booking
 
 Sitemap: https://rollingrazors.co.ke/sitemap.xml

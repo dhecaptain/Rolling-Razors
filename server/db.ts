@@ -1,6 +1,13 @@
 import { prisma } from "./prisma";
 import type { Booking, Customer, Invoice, Staff, User, Vehicle, WorkOrder } from "../src/types";
 
+export interface BuildDraftRecord {
+  material: string;
+  color: string;
+  pattern: string;
+  updatedAt: string;
+}
+
 export interface MpesaTransactionRecord {
   merchantRequestId: string;
   checkoutRequestId: string;
@@ -26,6 +33,25 @@ function phoneKey(phone: string): string {
 }
 
 class PrismaDatabaseManager {
+  async getBuildDraft(userId: string): Promise<BuildDraftRecord | undefined> {
+    const draft = await prisma.buildDraft.findUnique({ where: { userId } });
+    if (!draft) return undefined;
+    return { material: draft.material, color: draft.color, pattern: draft.pattern, updatedAt: draft.updatedAt.toISOString() };
+  }
+
+  async saveBuildDraft(userId: string, draft: Omit<BuildDraftRecord, "updatedAt">): Promise<BuildDraftRecord> {
+    const saved = await prisma.buildDraft.upsert({
+      where: { userId },
+      update: draft,
+      create: { userId, ...draft },
+    });
+    return { material: saved.material, color: saved.color, pattern: saved.pattern, updatedAt: saved.updatedAt.toISOString() };
+  }
+
+  async deleteBuildDraft(userId: string): Promise<void> {
+    await prisma.buildDraft.deleteMany({ where: { userId } });
+  }
+
   async getUsers(): Promise<User[]> {
     const users = await prisma.user.findMany();
     return users.map(mapUser);
@@ -419,6 +445,7 @@ function mapBooking(r: any): Booking {
     appointmentDate: r.appointmentDate, appointmentTime: r.appointmentTime, locationType: r.locationType as any, customerLocation: r.customerLocation || undefined, customerLocationAddress: r.customerLocationAddress || undefined,
     estimatedPrice: r.estimatedPrice, depositAmount: r.depositAmount, balanceAmount: r.balanceAmount ?? undefined, depositPaid: r.depositPaid, paymentStatus: r.paymentStatus as any, paymentMethod: r.paymentMethod || undefined, mpesaReceiptNo: r.mpesaReceiptNo || undefined,
     status: r.status as any, assignedStaffId: r.assignedStaffId || undefined, assignedStaffName: r.assignedStaffName || undefined, workOrderId: r.workOrderId || undefined, timeline: r.timeline as any, internalNotes: r.internalNotes || undefined, createdAt: r.createdAt.toISOString(),
+    privacyAcceptedAt: r.privacyAcceptedAt?.toISOString(), termsAcceptedAt: r.termsAcceptedAt?.toISOString(),
   };
 }
 function toBookingData(b: Booking): any {
@@ -429,6 +456,8 @@ function toBookingData(b: Booking): any {
     appointmentDate: b.appointmentDate, appointmentTime: b.appointmentTime, locationType: b.locationType, customerLocation: b.customerLocation, customerLocationAddress: b.customerLocationAddress,
     estimatedPrice: b.estimatedPrice, depositAmount: b.depositAmount, balanceAmount: b.balanceAmount, depositPaid: b.depositPaid || false, paymentStatus: b.paymentStatus, paymentMethod: b.paymentMethod, mpesaReceiptNo: b.mpesaReceiptNo,
     status: b.status, assignedStaffId: b.assignedStaffId, assignedStaffName: b.assignedStaffName, workOrderId: b.workOrderId, timeline: b.timeline as any, internalNotes: b.internalNotes,
+    privacyAcceptedAt: b.privacyAcceptedAt ? new Date(b.privacyAcceptedAt) : undefined,
+    termsAcceptedAt: b.termsAcceptedAt ? new Date(b.termsAcceptedAt) : undefined,
   };
 }
 function toBookingPatch(p: Partial<Booking>): any {

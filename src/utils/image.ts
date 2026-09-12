@@ -22,6 +22,6 @@ export function cdnUrl(src: string, opts: Opts = {}): string {
   }
 }
 
-export function srcSet(src: string, widths = [400, 800, 1200]): string {
-  return widths.map(w => `${cdnUrl(src, { w })} ${w}w`).join(", ");
+export function srcSet(src: string, widths = [400, 800, 1200], q = 80): string {
+  return widths.map(w => `${cdnUrl(src, { w, q })} ${w}w`).join(", ");
 }

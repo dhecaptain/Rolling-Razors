@@ -8,7 +8,6 @@ import { clerkEnabled, clerkPublishableKey } from './auth/clerkConfig';
 import './index.css';
 
 initSentry();
-
 const tree = (
   <ErrorBoundary>
     <App />

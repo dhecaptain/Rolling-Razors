@@ -29,11 +29,14 @@ export const BookingWizard: React.FC = () => {
     currentUser, 
     setView, 
     openMpesaPayment, 
+    openAuth,
     bookingWizardInitialServiceId,
     setBookingWizardInitialServiceId,
     bookingWizardDraft,
+    setBookingWizardDraft,
     setCustomerTab,
-    addToast
+    addToast,
+    openLegalModal
   } = useApp();
 
   // Wizard Steps: 1: Service, 2: Vehicle & Customization, 3: Date & Details, 4: Deposit & M-Pesa, 5: Confirmed
@@ -65,6 +68,7 @@ export const BookingWizard: React.FC = () => {
   const [customerName, setCustomerName] = useState<string>(currentUser?.name || '');
   const [customerPhone, setCustomerPhone] = useState<string>(currentUser?.phone || '');
   const [customerEmail, setCustomerEmail] = useState<string>(currentUser?.email || '');
+  const [policyConsent, setPolicyConsent] = useState(false);
 
   // Confirmed booking state
   const [confirmedBookingId, setConfirmedBookingId] = useState<string | null>(null);
@@ -86,19 +90,18 @@ export const BookingWizard: React.FC = () => {
       if (bookingWizardDraft.preferredDate) setSelectedDate(bookingWizardDraft.preferredDate);
       if (bookingWizardDraft.preferredTime) setSelectedTime(bookingWizardDraft.preferredTime);
       if (bookingWizardDraft.locationType) setLocationType(bookingWizardDraft.locationType);
+      if (bookingWizardDraft.vehicleMake) setVehicleMake(bookingWizardDraft.vehicleMake);
+      if (bookingWizardDraft.vehicleModel) setVehicleModel(bookingWizardDraft.vehicleModel);
+      if (bookingWizardDraft.vehicleYear) setVehicleYear(bookingWizardDraft.vehicleYear);
+      if (bookingWizardDraft.vehicleReg) setVehicleReg(bookingWizardDraft.vehicleReg);
+      if (bookingWizardDraft.customerName) setCustomerName(bookingWizardDraft.customerName);
+      if (bookingWizardDraft.customerPhone) setCustomerPhone(bookingWizardDraft.customerPhone);
+      if (bookingWizardDraft.customerEmail) setCustomerEmail(bookingWizardDraft.customerEmail);
+      if (bookingWizardDraft.notes) setNotes(bookingWizardDraft.notes);
+      if (bookingWizardDraft.customerLocationAddress) setCustomerLocationAddress(bookingWizardDraft.customerLocationAddress);
       if ((bookingWizardDraft as any).material) setMaterial((bookingWizardDraft as any).material);
       if ((bookingWizardDraft as any).color) setColor((bookingWizardDraft as any).color);
       if ((bookingWizardDraft as any).pattern) setPattern((bookingWizardDraft as any).pattern);
-    } else {
-      try {
-        const raw = localStorage.getItem('rr_visualizer_draft');
-        if (raw) {
-          const v = JSON.parse(raw);
-          if (v.material) setMaterial(v.material);
-          if (v.color) setColor(v.color);
-          if (v.pattern) setPattern(v.pattern);
-        }
-      } catch {}
     }
   }, [bookingWizardInitialServiceId, bookingWizardDraft]);
 
@@ -166,9 +169,25 @@ export const BookingWizard: React.FC = () => {
     }
   };
 
-  const handleCompleteBookingWithMpesa = () => {
+  const handleCompleteBookingWithMpesa = async () => {
+    if (!policyConsent) {
+      addToast('warning', 'Confirm the booking terms', 'Please accept the Privacy Policy and Terms of Service before submitting your booking.');
+      return;
+    }
+    if (!currentUser) {
+      setBookingWizardDraft({
+        vehicleType, preferredDate: selectedDate, preferredTime: selectedTime, locationType,
+        material, color, pattern, vehicleMake, vehicleModel, vehicleYear, vehicleReg,
+        customerName, customerPhone, customerEmail, notes, customerLocationAddress,
+      });
+      addToast('info', 'Sign in to continue', 'Please sign in before submitting a booking so we can securely save it to your account.');
+      openAuth('customer', 'booking');
+      return;
+    }
     // 1. Create booking object with standardized vehicleDetails and authenticated customerId
-    const newBooking = addBooking({
+    let newBooking;
+    try {
+      newBooking = await addBooking({
       customerId: currentUser?.id,
       serviceId: selectedService.id,
       serviceName: selectedService.name,
@@ -196,9 +215,18 @@ export const BookingWizard: React.FC = () => {
       depositAmount: depositAmount,
       depositPaid: false,
       paymentMethod: 'mpesa',
-      status: 'pending'
-    });
+      status: 'pending',
+      privacyAccepted: true,
+      termsAccepted: true,
+      privacyAcceptedAt: new Date().toISOString(),
+      termsAcceptedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      addToast('error', 'Booking not saved', error instanceof Error ? error.message : 'Please try again.');
+      return;
+    }
 
+    setBookingWizardDraft(null);
     setConfirmedBookingId(newBooking.id);
 
     // 2. Trigger M-Pesa STK push prompt
@@ -220,8 +248,24 @@ export const BookingWizard: React.FC = () => {
     });
   };
 
-  const handleCompleteBookingPayLater = () => {
-    const newBooking = addBooking({
+  const handleCompleteBookingPayLater = async () => {
+    if (!policyConsent) {
+      addToast('warning', 'Confirm the booking terms', 'Please accept the Privacy Policy and Terms of Service before submitting your booking.');
+      return;
+    }
+    if (!currentUser) {
+      setBookingWizardDraft({
+        vehicleType, preferredDate: selectedDate, preferredTime: selectedTime, locationType,
+        material, color, pattern, vehicleMake, vehicleModel, vehicleYear, vehicleReg,
+        customerName, customerPhone, customerEmail, notes, customerLocationAddress,
+      });
+      addToast('info', 'Sign in to continue', 'Please sign in before submitting a booking so we can securely save it to your account.');
+      openAuth('customer', 'booking');
+      return;
+    }
+    let newBooking;
+    try {
+      newBooking = await addBooking({
       customerId: currentUser?.id,
       serviceId: selectedService.id,
       serviceName: selectedService.name,
@@ -249,9 +293,18 @@ export const BookingWizard: React.FC = () => {
       depositAmount: depositAmount,
       depositPaid: false,
       paymentMethod: 'cash_at_workshop',
-      status: 'pending'
-    });
+      status: 'pending',
+      privacyAccepted: true,
+      termsAccepted: true,
+      privacyAcceptedAt: new Date().toISOString(),
+      termsAcceptedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      addToast('error', 'Booking not saved', error instanceof Error ? error.message : 'Please try again.');
+      return;
+    }
 
+    setBookingWizardDraft(null);
     setConfirmedBookingId(newBooking.id);
     setCurrentStep(5);
   };
@@ -286,9 +339,21 @@ export const BookingWizard: React.FC = () => {
           </p>
         </div>
 
+        {!currentUser && (
+          <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-[#D6A62E]/35 bg-[#0B4035]/80 p-4 text-left shadow-lg sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[.12em] text-[#D6A62E]">Your booking is not submitted yet</p>
+              <p className="mt-1 text-xs leading-5 text-[#F5F1E8]/70">Complete your vehicle details first, then sign in securely before we save the appointment to your account.</p>
+            </div>
+            <button type="button" onClick={() => openAuth('customer', 'booking')} className="rr-button-outline h-11 shrink-0 px-4 text-[11px]">
+              SIGN IN NOW <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+
         {/* Progress Bar (Steps 1 to 4) */}
         {currentStep < 5 && (
-          <div className="mb-10 bg-[#0B4035] p-4 rounded-2xl border border-[#D6A62E]/30 shadow-lg">
+          <div className="rr-md-card mb-10 p-4 border-[#D6A62E]/30 shadow-lg">
             <div className="grid grid-cols-4 gap-2 text-center text-xs">
               <div className={`space-y-1 ${currentStep >= 1 ? 'text-[#D6A62E] font-bold' : 'text-white/40'}`}>
                 <div className={`w-8 h-8 rounded-full mx-auto flex items-center justify-center font-black ${currentStep >= 1 ? 'bg-[#D6A62E] text-[#073B32]' : 'bg-white/10 text-white'}`}>
@@ -322,7 +387,7 @@ export const BookingWizard: React.FC = () => {
         )}
 
         {/* Wizard Main Card Container */}
-        <div className="bg-[#0B4035] border-2 border-[#D6A62E]/30 rounded-3xl p-6 sm:p-8 shadow-2xl">
+        <div className="rr-md-card border-2 border-[#D6A62E]/30 p-6 sm:p-8 shadow-2xl">
           
           {/* ================= STEP 1: SELECT SERVICE ================= */}
           {currentStep === 1 && (
@@ -774,6 +839,17 @@ export const BookingWizard: React.FC = () => {
               </div>
 
               {/* Action Buttons */}
+              <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-[#073B32]/70 p-4 text-xs text-white/75">
+                <input
+                  type="checkbox"
+                  checked={policyConsent}
+                  onChange={(event) => setPolicyConsent(event.target.checked)}
+                  className="mt-0.5 h-4 w-4 accent-[#D6A62E]"
+                />
+                <span>
+                  I agree to the <button type="button" onClick={() => openLegalModal('terms')} className="font-bold text-[#D6A62E] underline">Terms of Service</button> and acknowledge the <button type="button" onClick={() => openLegalModal('privacy')} className="font-bold text-[#D6A62E] underline">Privacy Policy</button>. My details will be used to schedule and manage this booking.
+                </span>
+              </label>
               <div className="pt-4 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <button
                   type="button"

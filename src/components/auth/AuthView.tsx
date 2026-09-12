@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, useReducedMotion } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { Logo } from '../common/Logo';
 import { clerkEnabled } from '../../auth/clerkConfig';
@@ -19,6 +20,7 @@ export const AuthView: React.FC = () => {
   const {
     setView,
     authInitialMode,
+    authReturnView,
     loginCustomer,
     registerCustomer,
   } = useApp();
@@ -33,6 +35,7 @@ export const AuthView: React.FC = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const reduce = useReducedMotion();
 
   useEffect(() => {
     if (authInitialMode === 'register') {
@@ -72,12 +75,23 @@ export const AuthView: React.FC = () => {
   };
 
   return (
-    <div id="auth-portal-page" className="min-h-screen pt-24 pb-16 flex items-center justify-center bg-[#073B32] text-[#F5F1E8] px-4 relative">
-      <div className="absolute inset-0 bg-leather-texture opacity-10 pointer-events-none" />
-      <div className="w-full max-w-md bg-[#0B4035] border-2 border-[#D6A62E]/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative z-10">
+    <motion.div id="auth-portal-page" initial={reduce ? { opacity: 1 } : { opacity: 0 }} animate={{ opacity: 1 }} className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#073B32] px-4 pb-16 pt-24 text-[#F5F1E8]">
+      <div className="pointer-events-none absolute inset-0 bg-leather-texture opacity-10" />
+      <motion.div aria-hidden="true" className="pointer-events-none absolute -left-20 top-24 h-64 w-64 rounded-full bg-[#D6A62E]/10 blur-3xl" animate={reduce ? {} : { x: [0, 28, 0], y: [0, -18, 0] }} transition={reduce ? {} : { duration: 9, repeat: Infinity, ease: 'easeInOut' }} />
+      <div className="relative z-10 grid w-full max-w-5xl items-center gap-12 lg:grid-cols-[.85fr_1fr]">
+        <motion.div initial={reduce ? { opacity: 1 } : { opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={reduce ? {} : { duration: .7 }} className="hidden lg:block">
+          <p className="rr-label text-[#D6A62E]">Driver access</p>
+          <h1 className="mt-5 max-w-md text-5xl font-black leading-[.98] tracking-[-.05em] text-[#F5F1E8]">Your next interior starts here.</h1>
+          <p className="mt-6 max-w-sm text-sm leading-7 text-[#F5F1E8]/65">Sign in to keep your vehicle details, follow workshop progress, and manage every Rolling Razors booking from one calm dashboard.</p>
+          <div className="mt-8 flex gap-2 text-[11px] font-bold text-[#F5F1E8]/70">
+            <span className="rounded-full border border-[#D6A62E]/30 bg-[#0B4035]/60 px-3 py-2">Secure account</span>
+            <span className="rounded-full border border-[#F5F1E8]/15 bg-[#0B4035]/60 px-3 py-2">M-Pesa ready</span>
+          </div>
+        </motion.div>
+        <motion.div initial={reduce ? { opacity: 1 } : { opacity: 0, y: 24, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={reduce ? {} : { duration: .7, ease: [0.22, 1, .36, 1] }} className="rr-md-card w-full max-w-md justify-self-center border border-[#D6A62E]/35 bg-[#0B4035]/90 p-6 shadow-[0_24px_80px_rgba(0,0,0,.3)] backdrop-blur-xl sm:p-8">
         <div className="flex items-center justify-between">
-          <button onClick={() => setView('website')} className="inline-flex items-center gap-1.5 text-xs font-bold text-[#D6A62E] hover:underline cursor-pointer">
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to Website
+          <button onClick={() => setView(authReturnView)} className="inline-flex items-center gap-1.5 text-xs font-bold text-[#D6A62E] hover:underline cursor-pointer">
+            <ArrowLeft className="w-3.5 h-3.5" /> Back to {authReturnView === 'booking' ? 'Booking' : 'Website'}
           </button>
           <span className="text-[11px] text-white/50 font-mono flex items-center gap-1">
             <Lock className="w-3 h-3 text-[#25D366]" /> SSL Secured
@@ -97,14 +111,13 @@ export const AuthView: React.FC = () => {
         </div>
 
         {errorMessage && (
-          <div className="bg-rose-500/15 border border-rose-500/40 rounded-xl p-3 flex items-start gap-2.5 text-xs text-rose-300 animate-in fade-in">
+          <motion.div initial={reduce ? { opacity: 1 } : { opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="bg-rose-500/15 border border-rose-500/40 rounded-xl p-3 flex items-start gap-2.5 text-xs text-rose-300">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
             <span className="leading-relaxed">{errorMessage}</span>
-          </div>
+          </motion.div>
         )}
 
-        {true && (
-          <form onSubmit={handleCustomerSubmit} className="space-y-4 text-xs">
+        <motion.form initial={reduce ? { opacity: 1 } : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={reduce ? {} : { duration: .35 }} onSubmit={handleCustomerSubmit} className="space-y-4 text-xs">
             {isRegister && (
               <div>
                 <label className="block text-white/80 font-bold mb-1">Full Name</label>
@@ -115,7 +128,7 @@ export const AuthView: React.FC = () => {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Brian Mwangi"
-                  className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-white font-bold placeholder-white/30 focus:outline-none focus:border-[#D6A62E]"
+                  className="rr-control w-full px-3.5 text-white font-bold placeholder-white/30"
                 />
               </div>
             )}
@@ -132,7 +145,7 @@ export const AuthView: React.FC = () => {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="0712 901 234"
-                  className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-white font-bold placeholder-white/30 focus:outline-none focus:border-[#D6A62E] font-mono"
+                  className="rr-control w-full px-3.5 text-white font-bold placeholder-white/30 font-mono"
                 />
               </div>
               <button
@@ -156,7 +169,7 @@ export const AuthView: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="brian.mwangi@gmail.com"
-                  className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-white font-bold placeholder-white/30 focus:outline-none focus:border-[#D6A62E]"
+                  className="rr-control w-full px-3.5 text-white font-bold placeholder-white/30"
                 />
               </div>
             )}
@@ -170,15 +183,17 @@ export const AuthView: React.FC = () => {
                 value={customerPassword}
                 onChange={(e) => setCustomerPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-white font-bold placeholder-white/30 focus:outline-none focus:border-[#D6A62E]"
+                className="rr-control w-full px-3.5 text-white font-bold placeholder-white/30"
               />
             </div>
 
-            <button
+            <motion.button
               id="customer-submit-auth-btn"
               type="submit"
               disabled={isLoading}
-              className="w-full py-3.5 rounded-xl bg-[#D6A62E] hover:bg-[#c39626] text-[#073B32] font-black text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+              whileHover={isLoading || reduce ? {} : { y: -2, boxShadow: '0 12px 26px rgba(214,166,46,.2)' }}
+              whileTap={isLoading || reduce ? {} : { scale: .98 }}
+              className="rr-button-gold w-full py-3.5 text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {isLoading ? (
                 <>
@@ -191,27 +206,27 @@ export const AuthView: React.FC = () => {
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
-            </button>
+            </motion.button>
 
             {/* Toggle Register / Login */}
             <div className="text-center pt-2 border-t border-white/10">
-              <button
+              <motion.button
                 type="button"
                 onClick={() => {
                   setIsRegister(!isRegister);
                   setErrorMessage(null);
                 }}
+                whileHover={reduce ? {} : { y: -1 }}
                 className="text-xs text-white/80 hover:text-[#D6A62E] font-semibold cursor-pointer"
               >
                 {isRegister 
                   ? 'Already have a driver account? Sign in here' 
                   : "New customer? Create your vehicle garage profile"}
-              </button>
+              </motion.button>
             </div>
-          </form>
-        )}
+        </motion.form>
+      </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 };
-

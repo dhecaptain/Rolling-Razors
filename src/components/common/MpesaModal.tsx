@@ -6,7 +6,7 @@ import { useModalA11y } from '../../utils/useModalA11y';
 import confetti from 'canvas-confetti';
 
 export const MpesaModal: React.FC = () => {
-  const { mpesaPrompt, closeMpesaPayment, addToast, recordPayment, bookings } = useApp();
+  const { mpesaPrompt, closeMpesaPayment, addToast, recordPayment, bookings, authFetch } = useApp();
   
   const [phoneNumber, setPhoneNumber] = useState(mpesaPrompt.phone || '0712901234');
   const [step, setStep] = useState<'prompt' | 'initiating' | 'waiting' | 'success' | 'failed'>('prompt');
@@ -82,7 +82,7 @@ export const MpesaModal: React.FC = () => {
     hasProcessedRef.current = false;
 
     try {
-      const response = await fetch('/api/mpesa/stkpush', {
+      const response = await authFetch('/api/mpesa/stkpush', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -125,7 +125,7 @@ export const MpesaModal: React.FC = () => {
     let isSubscribed = true;
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`/api/mpesa/query/${checkoutRequestId}`);
+        const res = await authFetch(`/api/mpesa/query/${checkoutRequestId}`);
         if (!res.ok) return;
         const data = await res.json();
         if (!isSubscribed) return;

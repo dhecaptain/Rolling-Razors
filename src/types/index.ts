@@ -131,6 +131,10 @@ export interface Booking {
   workOrderId?: string;
   timeline?: BookingTimelineEvent[];
   internalNotes?: string;
+  privacyAcceptedAt?: string;
+  termsAcceptedAt?: string;
+  privacyAccepted?: boolean;
+  termsAccepted?: boolean;
   createdAt: string;
 }
 

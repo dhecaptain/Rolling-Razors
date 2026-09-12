@@ -154,7 +154,7 @@ export const CustomerDashboard: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Top Driver Bar */}
-        <div className="bg-[#0B4035] border border-[#D6A62E]/30 rounded-3xl p-6 sm:p-8 shadow-2xl mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div className="rr-md-card border-[#D6A62E]/30 p-6 sm:p-8 shadow-2xl mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <img
               src={currentUser.avatar}

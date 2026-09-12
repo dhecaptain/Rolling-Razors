@@ -37,6 +37,13 @@ import { setAuthToken, getAuthToken } from '../lib/authToken';
 
 export type AppView = 'website' | 'booking' | 'customer_dashboard' | 'admin_dashboard' | 'auth' | 'admin_auth';
 
+/** Centralized role-check helpers. Use these instead of inline `role === 'admin'`. */
+export const isStaff = (role: UserRole): boolean => role === 'admin';
+export const isCustomer = (role: UserRole): boolean => role === 'customer';
+export const canAccessAdmin = (role: UserRole): boolean => isStaff(role);
+export const STAFF_VIEWS: AppView[] = ['admin_dashboard', 'admin_auth'];
+export const CUSTOMER_VIEWS: AppView[] = ['customer_dashboard'];
+
 export interface ToastItem {
   id: string;
   type: 'success' | 'info' | 'warning' | 'error';
@@ -69,8 +76,9 @@ interface AppContextType {
   isLoggedIn: boolean;
   currentUser: User | null;
   authInitialMode: 'customer' | 'admin' | 'register';
+  authReturnView: AppView;
   setAuthInitialMode: (mode: 'customer' | 'admin' | 'register') => void;
-  openAuth: (mode?: 'customer' | 'admin' | 'register') => void;
+  openAuth: (mode?: 'customer' | 'admin' | 'register', returnTo?: AppView) => void;
   loginCustomer: (phone: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   loginAdmin: (identifier: string, password: string) => Promise<{ success: boolean; error?: string }>;
   registerCustomer: (data: { name: string; phone: string; email?: string; password?: string }) => Promise<{ success: boolean; error?: string }>;
@@ -78,6 +86,9 @@ interface AppContextType {
 
   // Auth provider metadata + authenticated fetch helper
   authProvider: 'clerk' | 'legacy';
+  /** True while the auth provider's session is still being resolved server-side. */
+  authVerifying: boolean;
+  clerkLoaded: boolean;
   authFetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
   
   // Data Collections
@@ -93,7 +104,7 @@ interface AppContextType {
   vehicles: Vehicle[];
   
   // Actions
-  addBooking: (bookingData: Omit<Booking, 'id' | 'createdAt' | 'timeline' | 'workOrderId'>) => Booking;
+  addBooking: (bookingData: Omit<Booking, 'id' | 'createdAt' | 'timeline' | 'workOrderId'>) => Promise<Booking>;
   updateBookingStatus: (bookingId: string, status: BookingStatus, note?: string) => void;
   rescheduleBooking: (bookingId: string, date: string, time: string) => void;
   cancelBooking: (bookingId: string, reason?: string) => void;
@@ -155,8 +166,8 @@ interface AppContextType {
   setSelectedWorkOrderId: (id: string | null) => void;
   bookingWizardInitialServiceId: string | null;
   setBookingWizardInitialServiceId: (id: string | null) => void;
-  bookingWizardDraft: { vehicleType?: string; preferredDate?: string; preferredTime?: string; locationType?: 'workshop' | 'customer_location'; material?: string; color?: string; pattern?: string } | null;
-  setBookingWizardDraft: (d: { vehicleType?: string; preferredDate?: string; preferredTime?: string; locationType?: 'workshop' | 'customer_location'; material?: string; color?: string; pattern?: string } | null) => void;
+  bookingWizardDraft: { vehicleType?: string; preferredDate?: string; preferredTime?: string; locationType?: 'workshop' | 'customer_location'; material?: string; color?: string; pattern?: string; vehicleMake?: string; vehicleModel?: string; vehicleYear?: number; vehicleReg?: string; customerName?: string; customerPhone?: string; customerEmail?: string; notes?: string; customerLocationAddress?: string } | null;
+  setBookingWizardDraft: (d: { vehicleType?: string; preferredDate?: string; preferredTime?: string; locationType?: 'workshop' | 'customer_location'; material?: string; color?: string; pattern?: string; vehicleMake?: string; vehicleModel?: string; vehicleYear?: number; vehicleReg?: string; customerName?: string; customerPhone?: string; customerEmail?: string; notes?: string; customerLocationAddress?: string } | null) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -173,45 +184,93 @@ interface ClerkApi {
 
 const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }> = ({ children, clerk }) => {
   const clerkMode = Boolean(clerk);
-  const [view, setView] = useState<AppView>('website');
+  const [view, setViewState] = useState<AppView>('website');
   const [customerTab, setCustomerTab] = useState<string>('dashboard');
   const [adminTab, setAdminTab] = useState<string>('overview');
   const [websiteSection, setWebsiteSection] = useState<string>('hero');
   const [authInitialMode, setAuthInitialMode] = useState<'customer' | 'admin' | 'register'>('customer');
+  const [authReturnView, setAuthReturnView] = useState<AppView>('website');
 
   // Verify and load cryptographic JWT session token on boot (legacy provider only;
   // Clerk sessions are resolved from the Clerk SDK + /api/auth/sync).
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    if (clerkMode) return null;
-    const saved = localStorage.getItem('rr_auth_session');
-    if (saved) {
-      try {
-        const session = JSON.parse(saved);
-        if (session && session.user && (!session.expiresAt || session.expiresAt > Date.now())) {
-          return session.user;
-        }
-      } catch {
-        localStorage.removeItem('rr_auth_session');
-      }
-    }
-    return null;
-  });
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    if (clerkMode) return false;
-    const saved = localStorage.getItem('rr_auth_session');
-    if (saved) {
-      try {
-        const session = JSON.parse(saved);
-        return Boolean(session?.user && (!session.expiresAt || session.expiresAt > Date.now()));
-      } catch {
-        return false;
-      }
-    }
-    return false;
-  });
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Legacy boot re-verification checks the server-managed HttpOnly session.
+  // Staff-only views must not render until this completes.
+  const [legacyVerifying, setLegacyVerifying] = useState<boolean>(() => !clerkMode);
+
+  useEffect(() => {
+    if (clerkMode || !legacyVerifying) return;
+    let active = true;
+    // The legacy provider uses an HttpOnly cookie; the browser never reads
+    // or persists the bearer token.
+    fetch('/api/auth/verify', { credentials: 'include' })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!active) return;
+        if (res.ok && data?.valid && data.user) {
+          // Authoritative identity + role come from the signature-verified JWT,
+          setAuthToken(null);
+          completeCustomerAuth(data.user, authReturnView === 'booking'
+            ? 'Your account is ready. Continue your booking below.'
+            : 'Your Driver Portal is ready.');
+        } else {
+          setAuthToken(null);
+          setCurrentUser(null);
+          setIsLoggedIn(false);
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        // Network failure: refuse to trust a stored role that could not be
+        // re-verified. Treat the user as signed out rather than risk elevation.
+        setAuthToken(null);
+        setCurrentUser(null);
+        setIsLoggedIn(false);
+      })
+      .finally(() => {
+        if (active) setLegacyVerifying(false);
+      });
+    return () => { active = false; };
+  }, [clerkMode, legacyVerifying]);
 
   const role: UserRole = currentUser?.role || 'customer';
+
+  const resolveSafeView = React.useCallback((): AppView => {
+    if (isLoggedIn && currentUser) {
+      return canAccessAdmin(role) ? 'admin_dashboard' : 'customer_dashboard';
+    }
+    return 'website';
+  }, [isLoggedIn, currentUser, role]);
+
+  const isViewAllowed = React.useCallback((nextView: AppView): boolean => {
+    if (nextView === 'admin_dashboard') {
+      return canAccessAdmin(role);
+    }
+    if (nextView === 'admin_auth') {
+      return !(isLoggedIn && !canAccessAdmin(role));
+    }
+    if (nextView === 'customer_dashboard') {
+      return isLoggedIn;
+    }
+    return true;
+  }, [isLoggedIn, role]);
+
+  const setView = React.useCallback((nextView: AppView) => {
+    if (isViewAllowed(nextView)) {
+      setViewState(nextView);
+      return;
+    }
+    setViewState(resolveSafeView());
+  }, [isViewAllowed, resolveSafeView]);
+
+  useEffect(() => {
+    if (!isViewAllowed(view)) {
+      setViewState(resolveSafeView());
+    }
+  }, [view, isViewAllowed, resolveSafeView]);
 
   // --- Clerk session synchronization (server-verified via /api/auth/sync) ---
   const clerkUserId = clerk?.user?.id;
@@ -279,46 +338,38 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
 
   // Main collections with initial state
   const [services, setServices] = useState<Service[]>(() => {
-    const saved = localStorage.getItem('rr_services');
-    return saved ? JSON.parse(saved) : INITIAL_SERVICES;
+    return INITIAL_SERVICES;
   });
 
   const [bookings, setBookings] = useState<Booking[]>(() => {
-    const saved = localStorage.getItem('rr_bookings');
-    return saved ? JSON.parse(saved) : INITIAL_BOOKINGS;
+    return INITIAL_BOOKINGS;
   });
 
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>(() => {
-    const saved = localStorage.getItem('rr_work_orders');
-    return saved ? JSON.parse(saved) : INITIAL_WORK_ORDERS;
+    return INITIAL_WORK_ORDERS;
   });
 
   const [customers, setCustomers] = useState<Customer[]>(() => {
-    const saved = localStorage.getItem('rr_customers');
-    return saved ? JSON.parse(saved) : INITIAL_CUSTOMERS;
+    return INITIAL_CUSTOMERS;
   });
 
   const [staff, setStaff] = useState<Staff[]>(() => {
-    const saved = localStorage.getItem('rr_staff');
-    return saved ? JSON.parse(saved) : INITIAL_STAFF;
+    return INITIAL_STAFF;
   });
 
   const [invoices, setInvoices] = useState<Invoice[]>(() => {
-    const saved = localStorage.getItem('rr_invoices');
-    return saved ? JSON.parse(saved) : INITIAL_INVOICES;
+    return INITIAL_INVOICES;
   });
 
   const [portfolio] = useState<PortfolioItem[]>(INITIAL_PORTFOLIO);
   const [reviews] = useState<Review[]>(INITIAL_REVIEWS);
 
   const [notifications, setNotifications] = useState<AppNotification[]>(() => {
-    const saved = localStorage.getItem('rr_notifications');
-    return saved ? JSON.parse(saved) : INITIAL_NOTIFICATIONS;
+    return INITIAL_NOTIFICATIONS;
   });
 
   const [vehicles, setVehicles] = useState<Vehicle[]>(() => {
-    const saved = localStorage.getItem('rr_vehicles');
-    return saved ? JSON.parse(saved) : INITIAL_VEHICLES;
+    return INITIAL_VEHICLES;
   });
 
   // Modals & Selection states
@@ -326,7 +377,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [selectedWorkOrderId, setSelectedWorkOrderId] = useState<string | null>(null);
   const [bookingWizardInitialServiceId, setBookingWizardInitialServiceId] = useState<string | null>(null);
-  const [bookingWizardDraft, setBookingWizardDraft] = useState<{ vehicleType?: string; preferredDate?: string; preferredTime?: string; locationType?: 'workshop' | 'customer_location'; material?: string; color?: string; pattern?: string } | null>(null);
+  const [bookingWizardDraft, setBookingWizardDraft] = useState<{ vehicleType?: string; preferredDate?: string; preferredTime?: string; locationType?: 'workshop' | 'customer_location'; material?: string; color?: string; pattern?: string; vehicleMake?: string; vehicleModel?: string; vehicleYear?: number; vehicleReg?: string; customerName?: string; customerPhone?: string; customerEmail?: string; notes?: string; customerLocationAddress?: string } | null>(null);
 
   // Toasts
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -356,46 +407,11 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
     amount: 5000
   });
 
-  // Sync to local storage
-  useEffect(() => {
-    localStorage.setItem('rr_services', JSON.stringify(services));
-  }, [services]);
-
-  useEffect(() => {
-    localStorage.setItem('rr_bookings', JSON.stringify(bookings));
-  }, [bookings]);
-
-  useEffect(() => {
-    localStorage.setItem('rr_work_orders', JSON.stringify(workOrders));
-  }, [workOrders]);
-
-  useEffect(() => {
-    localStorage.setItem('rr_customers', JSON.stringify(customers));
-  }, [customers]);
-
-  useEffect(() => {
-    localStorage.setItem('rr_vehicles', JSON.stringify(vehicles));
-  }, [vehicles]);
-
-  useEffect(() => {
-    localStorage.setItem('rr_invoices', JSON.stringify(invoices));
-  }, [invoices]);
-
-  useEffect(() => {
-    localStorage.setItem('rr_notifications', JSON.stringify(notifications));
-  }, [notifications]);
-
   function getAuthHeader(): Record<string,string> {
     if (clerkMode) {
       const token = getAuthToken();
       return token ? { Authorization: `Bearer ${token}` } : {};
     }
-    try {
-      const raw = localStorage.getItem('rr_auth_session');
-      if (!raw) return {};
-      const s = JSON.parse(raw);
-      if (s?.token) return { Authorization: `Bearer ${s.token}` };
-    } catch {}
     return {};
   }
 
@@ -411,12 +427,13 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
     const fetchDatabaseRecords = async () => {
       try {
         const headers = getAuthHeader();
+        const requestInit = { headers, credentials: 'include' as const };
         const [bRes, vRes, woRes, invRes, cRes] = await Promise.all([
-          fetch('/api/bookings', { headers }),
-          fetch('/api/vehicles', { headers }),
-          fetch('/api/work-orders', { headers }),
-          fetch('/api/invoices', { headers }),
-          fetch('/api/customers', { headers })
+          fetch('/api/bookings', requestInit),
+          fetch('/api/vehicles', requestInit),
+          fetch('/api/work-orders', requestInit),
+          fetch('/api/invoices', requestInit),
+          fetch('/api/customers', requestInit)
         ]);
 
         if (bRes.ok) {
@@ -470,10 +487,20 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
     setToasts(prev => prev.filter(t => t.id !== id));
   };
 
-  const openAuth = (mode: 'customer' | 'admin' | 'register' = 'customer') => {
+  const openAuth = (mode: 'customer' | 'admin' | 'register' = 'customer', returnTo: AppView = 'website') => {
     setAuthInitialMode(mode);
+    setAuthReturnView(returnTo);
     if (mode === 'admin') setView('admin_auth');
     else setView('auth');
+  };
+
+  const completeCustomerAuth = (user: User, message: string) => {
+    setCurrentUser(user);
+    setIsLoggedIn(true);
+    const destination = authReturnView;
+    setAuthReturnView('website');
+    setView(destination === 'booking' ? 'booking' : 'customer_dashboard');
+    addToast('success', `Karibu, ${user.name}!`, message);
   };
 
   const loginCustomer = async (phone: string, password?: string): Promise<{ success: boolean; error?: string }> => {
@@ -489,22 +516,15 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
       const response = await fetch('/api/auth/customer/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ phone: cleanPhone, password })
       });
 
       const data = await response.json();
       if (data.success && data.user) {
-        const sessionData = {
-          user: data.user,
-          token: data.token,
-          expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7-day token
-        };
-
-        localStorage.setItem('rr_auth_session', JSON.stringify(sessionData));
-        setCurrentUser(data.user);
-        setIsLoggedIn(true);
-        setView('customer_dashboard');
-        addToast('success', `Karibu, ${data.user.name}!`, 'Authenticated and signed into Driver Portal.');
+        completeCustomerAuth(data.user, authReturnView === 'booking'
+          ? 'Your account is ready. Continue your booking below.'
+          : 'Authenticated and signed into Driver Portal.');
         return { success: true };
       } else {
         const errMsg = data.error || 'Authentication failed. Please check your credentials.';
@@ -537,8 +557,6 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
         return { success: false, requiresOtp: true, error: data.message };
       }
       if (data.success && data.user) {
-        const sessionData = { user: data.user, token: data.token, expiresAt: Date.now() + 8 * 60 * 60 * 1000 };
-        localStorage.setItem('rr_auth_session', JSON.stringify(sessionData));
         setCurrentUser(data.user);
         setIsLoggedIn(true);
         setView('admin_dashboard');
@@ -566,6 +584,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
       const response = await fetch('/api/auth/customer/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(data)
       });
 
@@ -576,7 +595,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
           name: resData.user.name,
           phone: resData.user.phone,
           email: resData.user.email || `${data.name.toLowerCase().replace(/\s+/g, '.')}@gmail.com`,
-          avatar: resData.user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+          avatar: resData.user.avatar || '',
           totalSpent: 0,
           status: 'New',
           address: 'Nairobi, Kenya',
@@ -585,17 +604,9 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
 
         setCustomers(prev => [...prev, newCustomer]);
 
-        const sessionData = {
-          user: resData.user,
-          token: resData.token,
-          expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000
-        };
-
-        localStorage.setItem('rr_auth_session', JSON.stringify(sessionData));
-        setCurrentUser(resData.user);
-        setIsLoggedIn(true);
-        setView('customer_dashboard');
-        addToast('success', 'Account Created', `Karibu ${data.name}! Your Rolling Razors garage is ready.`);
+        completeCustomerAuth(resData.user, authReturnView === 'booking'
+          ? 'Your account is ready. Continue your booking below.'
+          : `Your Rolling Razors garage is ready.`);
         return { success: true };
       } else {
         const errMsg = resData.error || 'Registration failed.';
@@ -613,9 +624,10 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
       setAuthToken(null);
       Promise.resolve(clerk.signOut()).catch(() => {});
     }
-    localStorage.removeItem('rr_auth_session');
+    fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
     setIsLoggedIn(false);
     setCurrentUser(null);
+    setAuthReturnView('website');
     setBookings([]);
     setWorkOrders([]);
     setInvoices([]);
@@ -674,7 +686,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
     setMpesaPrompt(prev => ({ ...prev, isOpen: false }));
   };
 
-  const addBooking = (bookingData: Omit<Booking, 'id' | 'createdAt' | 'timeline' | 'workOrderId'>): Booking => {
+  const addBooking = async (bookingData: Omit<Booking, 'id' | 'createdAt' | 'timeline' | 'workOrderId'>): Promise<Booking> => {
     const nextNum = Math.floor(1000 + Math.random() * 9000);
     const bookingId = `RR-${nextNum}`;
     const workOrderId = `RR-WO-${nextNum + 1000}`;
@@ -780,11 +792,24 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
 
     setNotifications(prev => [newNotifCustomer, newNotifAdmin, ...prev]);
 
-    fetch('/api/bookings', {
+    const response = await fetch('/api/bookings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+      credentials: 'include',
       body: JSON.stringify(newBooking)
-    }).catch(err => console.warn('Could not sync booking to server database:', err));
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.success || !result.booking) {
+      setBookings(prev => prev.filter(booking => booking.id !== bookingId));
+      setWorkOrders(prev => prev.filter(workOrder => workOrder.id !== workOrderId));
+      setNotifications(prev => prev.filter(notification => notification.relatedBookingId !== bookingId));
+      throw new Error(result.error || 'Could not save the booking. Please try again.');
+    }
+
+    setBookings(prev => prev.map(booking => booking.id === bookingId ? result.booking : booking));
+    if (result.workOrder) {
+      setWorkOrders(prev => prev.map(workOrder => workOrder.id === workOrderId ? result.workOrder : workOrder));
+    }
 
     if (depositPaid) {
       addToast('success', 'Booking Confirmed!', `Your booking #${bookingId} has been successfully scheduled and deposit received.`);
@@ -792,7 +817,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
       addToast('info', 'Booking Request Received', `Your appointment request #${bookingId} has been submitted. Complete the deposit to confirm your slot.`);
     }
 
-    return newBooking;
+    return result.booking;
   };
 
   const updateBookingStatus = (bookingId: string, newStatus: BookingStatus, note?: string) => {
@@ -1171,7 +1196,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
     };
     setVehicles(prev => [newVehicle, ...prev]);
     const headers: Record<string,string> = { 'Content-Type': 'application/json', ...getAuthHeader() };
-    fetch('/api/vehicles', { method: 'POST', headers, body: JSON.stringify(newVehicle) })
+    fetch('/api/vehicles', { method: 'POST', headers, credentials: 'include', body: JSON.stringify(newVehicle) })
       .then(async r => {
         if (!r.ok) {
           const d = await r.json().catch(()=>({error:'Failed'}));
@@ -1189,15 +1214,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
     if (!currentUser) return;
     const updated = { ...currentUser, ...patch, phone: patch.phone ? normalizePhoneKe(patch.phone) : currentUser.phone };
     setCurrentUser(updated);
-    try {
-      const raw = localStorage.getItem('rr_auth_session');
-      if (raw) {
-        const s = JSON.parse(raw);
-        s.user = updated;
-        localStorage.setItem('rr_auth_session', JSON.stringify(s));
-      }
-    } catch {}
-    addToast('success', 'Profile Updated', 'Your contact details have been saved.');
+    addToast('success', 'Profile Updated', 'Your contact details are updated for this session.');
   };
 
   const deleteVehicle = (id: string) => {
@@ -1324,6 +1341,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
         isLoggedIn,
         currentUser,
         authInitialMode,
+        authReturnView,
         setAuthInitialMode,
         openAuth,
         loginCustomer,
@@ -1331,6 +1349,12 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
         registerCustomer,
         logout,
         authProvider: clerkEnabled ? 'clerk' : 'legacy',
+        authVerifying: clerkMode
+          ? clerk
+            ? !(clerk.isLoaded && (!clerk.isSignedIn || Boolean(currentUser)))
+            : true
+          : legacyVerifying,
+        clerkLoaded: clerkMode ? Boolean(clerk?.isLoaded) : true,
         authFetch,
         services,
         bookings,

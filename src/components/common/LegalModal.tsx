@@ -140,6 +140,23 @@ export const LegalModal: React.FC<LegalModalProps> = ({
                   Before-and-after photographs of vehicle interiors taken for quality assurance and portfolio purposes will never display owner identity documents or personal belongings left inside the vehicle.
                 </p>
               </section>
+
+              <section className="space-y-2">
+                <h4 className="font-bold text-base text-white font-display">4. Storage, Retention & Your Rights</h4>
+                <p>
+                  Account, booking, vehicle, payment-reference, and workshop records are stored in our protected application database and retained only as long as reasonably necessary to provide services, meet accounting obligations, resolve disputes, and maintain warranty history. Authentication is handled by Clerk when enabled, or by the legacy server authentication service during migration.
+                </p>
+                <p>
+                  You may request access, correction, portability, or deletion of personal information, subject to records we must retain by law or for an active booking, payment, warranty, or dispute. Send requests to <a href={`mailto:${BUSINESS_CONFIG.email.billing}`} className="text-[#D6A62E] underline">{BUSINESS_CONFIG.email.billing}</a>.
+                </p>
+              </section>
+
+              <section className="space-y-2">
+                <h4 className="font-bold text-base text-white font-display">5. Analytics & Cookies</h4>
+                <p>
+                  Essential cookies support security and session functionality. Optional Google Analytics is disabled until you choose “Accept analytics” in the cookie preferences banner. You can withdraw that choice by clearing the Rolling Razors consent cookie in your browser and selecting “Essential only” next time.
+                </p>
+              </section>
             </div>
           )}
 

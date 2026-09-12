@@ -30,7 +30,7 @@ export const ToastContainer: React.FC = () => {
         return (
           <div
             key={toast.id}
-            className={`pointer-events-auto p-4 rounded-xl border ${borders} shadow-2xl text-[#F5F1E8] flex items-start gap-3 animate-in slide-in-from-right-5 fade-in duration-300 backdrop-blur-md`}
+            className={`pointer-events-auto p-4 rounded-2xl border ${borders} shadow-2xl text-[#F5F1E8] flex items-start gap-3 animate-in slide-in-from-right-5 fade-in duration-300 backdrop-blur-md`}
           >
             {icons}
             <div className="flex-1 min-w-0">
@@ -39,7 +39,8 @@ export const ToastContainer: React.FC = () => {
             </div>
             <button
               onClick={() => removeToast(toast.id)}
-              className="text-white/40 hover:text-white p-1 rounded transition-colors"
+              aria-label="Dismiss notification"
+              className="text-white/40 hover:text-white p-2 rounded-full transition-colors rr-md-state"
             >
               <X className="w-4 h-4" />
             </button>

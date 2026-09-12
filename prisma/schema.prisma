@@ -62,35 +62,47 @@ enum CustomerStatus {
 }
 
 model User {
-  id        String   @id
-  clerkId   String?  @unique
-  name      String
-  phone     String?  @unique
-  email     String?  @unique
-  role      UserRole
-  avatar    String
-  location  String?
+  id         String      @id
+  clerkId    String?     @unique
+  name       String
+  phone      String?     @unique
+  email      String?     @unique
+  role       UserRole
+  avatar     String
+  location   String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  buildDraft BuildDraft?
+}
+
+model BuildDraft {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  material  String
+  color     String
+  pattern   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Customer {
-  id            String         @id
+  id            String          @id
   name          String
-  phone         String         @unique
-  email         String         @unique
+  phone         String          @unique
+  email         String          @unique
   avatar        String?
   vehiclesCount Int?
   totalBookings Int?
-  totalSpent    Int            @default(0)
+  totalSpent    Int             @default(0)
   lastVisit     String?
   location      String?
   status        CustomerStatus?
   address       String?
   notes         String?
   savedVehicles Json?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 }
 
 model Vehicle {
@@ -108,13 +120,14 @@ model Vehicle {
   notes                 String?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
+
   @@index([customerId])
   @@index([registrationNo])
   @@index([customerId, registrationNo])
 }
 
 model Booking {
-  id                      String        @id
+  id                      String         @id
   customerId              String?
   customerName            String
   customerPhone           String
@@ -136,18 +149,21 @@ model Booking {
   estimatedPrice          Int
   depositAmount           Int
   balanceAmount           Int?
-  depositPaid             Boolean       @default(false)
+  depositPaid             Boolean        @default(false)
   paymentStatus           PaymentStatus?
   paymentMethod           String?
   mpesaReceiptNo          String?
-  status                  BookingStatus @default(pending)
+  status                  BookingStatus  @default(pending)
   assignedStaffId         String?
   assignedStaffName       String?
   workOrderId             String?
   timeline                Json?
   internalNotes           String?
-  createdAt               DateTime      @default(now())
-  updatedAt               DateTime      @updatedAt
+  privacyAcceptedAt       DateTime?
+  termsAcceptedAt         DateTime?
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+
   @@index([customerId])
   @@index([customerPhone])
   @@index([status])
@@ -183,32 +199,34 @@ model WorkOrder {
   createdAt            DateTime          @default(now())
   targetCompletionDate String?
   updatedAt            DateTime          @updatedAt
+
   @@index([bookingId])
   @@index([stage])
   @@index([assignedStaffId, stage])
 }
 
 model Invoice {
-  id          String   @id
-  bookingId   String   @unique
-  workOrderId String?
-  customerName String
+  id            String   @id
+  bookingId     String   @unique
+  workOrderId   String?
+  customerName  String
   customerPhone String
   customerEmail String
-  vehicleInfo String
-  serviceName String
-  items       Json
-  subtotal    Int
-  depositPaid Int      @default(0)
-  balanceDue  Int      @default(0)
-  total       Int
+  vehicleInfo   String
+  serviceName   String
+  items         Json
+  subtotal      Int
+  depositPaid   Int      @default(0)
+  balanceDue    Int      @default(0)
+  total         Int
   paymentMethod String
   paymentStatus String
-  mpesaRef    String?
-  issueDate   String
-  dueDate     String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  mpesaRef      String?
+  issueDate     String
+  dueDate       String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
   @@index([bookingId])
 }
 
@@ -258,6 +276,7 @@ model MpesaTransaction {
   failureReason     String?
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
+
   @@index([checkoutRequestId])
   @@index([bookingId])
   @@index([phone])
@@ -270,6 +289,7 @@ model Otp {
   otp       String
   expiresAt DateTime
   createdAt DateTime @default(now())
+
   @@index([phone])
   @@index([expiresAt])
 }
@@ -287,6 +307,7 @@ model AuditLog {
   ip         String?
   requestId  String?
   createdAt  DateTime @default(now())
+
   @@index([entityType, entityId])
   @@index([actorId])
   @@index([createdAt])
@@ -305,6 +326,7 @@ model InventoryItem {
   location     String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
   @@index([category])
   @@index([qtyOnHand])
 }

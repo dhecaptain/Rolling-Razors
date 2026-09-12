@@ -48,14 +48,11 @@ export const FeaturedServiceSection: React.FC = () => {
 
   const handleStartCustomBuild = () => {
     setBookingWizardInitialServiceId('srv-1');
-    try {
-      setBookingWizardDraft({
-        material: activeMaterial,
-        color: activeColor,
-        pattern: activePattern,
-      });
-      localStorage.setItem('rr_visualizer_draft', JSON.stringify({ material: activeMaterial, color: activeColor, pattern: activePattern }));
-    } catch {}
+    setBookingWizardDraft({
+      material: activeMaterial,
+      color: activeColor,
+      pattern: activePattern,
+    });
     setView('booking');
   };
 

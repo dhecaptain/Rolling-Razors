@@ -54,8 +54,6 @@ export const AdminAuthView: React.FC = () => {
       if (!data.success) {
         setErrorMessage(data.error || 'Invalid OTP.');
       } else {
-        const sessionData = { user: data.user, token: data.token, expiresAt: Date.now() + 8 * 60 * 60 * 1000 };
-        localStorage.setItem('rr_auth_session', JSON.stringify(sessionData));
         window.location.reload();
       }
     } catch {
