@@ -144,6 +144,7 @@ model Booking {
   stitchingStyle          String?
   appointmentDate         String
   appointmentTime         String
+  slotStart               DateTime?
   locationType            String
   customerLocation        String?
   customerLocationAddress String?
@@ -169,6 +170,7 @@ model Booking {
   @@index([customerPhone])
   @@index([status])
   @@index([appointmentDate])
+  @@unique([slotStart])
   @@index([createdAt])
   @@index([customerId, status])
 }

@@ -43,6 +43,18 @@ export async function registerCustomer(request: APIRequestContext): Promise<Test
 }
 
 /**
+ * Re-establishes a session as a previously-registered customer. The mock server
+ * stores one HttpOnly cookie per request context, so registering a second
+ * customer overwrites the first session — call this before acting as an
+ * earlier customer again.
+ */
+export async function loginCustomer(request: APIRequestContext, phone: string, password: string): Promise<void> {
+  const res = await request.post("/api/auth/customer/login", { data: { phone, password } });
+  const raw = await res.text();
+  expect(res.ok(), `customer login failed (${res.status()}): ${raw}`).toBeTruthy();
+}
+
+/**
  * Generates a collision-resistant future appointment slot. The backend rejects
  * duplicate (date, time) pairs, and Playwright runs specs in parallel, so we
  * derive the date from the timestamp (200+ days out) plus a random offset.

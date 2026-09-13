@@ -112,6 +112,7 @@ export interface Booking {
   
   appointmentDate: string; // YYYY-MM-DD
   appointmentTime: string; // e.g. 10:00 AM
+  slotStart?: string;      // canonical start timestamp (slot conflict + ordering)
   
   locationType: 'workshop' | 'customer_location';
   customerLocation?: string;

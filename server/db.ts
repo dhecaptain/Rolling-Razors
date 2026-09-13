@@ -153,7 +153,7 @@ class PrismaDatabaseManager {
 
   async getVehicles(customerId?: string): Promise<Vehicle[]> {
     const rows = await prisma.vehicle.findMany({ where: customerId ? { customerId } : undefined, orderBy: { createdAt: "desc" } });
-    return rows.map(r => ({ id: r.id, customerId: r.customerId, type: r.type as any, make: r.make, model: r.model, year: r.year, registrationNo: r.registrationNo, color: r.color || undefined, image: r.image || undefined, previousServicesCount: r.previousServicesCount, upholsteryHistory: (r.upholsteryHistory as any) || undefined, notes: r.notes || undefined }));
+    return rows.map(mapVehicle);
   }
 
   async getVehiclesPaginated(customerId: string | undefined, page: number, limit: number): Promise<{ data: Vehicle[]; total: number }> {
@@ -162,16 +162,33 @@ class PrismaDatabaseManager {
       prisma.vehicle.findMany({ where, skip: (page-1)*limit, take: limit, orderBy: { createdAt: "desc" } }),
       prisma.vehicle.count({ where }),
     ]);
-    return { data: rows.map(r => ({ id: r.id, customerId: r.customerId, type: r.type as any, make: r.make, model: r.model, year: r.year, registrationNo: r.registrationNo, color: r.color || undefined, image: r.image || undefined, previousServicesCount: r.previousServicesCount, upholsteryHistory: (r.upholsteryHistory as any) || undefined, notes: r.notes || undefined })), total };
+    return { data: rows.map(mapVehicle), total };
   }
 
-  async addVehicle(vehicle: Vehicle): Promise<Vehicle> {
-    await prisma.vehicle.upsert({
-      where: { registrationNo: vehicle.registrationNo.toUpperCase() },
-      update: { customerId: vehicle.customerId, type: vehicle.type, make: vehicle.make, model: vehicle.model, year: vehicle.year, color: vehicle.color, image: vehicle.image, previousServicesCount: vehicle.previousServicesCount || 0, upholsteryHistory: (vehicle.upholsteryHistory as any) || [], notes: vehicle.notes },
-      create: { id: vehicle.id, customerId: vehicle.customerId, type: vehicle.type, make: vehicle.make, model: vehicle.model, year: vehicle.year, registrationNo: vehicle.registrationNo.toUpperCase(), color: vehicle.color, image: vehicle.image, previousServicesCount: vehicle.previousServicesCount || 0, upholsteryHistory: (vehicle.upholsteryHistory as any) || [], notes: vehicle.notes },
-    });
-    return vehicle;
+  // Ownership-aware upsert keyed by registration number.
+  //   - different customer already owns the plate  -> { conflict: true } (no reassignment)
+  //   - same customer re-submits their own plate   -> idempotent refresh, existing id kept
+  //   - otherwise                                  -> { created: true }
+  async addVehicle(vehicle: Vehicle): Promise<{ vehicle: Vehicle; created: boolean; conflict?: boolean }> {
+    const registrationNo = vehicle.registrationNo.toUpperCase();
+    const existing = await prisma.vehicle.findUnique({ where: { registrationNo } });
+    if (existing) {
+      if (String(existing.customerId) !== String(vehicle.customerId)) {
+        return { vehicle: mapVehicle(existing), created: false, conflict: true };
+      }
+      await prisma.vehicle.upsert({
+        where: { registrationNo },
+        update: { type: vehicle.type, make: vehicle.make, model: vehicle.model, year: vehicle.year, color: vehicle.color, image: vehicle.image, previousServicesCount: vehicle.previousServicesCount || 0, upholsteryHistory: (vehicle.upholsteryHistory as any) || [], notes: vehicle.notes },
+        create: { id: `${Date.now()}_${crypto.randomUUID().slice(0, 6)}`, customerId: vehicle.customerId, type: vehicle.type, make: vehicle.make, model: vehicle.model, year: vehicle.year, registrationNo, color: vehicle.color, image: vehicle.image, previousServicesCount: vehicle.previousServicesCount || 0, upholsteryHistory: (vehicle.upholsteryHistory as any) || [], notes: vehicle.notes },
+      });
+      return { vehicle: { ...vehicle, id: existing.id, customerId: existing.customerId, registrationNo, previousServicesCount: vehicle.previousServicesCount || 0 }, created: false };
+    }
+    try {
+      const created = await prisma.vehicle.create({ data: { id: vehicle.id, customerId: vehicle.customerId, type: vehicle.type, make: vehicle.make, model: vehicle.model, year: vehicle.year, registrationNo, color: vehicle.color, image: vehicle.image, previousServicesCount: vehicle.previousServicesCount || 0, upholsteryHistory: (vehicle.upholsteryHistory as any) || [], notes: vehicle.notes } });
+      return { vehicle: mapVehicle(created), created: true };
+    } catch {
+      return { vehicle: mapVehicle(vehicle), created: false, conflict: true };
+    }
   }
 
   async deleteVehicle(id: string): Promise<boolean> {
@@ -237,10 +254,15 @@ class PrismaDatabaseManager {
     return rows.map(mapWorkOrder);
   }
 
-  async getWorkOrdersPaginated(page: number, limit: number): Promise<{ data: WorkOrder[]; total: number }> {
+  async getWorkOrdersPaginated(customerId: string | undefined, page: number, limit: number): Promise<{ data: WorkOrder[]; total: number }> {
+    const where: any = {};
+    if (customerId) {
+      const customerBookingIds = (await prisma.booking.findMany({ where: { customerId }, select: { id: true } })).map(b => b.id);
+      where.bookingId = { in: customerBookingIds };
+    }
     const [rows, total] = await Promise.all([
-      prisma.workOrder.findMany({ skip: (page-1)*limit, take: limit, orderBy: { createdAt: "desc" } }),
-      prisma.workOrder.count(),
+      prisma.workOrder.findMany({ where, skip: (page-1)*limit, take: limit, orderBy: { createdAt: "desc" } }),
+      prisma.workOrder.count({ where }),
     ]);
     return { data: rows.map(mapWorkOrder), total };
   }
@@ -428,12 +450,16 @@ class PrismaDatabaseManager {
 function mapUser(u: any): User {
   return { id: u.id, clerkId: u.clerkId || undefined, name: u.name, phone: u.phone || "", email: u.email || "", role: u.role as any, avatar: u.avatar, location: u.location || undefined };
 }
+function mapVehicle(r: any): Vehicle {
+  return { id: r.id, customerId: r.customerId, type: r.type as any, make: r.make, model: r.model, year: r.year, registrationNo: r.registrationNo, color: r.color || undefined, image: r.image || undefined, previousServicesCount: r.previousServicesCount ?? 0, upholsteryHistory: (r.upholsteryHistory as any) || undefined, notes: r.notes || undefined };
+}
 function mapBooking(r: any): Booking {
   return {
     id: r.id, customerId: r.customerId || undefined, customerName: r.customerName, customerPhone: r.customerPhone, customerEmail: r.customerEmail || undefined,
     serviceId: r.serviceId, serviceName: r.serviceName, vehicleDetails: r.vehicleDetails as any,
     requirementsDesc: r.requirementsDesc || undefined, notes: r.notes || undefined, customOptions: r.customOptions as any, referencePhotos: r.referencePhotos as any, selectedMaterial: r.selectedMaterial || undefined, stitchingStyle: r.stitchingStyle || undefined,
     appointmentDate: r.appointmentDate, appointmentTime: r.appointmentTime, locationType: r.locationType as any, customerLocation: r.customerLocation || undefined, customerLocationAddress: r.customerLocationAddress || undefined,
+    slotStart: r.slotStart ? (r.slotStart instanceof Date ? r.slotStart.toISOString() : String(r.slotStart)) : undefined,
     estimatedPrice: r.estimatedPrice, depositAmount: r.depositAmount, balanceAmount: r.balanceAmount ?? undefined, depositPaid: r.depositPaid, paymentStatus: r.paymentStatus as any, paymentMethod: r.paymentMethod || undefined, mpesaReceiptNo: r.mpesaReceiptNo || undefined,
     status: r.status as any, assignedStaffId: r.assignedStaffId || undefined, assignedStaffName: r.assignedStaffName || undefined, workOrderId: r.workOrderId || undefined, timeline: r.timeline as any, internalNotes: r.internalNotes || undefined, createdAt: r.createdAt.toISOString(),
     privacyAcceptedAt: r.privacyAcceptedAt?.toISOString(), termsAcceptedAt: r.termsAcceptedAt?.toISOString(),
@@ -445,6 +471,7 @@ function toBookingData(b: Booking): any {
     serviceId: b.serviceId, serviceName: b.serviceName, vehicleDetails: b.vehicleDetails as any,
     requirementsDesc: b.requirementsDesc, notes: b.notes, customOptions: b.customOptions as any, referencePhotos: b.referencePhotos as any, selectedMaterial: b.selectedMaterial, stitchingStyle: b.stitchingStyle,
     appointmentDate: b.appointmentDate, appointmentTime: b.appointmentTime, locationType: b.locationType, customerLocation: b.customerLocation, customerLocationAddress: b.customerLocationAddress,
+    slotStart: b.slotStart ? new Date(b.slotStart) : undefined,
     estimatedPrice: b.estimatedPrice, depositAmount: b.depositAmount, balanceAmount: b.balanceAmount, depositPaid: b.depositPaid || false, paymentStatus: b.paymentStatus, paymentMethod: b.paymentMethod, mpesaReceiptNo: b.mpesaReceiptNo,
     status: b.status, assignedStaffId: b.assignedStaffId, assignedStaffName: b.assignedStaffName, workOrderId: b.workOrderId, timeline: b.timeline as any, internalNotes: b.internalNotes,
     privacyAcceptedAt: b.privacyAcceptedAt ? new Date(b.privacyAcceptedAt) : undefined,

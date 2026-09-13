@@ -52,6 +52,7 @@ function loadDb(): InMemoryDb {
 
   const bookings = (rawDb.bookings || []).map((b: any) => ({
     ...b,
+    slotStart: b.slotStart ? new Date(b.slotStart) : b.slotStart,
     createdAt: normalizeDate(b.createdAt),
     updatedAt: normalizeDate(b.updatedAt),
   }));

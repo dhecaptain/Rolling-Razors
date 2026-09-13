@@ -407,7 +407,8 @@ app.post("/api/bookings", authenticate, async (req,res)=>{
   if (!service) return res.status(400).json({ success:false, error:"Selected service is no longer available." });
   const appointment = parseAppointmentDateTime(input.appointmentDate, input.appointmentTime);
   if (Number.isNaN(appointment.getTime()) || appointment.getTime() < Date.now()) return res.status(400).json({ success:false, error:"Appointment must be a valid future date and time." });
-  const conflictingBooking=await prisma.booking.findFirst({ where:{ appointmentDate:input.appointmentDate, appointmentTime:input.appointmentTime, status:{ in:["pending","confirmed","in_progress"] } } });
+  const slotStart = appointment.toISOString();
+  const conflictingBooking=await prisma.booking.findFirst({ where:{ slotStart: appointment, status:{ in:["pending","confirmed","checked_in","in_progress","quality_check","ready"] } } });
   if(conflictingBooking) return res.status(409).json({ success:false, error:"That appointment slot is already reserved. Please choose another time." });
   const bookingId=`RR-${Date.now().toString().slice(-6)}${Math.floor(100+Math.random()*900)}`;
   const workOrderId=`RR-WO-${bookingId.replace('RR-','')}`;
@@ -419,13 +420,18 @@ app.post("/api/bookings", authenticate, async (req,res)=>{
     id:bookingId, customerId, customerName, customerPhone, customerEmail:customer.email,
     serviceId:service.id, serviceName:service.name, vehicleDetails:{ ...input.vehicleDetails, registrationNo: input.vehicleDetails.registrationNo.toUpperCase() },
     requirementsDesc:input.requirementsDesc, notes:input.notes, customOptions:input.customOptions, referencePhotos:input.referencePhotos, selectedMaterial:input.selectedMaterial, stitchingStyle:input.stitchingStyle,
-    appointmentDate:input.appointmentDate, appointmentTime:input.appointmentTime, locationType:input.locationType, customerLocation:input.customerLocation, customerLocationAddress:input.customerLocationAddress,
+    appointmentDate:input.appointmentDate, appointmentTime:input.appointmentTime, slotStart, locationType:input.locationType, customerLocation:input.customerLocation, customerLocationAddress:input.customerLocationAddress,
     estimatedPrice, depositAmount: Math.round(estimatedPrice*0.35), balanceAmount: Math.round(estimatedPrice*0.65), depositPaid:false, paymentStatus:"pending",     status:"pending", workOrderId, createdAt:new Date().toISOString(), privacyAcceptedAt:consentTimestamp.toISOString(), termsAcceptedAt:consentTimestamp.toISOString(), timeline:[{ status:"pending", timestamp:new Date().toLocaleString(), title:"Booking Created", note:`Appointment requested for ${input.vehicleDetails.make} ${input.vehicleDetails.model}.`, updatedBy:customerName }],
   };
   const dynamicMaterials:string[]=[bookingData.selectedMaterial||'Automotive Leather / Vinyl','High Density Ergonomic Foam Cushioning','Bonded Heavy-Duty Seam Thread'];
   const newWorkOrder: WorkOrder={ id:workOrderId, bookingId, customerId, customerName:bookingData.customerName, customerPhone:bookingData.customerPhone, vehicleDisplayName:`${bookingData.vehicleDetails.make} ${bookingData.vehicleDetails.model} (${bookingData.vehicleDetails.year})`, vehicleRegistration:bookingData.vehicleDetails.registrationNo, serviceName:bookingData.serviceName, assignedStaffId:bookingData.assignedStaffId, assignedStaffName:bookingData.assignedStaffName||'Unassigned', priority:'Normal', stage:'BOOKED', customerRequirements:bookingData.requirementsDesc||'Standard custom upholstery package', materialsRequired:dynamicMaterials, estimatedCost:bookingData.estimatedPrice, actualCost:undefined, beforePhotos:[], progressPhotos:[], afterPhotos:[], progressPercentage:10, createdAt:new Date().toISOString().split('T')[0], targetCompletionDate:bookingData.appointmentDate };
-  const { booking: savedBooking, workOrder: savedWorkOrder }=await serverDb.createBookingWithWorkOrder(bookingData, newWorkOrder);
-  res.status(201).json({ success:true, booking:savedBooking, workOrder:savedWorkOrder });
+  try {
+    const { booking: savedBooking, workOrder: savedWorkOrder }=await serverDb.createBookingWithWorkOrder(bookingData, newWorkOrder);
+    res.status(201).json({ success:true, booking:savedBooking, workOrder:savedWorkOrder });
+  } catch(e:any){
+    if(String(e.message).includes("Unique")||String(e).includes("unique")) return res.status(409).json({ success:false, error:"That appointment slot was just reserved. Please choose another time." });
+    throw e;
+  }
 });
 
 app.patch("/api/bookings/:id", authenticate, requireAdmin, requireCasbin("bookings","update"), async (req,res)=>{
@@ -438,6 +444,7 @@ app.patch("/api/bookings/:id", authenticate, requireAdmin, requireCasbin("bookin
     if(filtered.status!=="cancelled") return res.status(403).json({ success:false, error:"Forbidden." });
     const v=serverDb.validateBookingTransition(existing.status, filtered.status);
     if(!v.valid) return res.status(409).json({ success:false, error:v.error });
+    filtered.slotStart = null;
     const before={ ...existing };
     const updated=await serverDb.updateBooking(id, filtered);
     await serverDb.createAuditLog({ actorId:user.id, actorName:user.name, actorRole:user.role, action:`booking:${filtered.status}`, entityType:"Booking", entityId:id, before, after:updated, ip:req.ip, requestId:(req as any).id });
@@ -448,6 +455,7 @@ app.patch("/api/bookings/:id", authenticate, requireAdmin, requireCasbin("bookin
     const v=serverDb.validateBookingTransition(existing.status, patch.status);
     if(!v.valid) return res.status(409).json({ success:false, error:v.error });
     if(patch.status==="confirmed" && !existing.depositPaid && !patch.depositPaid) return res.status(409).json({ success:false, error:"Cannot confirm booking without deposit. Record M-Pesa payment first." });
+    if(patch.status==="cancelled") patch.slotStart = null;
   }
   const before={ ...existing };
   const updated=await serverDb.updateBooking(id, patch);
@@ -468,13 +476,10 @@ app.post("/api/vehicles", authenticate, async (req,res)=>{
   const vehicleData=v.data as Vehicle; const user=(req as any).user;
   const customerId=user.role === "admin" ? vehicleData.customerId : user.id;
   if (!customerId) return res.status(400).json({ success:false, error:"A customer account is required." });
-  try {
-    const newVehicle: Vehicle={ ...vehicleData, customerId, id:`veh_${Date.now()}_${crypto.randomUUID().slice(0,6)}`, registrationNo:vehicleData.registrationNo.toUpperCase(), previousServicesCount:0 };
-    const saved=await serverDb.addVehicle(newVehicle); res.status(201).json({ success:true, vehicle:saved });
-  } catch(e:any){
-    if(String(e.message).includes("Unique")||String(e).includes("unique")) return res.status(409).json({ success:false, error:`Vehicle with registration ${vehicleData.registrationNo.toUpperCase()} already exists.` });
-    throw e;
-  }
+  const newVehicle: Vehicle={ ...vehicleData, customerId, id:`veh_${Date.now()}_${crypto.randomUUID().slice(0,6)}`, registrationNo:vehicleData.registrationNo.toUpperCase(), previousServicesCount:0 };
+  const result=await serverDb.addVehicle(newVehicle);
+  if(result.conflict) return res.status(409).json({ success:false, error:"That registration number is already registered to another account." });
+  res.status(result.created ? 201 : 200).json({ success:true, vehicle:result.vehicle, alreadyExists:!result.created });
 });
 
 app.delete("/api/vehicles/:id", authenticate, async (req,res)=>{
@@ -486,15 +491,9 @@ app.delete("/api/vehicles/:id", authenticate, async (req,res)=>{
 app.get("/api/work-orders", authenticate, async (req,res)=>{
   const { page, limit }=getPagination(req);
   const user=(req as any).user;
-  if (user.role === "admin") {
-    const { data: workOrders, total }=await serverDb.getWorkOrdersPaginated(page, limit);
-    return res.json({ success:true, workOrders, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
-  }
-  const { data: bookings }=await serverDb.getBookingsPaginated(user.id, undefined, 1, 1000);
-  const bookingIds=new Set(bookings.map(b=>b.id));
-  const { data: workOrders, total }=await serverDb.getWorkOrdersPaginated(page, limit);
-  const scoped=workOrders.filter(wo=>bookingIds.has(wo.bookingId));
-  return res.json({ success:true, workOrders:scoped, pagination:{ page, limit, total:scoped.length, pages:Math.ceil(scoped.length/limit) } });
+  const customerId = user.role === "admin" ? undefined : user.id;
+  const { data: workOrders, total }=await serverDb.getWorkOrdersPaginated(customerId, page, limit);
+  return res.json({ success:true, workOrders, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
 });
 
 app.patch("/api/work-orders/:id", authenticate, requireAdmin, requireCasbin("work-orders","update"), async (req,res)=>{
