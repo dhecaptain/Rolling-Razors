@@ -37,6 +37,10 @@ export const env = {
   NODE_ENV: process.env.NODE_ENV || "development",
   PORT: 3000,
   DATABASE_URL: requireEnv("DATABASE_URL", "postgresql://rolling_razors:rolling_razors_pass@localhost:5435/rolling_razors"),
+  // Storage engine: "mock" (JSON file, local/tests) or "postgres" (real Prisma + pg/Neon, production).
+  DATABASE_ENGINE: ((process.env.DATABASE_ENGINE || "mock").trim().toLowerCase()) as "mock" | "postgres",
+  // "require" | "disable"; defaults to require when DATABASE_URL targets neon.tech.
+  DATABASE_SSL: (process.env.DATABASE_SSL || "").trim().toLowerCase(),
 
   // --- Authentication provider ---
   AUTH_PROVIDER: authProvider,
@@ -79,6 +83,16 @@ export const env = {
 
 if (env.NODE_ENV === "production" && !configuredProvider) {
   throw new Error("AUTH_PROVIDER must be explicitly set to 'clerk' or 'legacy' in production.");
+}
+
+if (!["mock", "postgres"].includes(env.DATABASE_ENGINE)) {
+  throw new Error(`DATABASE_ENGINE must be 'mock' or 'postgres', got '${env.DATABASE_ENGINE}'.`);
+}
+if (env.NODE_ENV === "production" && env.DATABASE_ENGINE !== "postgres") {
+  throw new Error("DATABASE_ENGINE must be 'postgres' in production — the JSON mock is not persistent on Vercel.");
+}
+if (env.DATABASE_ENGINE === "postgres" && !env.DATABASE_URL) {
+  throw new Error("DATABASE_URL is required when DATABASE_ENGINE=postgres.");
 }
 
 if (env.AUTH_PROVIDER === "legacy") {

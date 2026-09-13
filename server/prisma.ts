@@ -1,6 +1,9 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import pg from "pg";
 import { INITIAL_SERVICES } from "../src/data/mockData";
 
 export interface InMemoryDb {
@@ -402,7 +405,25 @@ function createInMemoryPrisma() {
 
 const globalForPrisma = globalThis as unknown as { prisma?: any };
 
-export const prisma: any = globalForPrisma.prisma ?? createInMemoryPrisma();
+function postgresSsl(): pg.PoolConfig["ssl"] {
+  const url = process.env.DATABASE_URL || "";
+  const config = (process.env.DATABASE_SSL || "").trim().toLowerCase();
+  if (config === "disable") return false;
+  if (config === "require") return { rejectUnauthorized: false };
+  // Neon requires TLS; default to it when the pooled/host URL points at Neon.
+  return url.includes("neon.tech") ? { rejectUnauthorized: false } : false;
+}
+
+function createPostgresPrisma(): any {
+  const url = process.env.DATABASE_URL || "";
+  const pool = new pg.Pool({ connectionString: url, ssl: postgresSsl() });
+  const adapter = new PrismaPg(pool);
+  return new PrismaClient({ adapter });
+}
+
+export const prisma: any =
+  globalForPrisma.prisma ??
+  (process.env.DATABASE_ENGINE === "postgres" ? createPostgresPrisma() : createInMemoryPrisma());
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
