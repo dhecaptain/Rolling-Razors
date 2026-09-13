@@ -26,6 +26,8 @@ export default defineConfig({
       ADMIN_EMAIL: "ci@rollingrazors.co.ke",
       ADMIN_PHONE: "0712345678",
       ADMIN_PASSWORD: "ci-test-pass",
+      // Enables fail-closed callback auth tests in mpesa.spec.ts.
+      MPESA_CALLBACK_SECRET: "test-callback-secret-0123456789abcdef",
       // Tests use the legacy provider unless a Clerk test instance is configured.
       AUTH_PROVIDER: process.env.AUTH_PROVIDER || "legacy",
       VITE_AUTH_PROVIDER: process.env.VITE_AUTH_PROVIDER || "legacy",

@@ -108,7 +108,7 @@ if (env.NODE_ENV === "production" && !env.CORS_ORIGIN) {
   throw new Error("CORS_ORIGIN must be set in production (comma-separated allowed origins)");
 }
 if (env.NODE_ENV === "production" && !env.MPESA_CALLBACK_SECRET) {
-  console.warn("[SECURITY] MPESA_CALLBACK_SECRET not set — callback endpoint will be unprotected!");
+  throw new Error("MPESA_CALLBACK_SECRET is required in production — M-Pesa callbacks are authenticated against it and verified with Daraja before payments are applied.");
 }
 
 export function isMpesaConfigured(): boolean {

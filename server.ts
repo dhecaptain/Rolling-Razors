@@ -13,6 +13,7 @@ import { createServer as createViteServer } from "vite";
 import { env } from "./server/env";
 import { logger } from "./server/logger";
 import { serverDb } from "./server/db";
+import type { MpesaTransactionRecord } from "./server/db";
 import { prisma } from "./server/prisma";
 import { initSentry, Sentry } from "./server/sentry";
 import { requireCasbin } from "./server/casbin/enforcer";
@@ -631,69 +632,114 @@ app.post("/api/mpesa/stkpush", mpesaLimiter, authenticate, async (req,res)=>{
   }catch(err:any){ logger.error({ err }, "[M-PESA] STK network failure"); return res.status(502).json({ success:false, error:`Safaricom gateway connection error: ${err.message||"Network timeout"}` }); }
 });
 
-app.post("/api/mpesa/callback", callbackLimiter, async (req,res)=>{
-  if(env.MPESA_CALLBACK_SECRET){
-    const token=req.headers["x-callback-token"] as string || req.query.token as string;
-    if(token!==env.MPESA_CALLBACK_SECRET) { logger.warn({ ip:req.ip }, "[M-PESA] callback auth failed"); return res.status(401).json({ ResultCode:1, ResultDesc:"Unauthorized callback" }); }
+function safeEqual(a: string, b: string): boolean {
+  const ba = Buffer.from(String(a ?? ""));
+  const bb = Buffer.from(String(b ?? ""));
+  return ba.length === bb.length && crypto.timingSafeEqual(ba, bb);
+}
+
+// Verify-then-apply: a transaction may only reach SUCCESS/FAILED after Daraja
+// (stkpushquery) confirms it. Callback bodies are never trusted on their own,
+// and every application path (callback, query, reconcile) shares applyMpesaSuccess
+// below so booking/invoice updates can never diverge between routes.
+async function applyMpesaSuccess(existing: MpesaTransactionRecord, receiptNumber?: string): Promise<{ claimed: boolean }> {
+  const receipt = receiptNumber || existing.receiptNumber || `SDA${Date.now().toString(36).toUpperCase()}`;
+  let claimed = 0;
+  await prisma.$transaction(async (tx) => {
+    claimed = (await tx.mpesaTransaction.updateMany({ where: { checkoutRequestId: existing.checkoutRequestId, status: "PENDING" }, data: { status: "SUCCESS", receiptNumber: receipt } })).count;
+    if (claimed === 0) return;
+    if (existing.bookingId) await tx.booking.updateMany({ where: { id: existing.bookingId, depositPaid: false }, data: { paymentStatus: "deposit_paid", mpesaReceiptNo: receipt, status: "confirmed", depositPaid: true } });
+    if (existing.invoiceId) {
+      const inv = await tx.invoice.findUnique({ where: { id: existing.invoiceId } });
+      if (inv) {
+        const newPaid = (inv.depositPaid || 0) + existing.amount;
+        const payStatus = newPaid >= inv.total ? "Paid" : "Deposit Paid";
+        await (tx.invoice.update as any)({ where: { id: existing.invoiceId }, data: { depositPaid: newPaid, balanceDue: Math.max(0, inv.total - newPaid), paymentStatus: payStatus, mpesaRef: receipt || inv.mpesaRef } });
+      }
+    }
+  });
+  return { claimed: claimed > 0 };
+}
+
+async function verifyAndApplyMpesa(checkoutRequestId: string): Promise<{ status: "UNKNOWN" | "PENDING" | "SUCCESS" | "FAILED"; tx?: MpesaTransactionRecord }> {
+  const tx = await serverDb.getTransaction(checkoutRequestId);
+  if (!tx) return { status: "UNKNOWN" };
+  if (tx.status !== "PENDING") return { status: tx.status, tx };
+  const live = await queryDarajaStatus(checkoutRequestId);
+  if (live.status === "SUCCESS") {
+    await applyMpesaSuccess(tx, live.receiptNumber);
+    return { status: "SUCCESS", tx: (await serverDb.getTransaction(checkoutRequestId)) || tx };
   }
-  const body=req.body; logger.info({ body, requestId:(req as any).id }, "[M-PESA WEBHOOK] callback"); const stkCallback=body?.Body?.stkCallback;
-  if(stkCallback){
-    const checkoutRequestId=stkCallback.CheckoutRequestID; const resultCode=stkCallback.ResultCode;
-    const existing=await serverDb.getTransaction(checkoutRequestId);
-    if(!existing){ logger.warn({ checkoutRequestId }, "[M-PESA] callback for unknown transaction"); }
-    else if(existing.status!=="PENDING"){ logger.info({ checkoutRequestId, status:existing.status }, "[M-PESA] callback idempotent skip");
-    } else if(resultCode===0){
-      let receiptNumber=existing.receiptNumber; const items=stkCallback?.CallbackMetadata?.Item||[]; for(const item of items) if(item.Name==="MpesaReceiptNumber") receiptNumber=item.Value;
-      await prisma.$transaction(async (txClient)=>{
-        const claimed=await txClient.mpesaTransaction.updateMany({ where:{ checkoutRequestId: checkoutRequestId, status:"PENDING" }, data:{ status:"SUCCESS", receiptNumber: receiptNumber as string } });
-        if(claimed.count===0) return;
-        if(existing.bookingId) await txClient.booking.updateMany({ where:{ id: existing.bookingId, depositPaid:false }, data:{ paymentStatus:"deposit_paid", mpesaReceiptNo:receiptNumber, status:"confirmed", depositPaid:true } });
-        if(existing.invoiceId){
-          const inv=await txClient.invoice.findUnique({ where:{ id: existing.invoiceId } });
-          if(inv){ const newPaid=(inv.depositPaid||0)+existing.amount; let payStatus="Deposit Paid"; if(newPaid>=inv.total) payStatus="Paid"; await (txClient.invoice.update as any)({ where:{ id: existing.invoiceId }, data:{ depositPaid:newPaid, balanceDue:Math.max(0, inv.total-newPaid), paymentStatus:payStatus, mpesaRef: receiptNumber||inv.mpesaRef } }); }
-        }
-      });
-    } else {
-      await serverDb.updateTransaction(checkoutRequestId, { status:"FAILED", failureReason: stkCallback.ResultDesc||"User cancelled or failed STK transaction" });
+  if (live.status === "FAILED") {
+    return { status: "FAILED", tx: (await serverDb.updateTransaction(checkoutRequestId, { status: "FAILED", failureReason: live.failureReason })) || tx };
+  }
+  return { status: "PENDING", tx };
+}
+
+app.post("/api/mpesa/callback", callbackLimiter, async (req, res) => {
+  if (env.MPESA_CALLBACK_SECRET) {
+    const token = String((req.headers["x-callback-token"] as string) || req.query.token || "").trim();
+    if (!token || !safeEqual(token, env.MPESA_CALLBACK_SECRET)) {
+      logger.warn({ ip: req.ip, requestId: (req as any).id }, "[M-PESA] callback auth failed");
+      return res.status(401).json({ ResultCode: 1, ResultDesc: "Unauthorized callback" });
     }
   }
-  return res.json({ ResultCode:0, ResultDesc:"Callback received successfully" });
+  const stkCallback = req.body?.Body?.stkCallback;
+  if (stkCallback?.CheckoutRequestID) {
+    const checkoutRequestId = String(stkCallback.CheckoutRequestID);
+    logger.info({ checkoutRequestId, resultCode: stkCallback.ResultCode, requestId: (req as any).id }, "[M-PESA] callback received");
+    const existing = await serverDb.getTransaction(checkoutRequestId);
+    if (!existing) {
+      logger.warn({ checkoutRequestId, requestId: (req as any).id }, "[M-PESA] callback for unknown transaction");
+    } else if (existing.status !== "PENDING") {
+      logger.info({ checkoutRequestId, status: existing.status }, "[M-PESA] callback idempotent skip");
+    } else {
+      // Verify-then-apply: never trust the callback body alone — confirm with Daraja first.
+      const live = await queryDarajaStatus(checkoutRequestId);
+      if (live.status === "SUCCESS") {
+        const callbackReceipt = Array.isArray(stkCallback.CallbackMetadata?.Item)
+          ? stkCallback.CallbackMetadata.Item.find((i: any) => i?.Name === "MpesaReceiptNumber")?.Value
+          : undefined;
+        const result = await applyMpesaSuccess(existing, live.receiptNumber || callbackReceipt);
+        logger.info({ checkoutRequestId, claimed: result.claimed }, "[M-PESA] callback verified SUCCESS via Daraja");
+      } else if (live.status === "FAILED") {
+        await serverDb.updateTransaction(checkoutRequestId, { status: "FAILED", failureReason: live.failureReason || stkCallback.ResultDesc || "STK transaction failed" });
+      } else {
+        logger.info({ checkoutRequestId }, "[M-PESA] callback received but Daraja status pending — left PENDING");
+      }
+    }
+  }
+  return res.json({ ResultCode: 0, ResultDesc: "Callback received successfully" });
 });
 
-app.get("/api/mpesa/query/:checkoutRequestId", authenticate, async (req,res)=>{
-  const { checkoutRequestId }=req.params; let tx=await serverDb.getTransaction(checkoutRequestId); if(!tx) return res.status(404).json({ success:false, error:"Transaction not found." });
-  const user=(req as any).user;
-  if(user.role!=="admin" && tx.bookingId){ const booking=await serverDb.getBooking(tx.bookingId); if(!booking || booking.customerId!==user.id) return res.status(403).json({ success:false, error:"Not your transaction." }); }
-  if(tx.status==="PENDING"){
-    const liveStatus=await queryDarajaStatus(checkoutRequestId);
-    if(liveStatus.status==="SUCCESS"){
-      const receiptNumber=liveStatus.receiptNumber||tx.receiptNumber||`SDA${Date.now().toString(36).toUpperCase()}`;
-      await prisma.$transaction(async (txPrisma)=>{
-        const claimed=await txPrisma.mpesaTransaction.updateMany({ where:{ checkoutRequestId: checkoutRequestId, status:"PENDING" }, data:{ status:"SUCCESS", receiptNumber: receiptNumber as string } });
-        if(claimed.count===0) return;
-        if(tx!.bookingId) await txPrisma.booking.updateMany({ where:{ id: tx!.bookingId, depositPaid:false }, data:{ paymentStatus:"deposit_paid", mpesaReceiptNo:receiptNumber, status:"confirmed", depositPaid:true } });
-        if(tx!.invoiceId){
-          const inv=await txPrisma.invoice.findUnique({ where:{ id: tx!.invoiceId } });
-          if(inv){ const newPaid=(inv.depositPaid||0)+tx!.amount; let payStatus="Deposit Paid"; if(newPaid>=inv.total) payStatus="Paid"; await (txPrisma.invoice.update as any)({ where:{ id: tx!.invoiceId }, data:{ depositPaid:newPaid, balanceDue:Math.max(0, inv.total-newPaid), paymentStatus:payStatus, mpesaRef: receiptNumber||inv.mpesaRef } }); }
-        }
-      });
-      tx=await serverDb.getTransaction(checkoutRequestId)||tx;
-    } else if(liveStatus.status==="FAILED"){ tx=await serverDb.updateTransaction(checkoutRequestId, { status:"FAILED", failureReason:liveStatus.failureReason })||tx; }
+app.get("/api/mpesa/query/:checkoutRequestId", authenticate, async (req, res) => {
+  const { checkoutRequestId } = req.params;
+  const result = await verifyAndApplyMpesa(checkoutRequestId);
+  const tx = result.tx;
+  if (!tx) return res.status(404).json({ success: false, error: "Transaction not found." });
+  const user = (req as any).user;
+  if (user.role !== "admin" && tx.bookingId) {
+    const booking = await serverDb.getBooking(tx.bookingId);
+    if (!booking || booking.customerId !== user.id) return res.status(403).json({ success: false, error: "Not your transaction." });
   }
-  return res.json({ success:true, transaction:tx });
+  return res.json({ success: true, transaction: tx });
 });
 
-app.get("/api/mpesa/transactions", authenticate, requireAdmin, async (req,res)=>{
-  const { page, limit }=getPagination(req);
-  const { data: transactions, total }=await serverDb.getTransactionsPaginated(page, limit);
-  res.json({ success:true, transactions, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
+app.get("/api/mpesa/transactions", authenticate, requireAdmin, async (req, res) => {
+  const { page, limit } = getPagination(req);
+  const { data: transactions, total } = await serverDb.getTransactionsPaginated(page, limit);
+  res.json({ success: true, transactions, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
 });
-app.post("/api/mpesa/reconcile", authenticate, requireAdmin, async (_req,res)=>{
-  const pendings=await prisma.mpesaTransaction.findMany({ where:{ status:"PENDING", createdAt:{ gte: new Date(Date.now()-24*60*60*1000) } }, take:20 });
-  let checked=0, updated=0;
-  for(const tx of pendings){ const live=await queryDarajaStatus(tx.checkoutRequestId); if(live.status!=="PENDING"){ checked++; if(live.status==="SUCCESS"){ await prisma.$transaction(async (p)=>{ await p.mpesaTransaction.update({ where:{ checkoutRequestId:tx.checkoutRequestId }, data:{ status:"SUCCESS", receiptNumber:live.receiptNumber } }); if(tx.bookingId) await p.booking.update({ where:{ id:tx.bookingId }, data:{ paymentStatus:"deposit_paid", mpesaReceiptNo:live.receiptNumber, status:"confirmed" } }).catch(()=>{}); }); updated++; } else if(live.status==="FAILED"){ await prisma.mpesaTransaction.update({ where:{ checkoutRequestId:tx.checkoutRequestId }, data:{ status:"FAILED", failureReason:live.failureReason } }); updated++; } }
+app.post("/api/mpesa/reconcile", authenticate, requireAdmin, async (_req, res) => {
+  const pendings = await prisma.mpesaTransaction.findMany({ where: { status: "PENDING", createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } }, take: 20 });
+  let checked = 0, updated = 0;
+  for (const tx of pendings) {
+    const r = await verifyAndApplyMpesa(tx.checkoutRequestId);
+    if (r.status === "PENDING") continue;
+    checked++;
+    if (r.status !== "UNKNOWN") updated++;
   }
-  res.json({ success:true, checked, updated });
+  res.json({ success: true, checked, updated });
 });
 app.get("/api/health", async (_req,res)=>{
   const checks:any={ db:"unknown", daraja:"unknown" };

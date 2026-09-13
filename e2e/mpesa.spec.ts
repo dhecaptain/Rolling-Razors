@@ -61,10 +61,35 @@ test.describe("M-Pesa", () => {
     expect(res.status()).toBe(403);
   });
 
-  test("callback without secret should be rejected if secret set", async ({ request }) => {
+  test("callback without secret should be rejected", async ({ request }) => {
     const res = await request.post("/api/mpesa/callback", {
       data: { Body: { stkCallback: { CheckoutRequestID: "ws_CO_123", ResultCode: 0, CallbackMetadata: { Item: [{ Name: "MpesaReceiptNumber", Value: "QJ12345678" }] } } } },
     });
-    expect([200, 401]).toContain(res.status());
+    expect(res.status()).toBe(401);
+  });
+
+  test("callback with wrong secret should be rejected", async ({ request }) => {
+    const res = await request.post("/api/mpesa/callback", {
+      headers: { "x-callback-token": "wrong-secret-value" },
+      data: { Body: { stkCallback: { CheckoutRequestID: "ws_CO_123", ResultCode: 0 } } },
+    });
+    expect(res.status()).toBe(401);
+  });
+
+  test("callback with valid secret and unknown transaction is acked", async ({ request }) => {
+    const res = await request.post("/api/mpesa/callback", {
+      headers: { "x-callback-token": "test-callback-secret-0123456789abcdef" },
+      data: { Body: { stkCallback: { CheckoutRequestID: "ws_CO_123", ResultCode: 0, CallbackMetadata: { Item: [{ Name: "MpesaReceiptNumber", Value: "QJ12345678" }] } } } },
+    });
+    expect([200, 404, 400]).toContain(res.status());
+    if (res.status() === 200) {
+      const body = await res.json();
+      expect(body).toMatchObject({ ResultCode: 0 });
+    }
+  });
+
+  test("query endpoint requires authentication", async ({ request }) => {
+    const res = await request.get("/api/mpesa/query/ws_CO_123");
+    expect(res.status()).toBe(401);
   });
 });
