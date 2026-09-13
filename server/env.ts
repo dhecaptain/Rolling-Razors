@@ -95,6 +95,24 @@ if (env.DATABASE_ENGINE === "postgres" && !env.DATABASE_URL) {
   throw new Error("DATABASE_URL is required when DATABASE_ENGINE=postgres.");
 }
 
+// --- Distributed rate limiting / revocation store (Vercel hardening) ---
+// RATE_LIMIT_STORE=memory (default; local dev + tests) | upstash (durable, shared across Vercel instances)
+const rateLimitStore = (process.env.RATE_LIMIT_STORE || "memory").trim().toLowerCase();
+if (!["memory", "upstash"].includes(rateLimitStore)) {
+  throw new Error(`RATE_LIMIT_STORE must be 'memory' or 'upstash', got '${rateLimitStore}'.`);
+}
+if (rateLimitStore === "upstash") {
+  const missing: string[] = [];
+  if (!(process.env.UPSTASH_REDIS_REST_URL || "").trim()) missing.push("UPSTASH_REDIS_REST_URL");
+  if (!(process.env.UPSTASH_REDIS_REST_TOKEN || "").trim()) missing.push("UPSTASH_REDIS_REST_TOKEN");
+  if (missing.length) {
+    const msg = `RATE_LIMIT_STORE=upstash requires ${missing.join(", ")}.`;
+    if (env.NODE_ENV === "production") throw new Error(msg);
+    console.warn(`[ENV] ${msg}`);
+  }
+}
+env.RATE_LIMIT_STORE = rateLimitStore;
+
 if (env.AUTH_PROVIDER === "legacy") {
   if (!env.AUTH_SECRET || env.AUTH_SECRET.length < 32 || env.AUTH_SECRET === "rolling-razors-kenya-customs-secret-key-2026") {
     const msg = "[SECURITY] AUTH_SECRET is weak/default — set a strong 32+ char secret (or switch to AUTH_PROVIDER=clerk)!";

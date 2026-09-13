@@ -5,7 +5,6 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import helmet from "helmet";
 import cors from "cors";
-import rateLimit from "express-rate-limit";
 import pinoHttp from "pino-http";
 import cookieParser from "cookie-parser";
 import { clerkMiddleware, getAuth, clerkClient } from "@clerk/express";
@@ -15,6 +14,8 @@ import { logger } from "./logger";
 import { serverDb } from "./db";
 import type { MpesaTransactionRecord } from "./db";
 import { prisma } from "./prisma";
+import { kv } from "./kv";
+import { rateLimitMiddleware } from "./rates";
 import { initSentry, Sentry } from "./sentry";
 import { requireCasbin } from "./casbin/enforcer";
 import { normalizePhoneKe, toDarajaPhone, phoneKey, phonesMatch, isValidKePhone } from "./phone";
@@ -89,11 +90,11 @@ if (env.AUTH_PROVIDER === "clerk") {
   logger.info("[AUTH] Legacy JWT provider active — set AUTH_PROVIDER=clerk and CLERK_SECRET_KEY to switch");
 }
 
-const generalLimiter = rateLimit({ windowMs: 60_000, max: env.RATE_LIMIT_GENERAL_MAX, standardHeaders: true, legacyHeaders: false });
-const customerAuthLimiter = rateLimit({ windowMs: 60_000, max: env.RATE_LIMIT_AUTH_MAX, standardHeaders: true, legacyHeaders: false, message: { success:false, error:"Too many customer attempts. Try again shortly." } });
-const adminAuthLimiter = rateLimit({ windowMs: 60_000, max: env.RATE_LIMIT_ADMIN_MAX, standardHeaders: true, legacyHeaders: false, message: { success:false, error:"Too many admin attempts. Try again in 5 minutes." } });
-const mpesaLimiter = rateLimit({ windowMs: 60_000, max: env.RATE_LIMIT_MPESA_MAX, standardHeaders: true, legacyHeaders: false, message: { success:false, error:"M-Pesa rate limit: please wait." } });
-const callbackLimiter = rateLimit({ windowMs: 60_000, max: 60, standardHeaders: true, legacyHeaders: false });
+const generalLimiter = rateLimitMiddleware({ name: "general", max: env.RATE_LIMIT_GENERAL_MAX });
+const customerAuthLimiter = rateLimitMiddleware({ name: "customer-auth", max: env.RATE_LIMIT_AUTH_MAX, message: "Too many customer attempts. Try again shortly." });
+const adminAuthLimiter = rateLimitMiddleware({ name: "admin-auth", max: env.RATE_LIMIT_ADMIN_MAX, message: "Too many admin attempts. Try again in 5 minutes." });
+const mpesaLimiter = rateLimitMiddleware({ name: "mpesa", max: env.RATE_LIMIT_MPESA_MAX, message: "M-Pesa rate limit: please wait." });
+const callbackLimiter = rateLimitMiddleware({ name: "mpesa-callback", max: 60 });
 app.use("/api/", generalLimiter);
 
 const JWT_SECRET = env.AUTH_SECRET;
@@ -119,7 +120,20 @@ async function comparePassword(p:string, hash:string): Promise<boolean> {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-const tokenDenylist = new Set<string>();
+const DENYLIST_KEY = "rr:denylist:jti";
+const tokenDenylist = {
+  async has(jti: string): Promise<boolean> { return kv.sismember(DENYLIST_KEY, jti); },
+  async add(jti: string, ttlSec: number): Promise<void> { await kv.sadd(DENYLIST_KEY, jti, ttlSec); },
+};
+// Revocation check fails closed: if the denylist store errors we cannot prove
+// the token is NOT revoked, so we reject rather than risk a stolen jti passing.
+function isRevoked(d: any): Promise<boolean> {
+  if (!d?.jti) return Promise.resolve(false);
+  return tokenDenylist.has(d.jti).catch((e: any) => {
+    logger.error({ err: e }, "[auth] denylist store error — failing closed");
+    return true;
+  });
+}
 function authenticateToken(req: express.Request,res: express.Response,next: express.NextFunction){
   let token: string | undefined;
   const h=req.headers.authorization;
@@ -127,7 +141,11 @@ function authenticateToken(req: express.Request,res: express.Response,next: expr
   else if((req as any).cookies?.rr_auth_token) token=(req as any).cookies.rr_auth_token;
   else if((req as any).cookies?.admin_token) token=(req as any).cookies.admin_token;
   if(!token) return res.status(401).json({ success:false, error:"Authorization token required." });
-  const d=verifyToken(token); if(!d) return res.status(401).json({ success:false, error:"Invalid or expired session token." }); if(d.jti && tokenDenylist.has(d.jti)) return res.status(401).json({ success:false, error:"Token revoked." }); (req as any).user=d; (req as any).token=token; next();
+  const d=verifyToken(token); if(!d) return res.status(401).json({ success:false, error:"Invalid or expired session token." });
+  isRevoked(d).then(revoked => {
+    if (revoked) return res.status(401).json({ success:false, error:"Token revoked." });
+    (req as any).user=d; (req as any).token=token; next();
+  });
 }
 function authenticateOptional(req: express.Request,_res: express.Response,next: express.NextFunction){
   let token: string | undefined;
@@ -135,7 +153,8 @@ function authenticateOptional(req: express.Request,_res: express.Response,next: 
   if(h?.startsWith("Bearer ")) token=h.split(" ")[1];
   else if((req as any).cookies?.rr_auth_token) token=(req as any).cookies.rr_auth_token;
   else if((req as any).cookies?.admin_token) token=(req as any).cookies.admin_token;
-  if(token){ const d=verifyToken(token); if(d && !(d.jti && tokenDenylist.has(d.jti))) (req as any).user=d; } next();
+  if(token){ const d=verifyToken(token); if(d){ isRevoked(d).then(revoked=> { if(!revoked) (req as any).user=d; next(); }); return; } }
+  next();
 }
 function requireAdmin(req: express.Request,res: express.Response,next: express.NextFunction){ const u=(req as any).user; if(!u||u.role!=="admin") return res.status(403).json({ success:false, error:"Admin access required." }); next(); }
 
@@ -333,7 +352,7 @@ app.post("/api/auth/logout", async (req,res)=>{
   // the legacy admin cookie and revoke a legacy jti if one is presented.
   const h=req.headers.authorization;
   const legacyToken = h?.startsWith("Bearer ") ? h.split(" ")[1] : ((req as any).cookies?.rr_auth_token || (req as any).cookies?.admin_token);
-  if(legacyToken){ const d=verifyToken(legacyToken); if(d?.jti) tokenDenylist.add(d.jti); }
+  if(legacyToken){ const d=verifyToken(legacyToken); if(d?.jti) await tokenDenylist.add(d.jti, 7*24*60*60); }
   res.clearCookie("admin_token", { httpOnly:true, secure: env.NODE_ENV==="production", sameSite:"strict", path:"/" });
   res.clearCookie("rr_auth_token", { httpOnly:true, secure: env.NODE_ENV==="production", sameSite:"strict", path:"/" });
   return res.json({ success:true, message:"Logged out." });
@@ -373,7 +392,7 @@ app.delete("/api/build-draft", authenticate, async (req,res)=>{
   return res.json({ success:true });
 });
 
-app.get("/api/auth/verify", legacyAuthOnly, (req,res)=>{
+app.get("/api/auth/verify", legacyAuthOnly, async (req,res)=>{
   let token: string | undefined;
   const h=req.headers.authorization;
   if(h?.startsWith("Bearer ")) token=h.split(" ")[1];
@@ -381,7 +400,8 @@ app.get("/api/auth/verify", legacyAuthOnly, (req,res)=>{
   else if((req as any).cookies?.admin_token) token=(req as any).cookies.admin_token;
   if(!token) return res.status(401).json({ valid:false, error:"Missing Bearer token." });
   const d=verifyToken(token); if(!d) return res.status(401).json({ valid:false, error:"Token signature invalid or expired." });
-  if(d.jti && tokenDenylist.has(d.jti)) return res.status(401).json({ valid:false, error:"Token revoked." });
+  const revoked = await isRevoked(d);
+  if (revoked) return res.status(401).json({ valid:false, error:"Token revoked." });
   return res.json({ valid:true, user:d });
 });
 
