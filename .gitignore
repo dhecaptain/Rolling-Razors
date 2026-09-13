@@ -4,10 +4,12 @@ dist/
 coverage/
 .DS_Store
 *.log
-data/
+/data/
 .env
 .env.local
 !.env.example
 prisma/migrations/.env
 server/db.json.bak
 server.ts.json.bak
+.vercel
+.env*
