@@ -15,6 +15,7 @@ function requireEnv(name: string, fallback?: string): string {
 const clerkSecretKey = (process.env.CLERK_SECRET_KEY || "").trim();
 const clerkPublishableKey = (process.env.CLERK_PUBLISHABLE_KEY || "").trim();
 const configuredProvider = (process.env.AUTH_PROVIDER || "").trim().toLowerCase();
+const rateLimitStore = (process.env.RATE_LIMIT_STORE || "memory").trim().toLowerCase();
 
 // @clerk/express reads CLERK_PUBLISHABLE_KEY from process.env, but the Clerk CLI
 // writes the client-safe key as VITE_CLERK_PUBLISHABLE_KEY. Mirror it so the
@@ -74,6 +75,8 @@ export const env = {
   RATE_LIMIT_AUTH_MAX: Number(process.env.RATE_LIMIT_AUTH_MAX || 10),
   RATE_LIMIT_ADMIN_MAX: Number(process.env.RATE_LIMIT_ADMIN_MAX || 5),
   RATE_LIMIT_MPESA_MAX: Number(process.env.RATE_LIMIT_MPESA_MAX || 6),
+  // "memory" (in-process; local dev + tests) | "upstash" (distributed, shared across Vercel instances)
+  RATE_LIMIT_STORE: rateLimitStore,
   SENTRY_DSN: (process.env.SENTRY_DSN || "").trim(),
   SENTRY_ENV: (process.env.SENTRY_ENV || process.env.NODE_ENV || "development").trim(),
   IMAGE_CDN: (process.env.IMAGE_CDN || "unsplash").trim(),
@@ -96,12 +99,11 @@ if (env.DATABASE_ENGINE === "postgres" && !env.DATABASE_URL) {
 }
 
 // --- Distributed rate limiting / revocation store (Vercel hardening) ---
-// RATE_LIMIT_STORE=memory (default; local dev + tests) | upstash (durable, shared across Vercel instances)
-const rateLimitStore = (process.env.RATE_LIMIT_STORE || "memory").trim().toLowerCase();
-if (!["memory", "upstash"].includes(rateLimitStore)) {
-  throw new Error(`RATE_LIMIT_STORE must be 'memory' or 'upstash', got '${rateLimitStore}'.`);
+// Defined above as `rateLimitStore` and exposed via env.RATE_LIMIT_STORE.
+if (!["memory", "upstash"].includes(env.RATE_LIMIT_STORE)) {
+  throw new Error(`RATE_LIMIT_STORE must be 'memory' or 'upstash', got '${env.RATE_LIMIT_STORE}'.`);
 }
-if (rateLimitStore === "upstash") {
+if (env.RATE_LIMIT_STORE === "upstash") {
   const missing: string[] = [];
   if (!(process.env.UPSTASH_REDIS_REST_URL || "").trim()) missing.push("UPSTASH_REDIS_REST_URL");
   if (!(process.env.UPSTASH_REDIS_REST_TOKEN || "").trim()) missing.push("UPSTASH_REDIS_REST_TOKEN");
@@ -111,7 +113,6 @@ if (rateLimitStore === "upstash") {
     console.warn(`[ENV] ${msg}`);
   }
 }
-env.RATE_LIMIT_STORE = rateLimitStore;
 
 if (env.AUTH_PROVIDER === "legacy") {
   if (!env.AUTH_SECRET || env.AUTH_SECRET.length < 32 || env.AUTH_SECRET === "rolling-razors-kenya-customs-secret-key-2026") {
