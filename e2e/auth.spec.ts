@@ -1,24 +1,31 @@
 import { test, expect } from "@playwright/test";
-import { registerCustomer, authHeaders, getAuthProvider } from "./helpers";
+import { registerCustomer, getAuthProvider, TEST_PASSWORD } from "./helpers";
 
 test.describe("Auth", () => {
-  test("customer can register and login", async ({ request }) => {
+  test("customer can register and login with password", async ({ request }) => {
     const provider = await getAuthProvider(request);
     test.skip(provider === "clerk", "Legacy registration disabled in Clerk mode (see docs/CLERK_SETUP.md)");
 
     const phone = `07${Math.floor(10000000 + Math.random() * 90000000)}`;
     const res = await request.post("/api/auth/customer/register", {
-      data: { name: "E2E Tester", phone, email: `e2e${Date.now()}@test.ke` },
+      data: { name: "E2E Tester", phone, email: `e2e${Date.now()}@test.ke`, password: TEST_PASSWORD },
     });
     expect(res.ok()).toBeTruthy();
     const body = await res.json();
     expect(body.success).toBe(true);
-    expect(body.token).toBeTruthy();
 
-    const login = await request.post("/api/auth/customer/login", { data: { phone } });
+    const login = await request.post("/api/auth/customer/login", { data: { phone, password: TEST_PASSWORD } });
     expect(login.ok()).toBeTruthy();
     const loginBody = await login.json();
     expect(loginBody.success).toBe(true);
+  });
+
+  test("customer login with wrong password is rejected", async ({ request }) => {
+    const provider = await getAuthProvider(request);
+    test.skip(provider === "clerk", "Legacy registration disabled in Clerk mode");
+    const { phone } = await registerCustomer(request);
+    const login = await request.post("/api/auth/customer/login", { data: { phone, password: "WrongPass!99" } });
+    expect(login.status()).toBe(401);
   });
 
   test("admin login with valid credentials", async ({ request }) => {
@@ -30,43 +37,25 @@ test.describe("Auth", () => {
     expect([200, 401]).toContain(res.status());
   });
 
-  test("OTP send and login", async ({ request }) => {
-    const provider = await getAuthProvider(request);
-    test.skip(provider === "clerk", "Legacy OTP disabled in Clerk mode");
-
-    const phone = `07${Math.floor(10000000 + Math.random() * 90000000)}`;
-    await request.post("/api/auth/customer/register", {
-      data: { name: "OTP User", phone, email: `otp${Date.now()}@test.ke` },
-    });
-    const otpRes = await request.post("/api/auth/customer/send-otp", { data: { phone } });
-    expect(otpRes.ok()).toBeTruthy();
-    const otpBody = await otpRes.json();
-    expect(otpBody.success).toBe(true);
-    if (otpBody.debugOtp) {
-      const login = await request.post("/api/auth/customer/login", { data: { phone, otp: otpBody.debugOtp } });
-      expect(login.ok()).toBeTruthy();
-    }
-  });
-
   test("unauthenticated admin endpoint returns 401", async ({ request }) => {
     const res = await request.get("/api/customers?page=1&limit=1");
     expect(res.status()).toBe(401);
   });
 
-  test("tampered token is rejected", async ({ request }) => {
+  test("forged cookie token is rejected", async ({ request }) => {
     const provider = await getAuthProvider(request);
-    test.skip(provider === "clerk", "Needs a legacy token to tamper with");
-    const { token } = await registerCustomer(request);
-    const tampered = token.slice(0, -3) + "aaa";
-    const res = await request.get("/api/bookings?page=1&limit=1", { headers: authHeaders(tampered) });
+    test.skip(provider === "clerk", "Needs a legacy cookie to forge");
+    const res = await request.get("/api/bookings?page=1&limit=1", {
+      headers: { Cookie: "rr_auth_token=forged.tampered.token" },
+    });
     expect(res.status()).toBe(401);
   });
 
   test("authenticated non-admin is forbidden from admin endpoints", async ({ request }) => {
     const provider = await getAuthProvider(request);
     test.skip(provider === "clerk", "Needs a Clerk test identity; legacy path asserts the same boundary");
-    const { token } = await registerCustomer(request);
-    const res = await request.get("/api/customers?page=1&limit=1", { headers: authHeaders(token) });
+    await registerCustomer(request);
+    const res = await request.get("/api/customers?page=1&limit=1");
     expect(res.status()).toBe(403);
   });
 });

@@ -128,7 +128,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
                 <p>Your information is used strictly to:</p>
                 <ul className="list-disc pl-5 space-y-1 text-white/75">
                   <li>Process appointments, verify M-Pesa deposits, and generate verified electronic invoices.</li>
-                  <li>Provide real-time SMS / WhatsApp work-in-progress status updates regarding your vehicle tailoring.</li>
+                  <li>Provide in-app and email booking progress, deposit, and work-in-progress status updates regarding your vehicle tailoring.</li>
                   <li>Maintain your vehicle's warranty and historical upholstery service record.</li>
                 </ul>
                 <p>We do not sell, rent, or trade your contact or vehicle information to any third parties.</p>

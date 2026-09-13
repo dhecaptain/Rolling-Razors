@@ -10,35 +10,36 @@ export async function getAuthProvider(request: APIRequestContext): Promise<AuthP
 }
 
 export interface TestCustomer {
-  token: string;
   user: { id: string; name: string; phone: string; email: string; role: string };
   phone: string;
   email: string;
+  password: string;
 }
 
+export const TEST_PASSWORD = "E2ePass!234";
+
 /**
- * Registers a throwaway customer and returns a bearer token.
+ * Registers a throwaway customer (password-only legacy auth) and returns the
+ * resulting profile. The session is established via the HttpOnly cookie set by
+ * the server, so subsequent requests in the same `request` context are
+ * authenticated automatically — do NOT pass an Authorization header.
  *
- * NOTE: this uses the legacy registration endpoint. In Clerk mode
- * (AUTH_PROVIDER=clerk) that endpoint is disabled; Clerk-mode E2E requires a
- * Clerk test instance and @clerk/testing (see docs/CLERK_SETUP.md). Tests that
- * need an authenticated identity call `requireLegacyProvider()` first.
+ * NOTE: uses the legacy registration endpoint. In Clerk mode (AUTH_PROVIDER=clerk)
+ * that endpoint is disabled; Clerk-mode E2E requires a Clerk test instance and
+ * @clerk/testing (see docs/CLERK_SETUP.md). Tests that need an authenticated
+ * identity call `requireLegacyProvider()` first.
  */
 export async function registerCustomer(request: APIRequestContext): Promise<TestCustomer> {
   const phone = `07${Math.floor(10000000 + Math.random() * 90000000)}`;
   const email = `e2e${Date.now()}${Math.floor(Math.random() * 1000)}@test.ke`;
   const res = await request.post("/api/auth/customer/register", {
-    data: { name: "E2E Tester", phone, email },
+    data: { name: "E2E Tester", phone, email, password: TEST_PASSWORD },
   });
   const raw = await res.text();
   expect(res.ok(), `customer register failed (${res.status()}): ${raw}`).toBeTruthy();
   const body = JSON.parse(raw);
-  expect(body.token, "registration did not return a token").toBeTruthy();
-  return { token: body.token as string, user: body.user, phone, email };
-}
-
-export function authHeaders(token: string): Record<string, string> {
-  return { Authorization: `Bearer ${token}` };
+  expect(body.success, "registration did not succeed").toBeTruthy();
+  return { user: body.user, phone, email, password: TEST_PASSWORD };
 }
 
 /**

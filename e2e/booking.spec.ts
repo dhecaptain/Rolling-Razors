@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { registerCustomer, authHeaders, uniqueAppointment } from "./helpers";
+import { registerCustomer, uniqueAppointment } from "./helpers";
 
 test.describe("Booking flow", () => {
   test("protected endpoints reject unauthenticated requests", async ({ request }) => {
@@ -19,12 +19,11 @@ test.describe("Booking flow", () => {
   });
 
   test("create booking and vehicle with auth", async ({ request }) => {
-    const { token, user, phone, email } = await registerCustomer(request);
+    const { user, phone, email } = await registerCustomer(request);
     const reg = `KDB ${Math.floor(100 + Math.random() * 900)}X`;
     const { appointmentDate, appointmentTime } = uniqueAppointment();
 
     const vehicle = await request.post("/api/vehicles", {
-      headers: authHeaders(token),
       data: {
         customerId: user.id,
         type: "Car",
@@ -38,7 +37,6 @@ test.describe("Booking flow", () => {
     expect(vehicle.ok(), `vehicle create failed (${vehicle.status()})`).toBeTruthy();
 
     const booking = await request.post("/api/bookings", {
-      headers: authHeaders(token),
       data: {
         customerId: user.id,
         customerName: "Booker",
@@ -53,6 +51,8 @@ test.describe("Booking flow", () => {
         estimatedPrice: 18000,
         depositAmount: 6300,
         status: "pending",
+        privacyAccepted: true,
+        termsAccepted: true,
       },
     });
     const raw = await booking.text();
@@ -63,8 +63,8 @@ test.describe("Booking flow", () => {
   });
 
   test("bookings pagination", async ({ request }) => {
-    const { token } = await registerCustomer(request);
-    const res = await request.get("/api/bookings?page=1&limit=2", { headers: authHeaders(token) });
+    await registerCustomer(request);
+    const res = await request.get("/api/bookings?page=1&limit=2");
     expect(res.ok()).toBeTruthy();
     const body = await res.json();
     expect(body.success).toBe(true);

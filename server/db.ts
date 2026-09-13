@@ -22,12 +22,6 @@ export interface MpesaTransactionRecord {
   updatedAt: string;
 }
 
-export interface OtpRecord {
-  phone: string;
-  otp: string;
-  expiresAt: number;
-}
-
 function phoneKey(phone: string): string {
   return String(phone || "").replace(/\D/g, "").replace(/^254/, "0").slice(-9);
 }
@@ -58,17 +52,32 @@ class PrismaDatabaseManager {
   }
 
   async findUser(identifier: string): Promise<User | undefined> {
+    const raw = await this.findRawUser(identifier);
+    return raw ? mapUser(raw) : undefined;
+  }
+
+  async findUserWithHash(identifier: string): Promise<{ user: User; passwordHash?: string } | undefined> {
+    const raw = await this.findRawUser(identifier);
+    if (!raw) return undefined;
+    return { user: mapUser(raw), passwordHash: (raw as any).passwordHash || undefined };
+  }
+
+  async setUserPassword(id: string, hash: string): Promise<void> {
+    await prisma.user.update({ where: { id }, data: { passwordHash: hash } });
+  }
+
+  private async findRawUser(identifier: string): Promise<any | undefined> {
     const raw = String(identifier).trim();
     const cleanLower = raw.toLowerCase().replace(/\s+/g, "");
     const key = phoneKey(raw);
     if (cleanLower.includes("@")) {
       const found = await prisma.user.findFirst({ where: { email: { equals: cleanLower, mode: "insensitive" } } });
-      if (found) return mapUser(found);
+      if (found) return found;
     }
     if (key && key.length === 9) {
       const users = await prisma.user.findMany({ where: { phone: { contains: key.slice(-6) } } });
       const found = users.find(u => phoneKey(u.phone || "") === key);
-      if (found) return mapUser(found);
+      if (found) return found;
     }
     const users = await prisma.user.findMany();
     const found = users.find(u => {
@@ -78,7 +87,7 @@ class PrismaDatabaseManager {
       return Boolean(key && uKey && key === uKey);
     });
     if (!found) return undefined;
-    return mapUser(found);
+    return found;
   }
 
   async getUserById(id: string): Promise<User | undefined> {
@@ -345,24 +354,6 @@ class PrismaDatabaseManager {
       const r = await prisma.mpesaTransaction.update({ where: { checkoutRequestId }, data: { status: patch.status as any, receiptNumber: patch.receiptNumber, failureReason: patch.failureReason } });
       return { merchantRequestId: r.merchantRequestId, checkoutRequestId: r.checkoutRequestId, bookingId: r.bookingId || undefined, invoiceId: r.invoiceId || undefined, amount: r.amount, phone: r.phone, status: r.status as any, receiptNumber: r.receiptNumber || undefined, failureReason: r.failureReason || undefined, createdAt: r.createdAt.toISOString(), updatedAt: r.updatedAt.toISOString() };
     } catch { return undefined; }
-  }
-
-  async getOtp(phone: string): Promise<OtpRecord | undefined> {
-    const clean = phone.replace(/\s+/g, "");
-    const r = await prisma.otp.findUnique({ where: { phone: clean } });
-    if (!r) return undefined;
-    return { phone: r.phone, otp: r.otp, expiresAt: r.expiresAt.getTime() };
-  }
-
-  async saveOtp(phone: string, otp: string, expiresAt: number): Promise<void> {
-    const clean = phone.replace(/\s+/g, "");
-    await prisma.otp.deleteMany({ where: { expiresAt: { lt: new Date() } } });
-    await prisma.otp.upsert({ where: { phone: clean }, update: { otp, expiresAt: new Date(expiresAt) }, create: { phone: clean, otp, expiresAt: new Date(expiresAt) } });
-  }
-
-  async deleteOtp(phone: string): Promise<void> {
-    const clean = phone.replace(/\s+/g, "");
-    await prisma.otp.delete({ where: { phone: clean } }).catch(() => {});
   }
 
   async createAuditLog(data: { actorId: string; actorName: string; actorRole: string; action: string; entityType: string; entityId: string; before?: any; after?: any; ip?: string; requestId?: string }): Promise<void> {

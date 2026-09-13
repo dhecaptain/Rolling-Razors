@@ -50,11 +50,11 @@ export const env = {
 
   // --- Legacy custom auth (used only when AUTH_PROVIDER=legacy) ---
   AUTH_SECRET: (process.env.AUTH_SECRET || "rolling-razors-kenya-customs-secret-key-2026-auth-secure").trim(),
+  // No default admin credentials in production: fail closed below if unset.
   ADMIN_EMAIL: (process.env.ADMIN_EMAIL || "james@rollingrazors.co.ke").trim().toLowerCase(),
   ADMIN_PHONE: (process.env.ADMIN_PHONE || "+254 712 345 678").trim().replace(/\s+/g, ""),
   ADMIN_PASSWORD: (process.env.ADMIN_PASSWORD || "RollingRazors@2026!").trim(),
   ADMIN_NAME: (process.env.ADMIN_NAME || "James Kimani (Owner)").trim(),
-  OTP_HASH_SECRET: (process.env.OTP_HASH_SECRET || process.env.AUTH_SECRET || "rolling-razors-kenya-customs-secret-key-2026-auth-secure").trim(),
 
   APP_URL: (process.env.APP_URL || "https://rollingrazors.co.ke").trim(),
   MPESA_CONSUMER_KEY: (process.env.MPESA_CONSUMER_KEY || "").trim(),
@@ -75,14 +75,26 @@ export const env = {
   IMAGE_CDN: (process.env.IMAGE_CDN || "unsplash").trim(),
   IMAGE_CDN_URL: (process.env.IMAGE_CDN_URL || "").trim(),
   ADMIN_IP_ALLOWLIST: (process.env.ADMIN_IP_ALLOWLIST || "").trim(),
-  ADMIN_REQUIRE_2FA: (process.env.ADMIN_REQUIRE_2FA || "false").trim().toLowerCase() === "true",
 };
+
+if (env.NODE_ENV === "production" && !configuredProvider) {
+  throw new Error("AUTH_PROVIDER must be explicitly set to 'clerk' or 'legacy' in production.");
+}
 
 if (env.AUTH_PROVIDER === "legacy") {
   if (!env.AUTH_SECRET || env.AUTH_SECRET.length < 32 || env.AUTH_SECRET === "rolling-razors-kenya-customs-secret-key-2026") {
     const msg = "[SECURITY] AUTH_SECRET is weak/default — set a strong 32+ char secret (or switch to AUTH_PROVIDER=clerk)!";
     if (env.NODE_ENV === "production") throw new Error(msg);
     console.warn(msg);
+  }
+  if (env.NODE_ENV === "production") {
+    if (!env.ADMIN_PASSWORD || !env.ADMIN_EMAIL) {
+      throw new Error("ADMIN_PASSWORD and ADMIN_EMAIL are required in production when AUTH_PROVIDER=legacy.");
+    }
+    // Never trust a plaintext admin password in production — require a bcrypt hash ($2a$/$2b$/$2y$).
+    if (!/^\$2[aby]\$/.test(env.ADMIN_PASSWORD)) {
+      throw new Error("ADMIN_PASSWORD must be a bcrypt hash in production (generate with `htpasswd -bnBC 12 '' <password>`).");
+    }
   }
 } else {
   if (!env.CLERK_SECRET_KEY) {

@@ -51,15 +51,14 @@ export const adminLoginSchema = z.object({
 
 export const customerLoginSchema = z.object({
   phone: phoneSchema,
-  password: z.string().optional(),
-  otp: z.string().optional(),
+  password: z.string().min(1).max(200),
 });
 
 export const customerRegisterSchema = z.object({
   name: z.string().min(2).max(100),
   phone: phoneSchema,
   email: z.string().email().optional().or(z.literal("")),
-  password: z.string().min(6).optional(),
+  password: z.string().min(8).max(200),
 });
 
 export const stkPushSchema = z.object({

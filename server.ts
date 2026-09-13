@@ -93,7 +93,6 @@ const generalLimiter = rateLimit({ windowMs: 60_000, max: env.RATE_LIMIT_GENERAL
 const customerAuthLimiter = rateLimit({ windowMs: 60_000, max: env.RATE_LIMIT_AUTH_MAX, standardHeaders: true, legacyHeaders: false, message: { success:false, error:"Too many customer attempts. Try again shortly." } });
 const adminAuthLimiter = rateLimit({ windowMs: 60_000, max: env.RATE_LIMIT_ADMIN_MAX, standardHeaders: true, legacyHeaders: false, message: { success:false, error:"Too many admin attempts. Try again in 5 minutes." } });
 const mpesaLimiter = rateLimit({ windowMs: 60_000, max: env.RATE_LIMIT_MPESA_MAX, standardHeaders: true, legacyHeaders: false, message: { success:false, error:"M-Pesa rate limit: please wait." } });
-const otpLimiter = rateLimit({ windowMs: 60_000, max: 5, standardHeaders: true, legacyHeaders: false });
 const callbackLimiter = rateLimit({ windowMs: 60_000, max: 60, standardHeaders: true, legacyHeaders: false });
 app.use("/api/", generalLimiter);
 
@@ -107,8 +106,18 @@ function generateToken(user: User, expiresInHours=24): string {
 }
 function verifyToken(token:string): any|null { try{ return jwt.verify(token, JWT_SECRET, { algorithms:["HS256"], issuer:"rolling-razors-kenya", audience:"rolling-razors-app" }); }catch{ return null; } }
 async function hashPassword(p:string): Promise<string> { return bcrypt.hash(p, env.BCRYPT_ROUNDS); }
-async function comparePassword(p:string, hash:string): Promise<boolean> { try{ return await bcrypt.compare(p, hash); }catch{ return p===hash; } }
-function hashOtp(otp:string): string { return crypto.createHmac("sha256", env.OTP_HASH_SECRET).update(otp).digest("hex"); }
+// Fail-closed password comparison. Accepts bcrypt hashes ($2a/$2b/$2y). The
+// plaintext compare only ever runs outside production (local dev fallback);
+// production NEVER accepts a plaintext credential.
+async function comparePassword(p:string, hash:string): Promise<boolean> {
+  if (!hash) return false;
+  if (hash.startsWith("$2a$") || hash.startsWith("$2b$") || hash.startsWith("$2y$")) {
+    try { return await bcrypt.compare(p, hash); } catch { return false; }
+  }
+  if (env.NODE_ENV === "production") return false;
+  const a = Buffer.from(String(p)); const b = Buffer.from(String(hash));
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 
 const tokenDenylist = new Set<string>();
 function authenticateToken(req: express.Request,res: express.Response,next: express.NextFunction){
@@ -267,9 +276,7 @@ app.post("/api/auth/admin/login", legacyAuthOnly, adminAuthLimiter, checkAdminIp
   const adminEmail=env.ADMIN_EMAIL; const adminPhone=env.ADMIN_PHONE; const adminPass=env.ADMIN_PASSWORD;
   if(!adminPass){ logger.error("[AUTH] ADMIN_PASSWORD not configured"); return res.status(500).json({ success:false, error:"Admin authentication service unavailable." }); }
   const matchesEmail=Boolean(adminEmail && cleanIdent===adminEmail); const matchesPhone=Boolean(adminPhone && phoneKey(cleanIdent)===phoneKey(adminPhone));
-  let isPassMatch=false;
-  if (adminPass.startsWith("$2a$") || adminPass.startsWith("$2b$")) isPassMatch=await comparePassword(cleanPass, adminPass);
-  else isPassMatch=cleanPass===adminPass;
+  const isPassMatch = await comparePassword(cleanPass, adminPass);
   if((!matchesEmail && !matchesPhone) || !isPassMatch) {
     await serverDb.createAuditLog({ actorId: cleanIdent, actorName: cleanIdent, actorRole: "admin", action: "admin:login:failed", entityType: "User", entityId: cleanIdent, ip: req.ip, requestId: (req as any).id }).catch(()=>{});
     return res.status(401).json({ success:false, error:"Access Denied: Invalid workshop staff credentials." });
@@ -281,50 +288,25 @@ app.post("/api/auth/admin/login", legacyAuthOnly, adminAuthLimiter, checkAdminIp
     if (existingByEmail && existingByEmail.id !== adminUser.id) adminUser.id = existingByEmail.id;
   } catch {}
   await serverDb.upsertUser(adminUser);
-  if(env.ADMIN_REQUIRE_2FA){
-    const otp=Math.floor(100000+Math.random()*900000).toString(); const expiresAt=Date.now()+5*60*1000;
-    await serverDb.saveOtp(`admin:${cleanIdent}`, hashOtp(otp), expiresAt);
-    logger.info({ identifier: cleanIdent, requestId:(req as any).id }, "[Admin] 2FA OTP sent");
-    return res.json({ success:false, requiresOtp:true, message:"OTP sent to workshop phone.", debugOtp: env.NODE_ENV!=="production"?otp:undefined });
-  }
   const token=generateToken(adminUser,8);
   res.cookie("admin_token", token, { httpOnly:true, secure: env.NODE_ENV==="production", sameSite:"strict", maxAge: 8*60*60*1000, path:"/" });
   await serverDb.createAuditLog({ actorId: adminUser.id, actorName: adminUser.name, actorRole: "admin", action: "admin:login:success", entityType: "User", entityId: adminUser.id, ip: req.ip, requestId: (req as any).id }).catch(()=>{});
   return res.json({ success:true, user:{ ...adminUser, token }, token });
 });
 
-app.post("/api/auth/admin/verify-otp", legacyAuthOnly, adminAuthLimiter, checkAdminIpAllowlist, async (req,res)=>{
-  const { identifier, otp }=req.body; if(!identifier || !otp) return res.status(400).json({ success:false, error:"Identifier and OTP required." });
-  const key=`admin:${String(identifier).trim().toLowerCase()}`;
-  const record=await serverDb.getOtp(key);
-  const hashed=hashOtp(String(otp).trim());
-  if(!record || record.expiresAt < Date.now() || (record.otp!==hashed && record.otp!==String(otp).trim())) return res.status(401).json({ success:false, error:"Invalid or expired OTP." });
-  await serverDb.deleteOtp(key);
-  const adminEmail=env.ADMIN_EMAIL; const adminPhone=env.ADMIN_PHONE;
-  const adminName2=env.ADMIN_NAME || (adminEmail?adminEmail.split("@")[0]:"Workshop Administrator");
-  let adminUser2: User={ id:"staff-admin", name:adminName2, phone:adminPhone||"+254 712 345 678", email:adminEmail||"admin@rollingrazors.co.ke", role:"admin", avatar:"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80", location:"Workshop HQ, Industrial Area, Nairobi" };
-  try {
-    const existingByEmail2 = adminEmail ? await prisma.user.findUnique({ where: { email: adminEmail } }) : null;
-    if (existingByEmail2 && existingByEmail2.id !== adminUser2.id) adminUser2.id = existingByEmail2.id;
-  } catch {}
-  await serverDb.upsertUser(adminUser2); const token=generateToken(adminUser2,8);
-  res.cookie("admin_token", token, { httpOnly:true, secure: env.NODE_ENV==="production", sameSite:"strict", maxAge: 8*60*60*1000, path:"/" });
-  await serverDb.createAuditLog({ actorId: adminUser2.id, actorName: adminUser2.name, actorRole: "admin", action: "admin:login:success:2fa", entityType: "User", entityId: adminUser2.id, ip: req.ip, requestId: (req as any).id }).catch(()=>{});
-  return res.json({ success:true, user:{ ...adminUser2, token }, token });
-});
-
 app.post("/api/auth/customer/login", legacyAuthOnly, customerAuthLimiter, async (req,res)=>{
   const v=validate(customerLoginSchema, req.body); if(!v.success) return res.status(400).json({ success:false, error:v.error });
-  const { phone, otp }=v.data as any; const key=phoneKey(String(phone));
-  if(otp){
-    if(!isValidKePhone(String(phone))) return res.status(400).json({ success:false, error:"Invalid Kenyan phone number." });
-    const record=await serverDb.getOtp(key); const hashed=hashOtp(String(otp).trim());
-    if(!record || record.expiresAt < Date.now() || (record.otp!==hashed && record.otp!==String(otp).trim())) return res.status(401).json({ success:false, error:"Invalid or expired OTP code." });
-    await serverDb.deleteOtp(key);
+  const { phone, password }=v.data as any;
+  if(!isValidKePhone(String(phone))) return res.status(400).json({ success:false, error:"Invalid Kenyan phone number." });
+  const creds=await serverDb.findUserWithHash(String(phone));
+  let customer=creds?.user;
+  if(!customer){
+    const custs=await serverDb.getCustomers(); const custRecord=custs.find(c=>phonesMatch(c.phone, String(phone)));
+    if(custRecord){ customer={ id:custRecord.id, name:custRecord.name, phone:custRecord.phone, email:custRecord.email, role:"customer", avatar:custRecord.avatar||"", location:custRecord.address }; }
   }
-  let customer=await serverDb.findUser(String(phone));
-  if(!customer){ const custs=await serverDb.getCustomers(); const custRecord=custs.find(c=>phonesMatch(c.phone, String(phone))); if(custRecord){ customer={ id:custRecord.id, name:custRecord.name, phone:custRecord.phone, email:custRecord.email, role:"customer", avatar:custRecord.avatar||"", location:custRecord.address }; await serverDb.upsertUser(customer); } }
   if(!customer) return res.status(404).json({ success:false, error:"No driver account found with this phone number. Please register first." });
+  if(!creds?.passwordHash || !(await comparePassword(String(password), creds.passwordHash)))
+    return res.status(401).json({ success:false, error:"Incorrect password. If you registered before passwords were enabled, contact the workshop to reset your password." });
   const token=generateToken(customer, 24*7);
   res.cookie("rr_auth_token", token, { httpOnly:true, secure: env.NODE_ENV==="production", sameSite:"strict", maxAge: 7*24*60*60*1000, path:"/" });
   return res.json({ success:true, user:customer });
@@ -332,28 +314,17 @@ app.post("/api/auth/customer/login", legacyAuthOnly, customerAuthLimiter, async 
 
 app.post("/api/auth/customer/register", legacyAuthOnly, customerAuthLimiter, async (req,res)=>{
   const v=validate(customerRegisterSchema, req.body); if(!v.success) return res.status(400).json({ success:false, error:v.error });
-  const { name, phone, email }=v.data as any; const formattedPhone=normalizePhoneKe(String(phone));
+  const { name, phone, email, password }=v.data as any; const formattedPhone=normalizePhoneKe(String(phone));
   if(!isValidKePhone(String(phone))) return res.status(400).json({ success:false, error:"Invalid Kenyan phone number. Must be Safaricom 07... format." });
   const existing=await serverDb.findUser(String(phone)); if(existing) return res.status(409).json({ success:false, error:"An account with this phone number already exists. Please sign in." });
   const newId=`cust-${Date.now()}-${crypto.randomUUID().slice(0,8)}`; const newUser: User={ id:newId, name:String(name).trim(), phone:formattedPhone, email: email?String(email).trim().toLowerCase():`${String(name).toLowerCase().replace(/\s+/g,".")}@gmail.com`, role:"customer", avatar:"https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80", location:"Nairobi, Kenya" };
-  await serverDb.upsertUser(newUser); const newCustomer: Customer={ id:newId, name:newUser.name, phone:newUser.phone, email:newUser.email, avatar:newUser.avatar, totalSpent:0, status:"New", address:"Nairobi, Kenya", savedVehicles:[] };
+  const passwordHash = await hashPassword(String(password));
+  await serverDb.upsertUser(newUser);
+  await serverDb.setUserPassword(newUser.id, passwordHash);
+  const newCustomer: Customer={ id:newId, name:newUser.name, phone:newUser.phone, email:newUser.email, avatar:newUser.avatar, totalSpent:0, status:"New", address:"Nairobi, Kenya", savedVehicles:[] };
   await serverDb.saveCustomer(newCustomer); const token=generateToken(newUser, 24*7);
   res.cookie("rr_auth_token", token, { httpOnly:true, secure: env.NODE_ENV==="production", sameSite:"strict", maxAge: 7*24*60*60*1000, path:"/" });
   return res.status(201).json({ success:true, user:newUser });
-});
-
-app.post("/api/auth/customer/send-otp", legacyAuthOnly, otpLimiter, async (req,res)=>{
-  const { phone }=req.body; if(!phone||!String(phone).trim()) return res.status(400).json({ success:false, error:"Phone number is required." });
-  if(!isValidKePhone(String(phone))) return res.status(400).json({ success:false, error:"Invalid Kenyan phone number." });
-  const key=phoneKey(String(phone));
-  const existing=await serverDb.getOtp(key); if(existing && existing.expiresAt > Date.now() - 4*60*1000) {
-    const waitSec=Math.ceil((existing.expiresAt - Date.now())/1000);
-    if(waitSec>240) return res.status(429).json({ success:false, error:`OTP already sent. Try again in ${waitSec-240}s.` });
-  }
-  const otp=Math.floor(100000+Math.random()*900000).toString(); const expiresAt=Date.now()+5*60*1000;
-  const hashed=hashOtp(otp);
-  await serverDb.saveOtp(key, hashed, expiresAt); logger.info({ phone:key, requestId:(req as any).id }, `[OTP] sent expiresIn=300s`);
-  return res.json({ success:true, message:`OTP sent via SMS to ${normalizePhoneKe(String(phone))}.`, expiresInSeconds:300, debugOtp: env.NODE_ENV!=="production" ? otp : undefined });
 });
 
 app.post("/api/auth/logout", async (req,res)=>{

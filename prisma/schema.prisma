@@ -67,12 +67,13 @@ model User {
   name       String
   phone      String?     @unique
   email      String?     @unique
-  role       UserRole
-  avatar     String
-  location   String?
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-  buildDraft BuildDraft?
+  role         UserRole
+  avatar       String
+  location     String?
+  passwordHash String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  buildDraft   BuildDraft?
 }
 
 model BuildDraft {
@@ -281,17 +282,6 @@ model MpesaTransaction {
   @@index([bookingId])
   @@index([phone])
   @@index([status, createdAt])
-}
-
-model Otp {
-  id        String   @id @default(cuid())
-  phone     String   @unique
-  otp       String
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-
-  @@index([phone])
-  @@index([expiresAt])
 }
 
 model AuditLog {

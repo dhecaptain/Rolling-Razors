@@ -537,7 +537,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
     }
   };
 
-  const loginAdmin = async (identifier: string, password: string): Promise<{ success: boolean; error?: string; requiresOtp?: boolean }> => {
+  const loginAdmin = async (identifier: string, password: string): Promise<{ success: boolean; error?: string }> => {
     if (clerkMode && clerk) { clerk.openSignIn(); return { success: true }; }
     const cleanIdent = identifier.trim();
     const cleanPass = password.trim();
@@ -553,9 +553,6 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
         body: JSON.stringify({ identifier: cleanIdent, password: cleanPass })
       });
       const data = await response.json();
-      if (data.requiresOtp) {
-        return { success: false, requiresOtp: true, error: data.message };
-      }
       if (data.success && data.user) {
         setCurrentUser(data.user);
         setIsLoggedIn(true);

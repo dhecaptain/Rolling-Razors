@@ -148,16 +148,6 @@ export const AuthView: React.FC = () => {
                   className="rr-control w-full px-3.5 text-white font-bold placeholder-white/30 font-mono"
                 />
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setPhone('0712 901 234');
-                  setCustomerPassword('1234');
-                }}
-                className="text-[11px] text-[#D6A62E] hover:text-amber-200 hover:underline mt-1 block cursor-pointer font-medium"
-              >
-                Demo driver: <strong className="font-mono">0712 901 234</strong> (click to auto-fill)
-              </button>
             </div>
 
             {isRegister && (

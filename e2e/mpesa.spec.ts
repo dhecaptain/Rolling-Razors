@@ -1,10 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { registerCustomer, authHeaders, uniqueAppointment } from "./helpers";
+import { registerCustomer, uniqueAppointment } from "./helpers";
 
-async function createBooking(request: import("@playwright/test").APIRequestContext, token: string, user: { id: string }, phone: string, email: string) {
+async function createBooking(request: import("@playwright/test").APIRequestContext, user: { id: string }, phone: string, email: string) {
   const { appointmentDate, appointmentTime } = uniqueAppointment();
   const res = await request.post("/api/bookings", {
-    headers: authHeaders(token),
     data: {
       customerId: user.id,
       customerName: "MpesaUser",
@@ -19,6 +18,8 @@ async function createBooking(request: import("@playwright/test").APIRequestConte
       estimatedPrice: 18000,
       depositAmount: 6300,
       status: "pending",
+      privacyAccepted: true,
+      termsAccepted: true,
     },
   });
   const raw = await res.text();
@@ -35,20 +36,18 @@ test.describe("M-Pesa", () => {
   });
 
   test("STK push validation - authenticated, unknown booking", async ({ request }) => {
-    const { token } = await registerCustomer(request);
+    await registerCustomer(request);
     const res = await request.post("/api/mpesa/stkpush", {
-      headers: authHeaders(token),
       data: { phone: "0712345678", amount: 100, bookingId: "RR-9999" },
     });
     expect([400, 404, 503, 502]).toContain(res.status());
   });
 
   test("STK amount mismatch should 400 if booking exists", async ({ request }) => {
-    const { token, user, phone, email } = await registerCustomer(request);
-    const booking = await createBooking(request, token, user, phone, email);
+    const { user, phone, email } = await registerCustomer(request);
+    const booking = await createBooking(request, user, phone, email);
 
     const stk = await request.post("/api/mpesa/stkpush", {
-      headers: authHeaders(token),
       data: { phone, amount: 999, bookingId: booking.id },
     });
     expect(stk.status()).toBe(400);
@@ -57,8 +56,8 @@ test.describe("M-Pesa", () => {
   });
 
   test("non-admin cannot read admin M-Pesa transactions", async ({ request }) => {
-    const { token } = await registerCustomer(request);
-    const res = await request.get("/api/mpesa/transactions?page=1&limit=5", { headers: authHeaders(token) });
+    await registerCustomer(request);
+    const res = await request.get("/api/mpesa/transactions?page=1&limit=5");
     expect(res.status()).toBe(403);
   });
 

@@ -592,11 +592,11 @@ export const CustomerDashboard: React.FC = () => {
                 <div className="space-y-2">
                   <label className="flex items-center gap-2">
                     <input type="checkbox" defaultChecked className="rounded text-[#D6A62E]" />
-                    <span>Send SMS updates when vehicle stitching stages change</span>
+                    <span>Get in-app and email updates when vehicle stitching stages change</span>
                   </label>
                   <label className="flex items-center gap-2">
                     <input type="checkbox" defaultChecked className="rounded text-[#D6A62E]" />
-                    <span>Send WhatsApp photos of work in progress</span>
+                    <span>Share work-in-progress photos via WhatsApp on request</span>
                   </label>
                 </div>
               </div>

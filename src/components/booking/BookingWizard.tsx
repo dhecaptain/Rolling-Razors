@@ -609,7 +609,7 @@ export const BookingWizard: React.FC = () => {
             <div className="space-y-6 animate-in fade-in">
               <div className="border-b border-white/10 pb-4">
                 <h3 className="text-xl font-bold text-[#F5F1E8] font-display">Schedule & Contact Information</h3>
-                <p className="text-xs text-white/70">Choose your appointment slot and enter contact details for SMS/WhatsApp updates.</p>
+                <p className="text-xs text-white/70">Choose your appointment slot and enter contact details. Status updates are available in the Driver Portal and by email.</p>
               </div>
 
               {/* Location Preference */}

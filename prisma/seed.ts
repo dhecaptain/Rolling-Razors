@@ -1,16 +1,19 @@
 import { prisma } from "../server/prisma";
 import { INITIAL_BOOKINGS, INITIAL_CUSTOMERS, INITIAL_INVOICES, INITIAL_STAFF, INITIAL_VEHICLES, INITIAL_WORK_ORDERS, INITIAL_SERVICES } from "../src/data/mockData";
+import bcrypt from "bcryptjs";
 
 async function main() {
   console.log("Seeding Rolling Razors Postgres...");
 
   const adminUser = { id: "staff-1", name: "James Kimani (Owner)", phone: "+254 712 345 678", email: "james@rollingrazors.co.ke", role: "admin" as const, avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80", location: "Workshop HQ, Industrial Area, Nairobi" };
-  const custUser = { id: "cust-1", name: "Brian Mwangi", phone: "+254 712 901 234", email: "brian.mwangi@gmail.com", role: "customer" as const, avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80", location: "Kilimani, Nairobi" };
+  const custPassHash = await bcrypt.hash("demo1234", 10);
+  const custUser = { id: "cust-1", name: "Brian Mwangi", phone: "+254 712 901 234", email: "brian.mwangi@gmail.com", role: "customer" as const, avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80", location: "Kilimani, Nairobi", passwordHash: custPassHash };
   const admin2 = { id: "staff-admin", name: "davidpolycarp7", phone: "+254723459826", email: "davidpolycarp7@gmail.com", role: "admin" as const, avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80", location: "Workshop HQ, Industrial Area, Nairobi" };
 
   for (const u of [adminUser, custUser, admin2]) {
     await prisma.user.upsert({ where: { id: u.id }, update: u, create: u });
   }
+  console.log("Seeded demo driver login: 0712 901 234 / demo1234");
 
   for (const s of INITIAL_STAFF) {
     await prisma.staff.upsert({
