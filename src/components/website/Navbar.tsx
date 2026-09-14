@@ -105,10 +105,26 @@ export const Navbar: React.FC = () => {
             <button type="button" onClick={goHome} className="min-h-11 text-left text-[#D6A62E]">Home</button>
             {NAV_ITEMS.map(([label, id]) => <button key={id} type="button" onClick={() => scrollToSection(id)} className="min-h-11 text-left hover:text-[#D6A62E]">{label}</button>)}
           </nav>
-          <div className="mt-4 grid grid-cols-2 gap-2 border-t border-[#F5F1E8]/10 pt-4">
-            <button type="button" onClick={() => { setMobileMenuOpen(false); openAuth('customer'); }} className="border border-[#F5F1E8]/20 py-2.5 text-xs font-bold text-[#F5F1E8]">Driver login</button>
-            <a href={BUSINESS_CONFIG.phone.telLink} className="border border-[#D6A62E] py-2.5 text-center text-xs font-bold text-[#D6A62E]">Call {BUSINESS_CONFIG.phone.formatted}</a>
-          </div>
+          {isLoggedIn && currentUser ? (
+            <div className="mt-4 border-t border-[#F5F1E8]/10 pt-4 space-y-3">
+              <div className="flex items-center gap-3 px-1">
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-[#D6A62E] text-xs font-black text-[#073B32]">{currentUser.name.slice(0, 1).toUpperCase()}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-[#F5F1E8] truncate">{currentUser.name}</p>
+                  <p className="text-[10px] text-white/50 truncate">{currentUser.phone}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => { setMobileMenuOpen(false); if (canAccessAdmin(currentUser.role)) { setAdminTab('overview'); setView('admin_dashboard'); } else { setCustomerTab('dashboard'); setView('customer_dashboard'); } }} className="border border-[#D6A62E]/40 py-2.5 text-xs font-bold text-[#D6A62E]">{canAccessAdmin(currentUser.role) ? 'Workshop hub' : 'Driver garage'}</button>
+                <button type="button" onClick={() => { setMobileMenuOpen(false); logout(); }} className="border border-rose-500/30 py-2.5 text-xs font-bold text-rose-300 hover:bg-rose-500/10">Sign out</button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 grid grid-cols-2 gap-2 border-t border-[#F5F1E8]/10 pt-4">
+              <button type="button" onClick={() => { setMobileMenuOpen(false); openAuth('customer'); }} className="border border-[#F5F1E8]/20 py-2.5 text-xs font-bold text-[#F5F1E8]">Driver login</button>
+              <a href={BUSINESS_CONFIG.phone.telLink} className="border border-[#D6A62E] py-2.5 text-center text-xs font-bold text-[#D6A62E]">Call {BUSINESS_CONFIG.phone.formatted}</a>
+            </div>
+          )}
         </div>
       )}
     </header>
