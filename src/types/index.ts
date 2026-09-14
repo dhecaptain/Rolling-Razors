@@ -171,6 +171,7 @@ export interface WorkOrder {
   afterPhotos?: string[];
   internalNotes?: string;
   progressPercentage: number;
+  version?: number;
   createdAt: string;
   targetCompletionDate?: string;
 }

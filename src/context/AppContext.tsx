@@ -908,6 +908,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
   const cancelBooking = (bookingId: string, reason?: string) => {
     const now = new Date();
     const formattedNow = `${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    const previous = bookings.find(b => b.id === bookingId);
 
     setBookings(prev => prev.map(b => {
       if (b.id !== bookingId) return b;
@@ -927,6 +928,23 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
       };
     }));
     addToast('warning', 'Booking Cancelled', `Booking #${bookingId} has been marked as cancelled.`);
+
+    fetch(`/api/bookings/${bookingId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+      credentials: 'include',
+      body: JSON.stringify({ status: 'cancelled' }),
+    }).then(async r => {
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({ error: 'Booking could not be cancelled.' }));
+        if (previous) setBookings(prev => prev.map(b => b.id === bookingId ? previous : b));
+        addToast('error', 'Cancellation Failed', d.error || 'Booking could not be cancelled. Please try again.');
+      }
+    }).catch(err => {
+      console.warn('Could not sync cancellation to server database:', err);
+      if (previous) setBookings(prev => prev.map(b => b.id === bookingId ? previous : b));
+      addToast('error', 'Cancellation Failed', 'Could not reach the server. Please try again.');
+    });
   };
 
   const assignStaffToBooking = (bookingId: string, staffId: string) => {

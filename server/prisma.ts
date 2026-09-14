@@ -19,6 +19,7 @@ export interface InMemoryDb {
   otps: any[];
   auditLogs: any[];
   inventoryItems: any[];
+  buildDrafts: any[];
 }
 
 const DB_FILE_PATH = path.join(process.cwd(), "data", "rolling_razors_db.json");
@@ -117,6 +118,12 @@ function loadDb(): InMemoryDb {
     updatedAt: normalizeDate(item.updatedAt),
   }));
 
+  const buildDrafts = (rawDb.buildDrafts || []).map((d: any) => ({
+    ...d,
+    createdAt: normalizeDate(d.createdAt),
+    updatedAt: normalizeDate(d.updatedAt),
+  }));
+
   return {
     users,
     customers,
@@ -130,6 +137,7 @@ function loadDb(): InMemoryDb {
     otps,
     auditLogs,
     inventoryItems,
+    buildDrafts,
   };
 }
 
@@ -151,6 +159,7 @@ function persistDb(data: InMemoryDb) {
         otps: data.otps,
         auditLogs: data.auditLogs,
         inventoryItems: data.inventoryItems,
+        buildDrafts: data.buildDrafts,
       };
       fs.writeFileSync(DB_FILE_PATH, JSON.stringify(payload, null, 2), "utf8");
     } catch (e) {
@@ -386,6 +395,7 @@ function createInMemoryPrisma() {
     otp: createModelHandler(store.otps, store, "phone"),
     auditLog: createModelHandler(store.auditLogs, store),
     inventoryItem: createModelHandler(store.inventoryItems, store, "sku"),
+    buildDraft: createModelHandler(store.buildDrafts, store, "userId"),
 
     $queryRaw: async () => [{ "1": 1 }],
     $transaction: async (fnOrArr: any) => {

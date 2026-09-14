@@ -17,7 +17,7 @@ import { prisma } from "./prisma";
 import { kv } from "./kv";
 import { rateLimitMiddleware } from "./rates";
 import { initSentry, Sentry } from "./sentry";
-import { requireCasbin } from "./casbin/enforcer";
+import { requireCasbin, authorize } from "./casbin/enforcer";
 import { normalizePhoneKe, toDarajaPhone, phoneKey, phonesMatch, isValidKePhone } from "./phone";
 import { validate, adminLoginSchema, customerLoginSchema, customerRegisterSchema, stkPushSchema, bookingCreateSchema, vehicleCreateSchema, buildDraftSchema } from "./validators";
 import { Booking, Customer, User, Vehicle, WorkOrder, UserRole } from "../src/types";
@@ -453,12 +453,15 @@ app.post("/api/bookings", authenticate, async (req,res)=>{
   }
 });
 
-app.patch("/api/bookings/:id", authenticate, requireAdmin, requireCasbin("bookings","update"), async (req,res)=>{
+app.patch("/api/bookings/:id", authenticate, async (req,res)=>{
   const { id }=req.params; const existing=await serverDb.getBooking(id); if(!existing) return res.status(404).json({ success:false, error:"Booking not found." });
-  const user=(req as any).user; if(user.role!=="admin" && existing.customerId && existing.customerId!==user.id && !phonesMatch(existing.customerPhone, user.phone||"")) return res.status(403).json({ success:false, error:"Forbidden." });
-  const allowed=["status","assignedStaffId","assignedStaffName","paymentStatus","paymentMethod","mpesaReceiptNo","depositPaid","depositAmount","balanceAmount","internalNotes"];
-  if(user.role!=="admin"){
-    const filtered:any={}; for(const k of ["status"] ) if(k in req.body) filtered[k]=req.body[k];
+  const user=(req as any).user; const isAdmin = user.role === "admin";
+
+  // Customers may only cancel their own booking (free cancellation up to 24h is
+  // advertised on the public site). Cancellation releases the appointment slot.
+  if (!isAdmin) {
+    if(existing.customerId && existing.customerId!==user.id && !phonesMatch(existing.customerPhone, user.phone||"")) return res.status(403).json({ success:false, error:"Forbidden." });
+    const filtered:any={}; for(const k of ["status"]) if(k in req.body) filtered[k]=req.body[k];
     if(Object.keys(filtered).length===0) return res.status(403).json({ success:false, error:"Customers can only update status to cancelled." });
     if(filtered.status!=="cancelled") return res.status(403).json({ success:false, error:"Forbidden." });
     const v=serverDb.validateBookingTransition(existing.status, filtered.status);
@@ -466,9 +469,12 @@ app.patch("/api/bookings/:id", authenticate, requireAdmin, requireCasbin("bookin
     filtered.slotStart = null;
     const before={ ...existing };
     const updated=await serverDb.updateBooking(id, filtered);
-    await serverDb.createAuditLog({ actorId:user.id, actorName:user.name, actorRole:user.role, action:`booking:${filtered.status}`, entityType:"Booking", entityId:id, before, after:updated, ip:req.ip, requestId:(req as any).id });
+    await serverDb.createAuditLog({ actorId:user.id, actorName:user.name, actorRole:user.role, action:"booking:cancelled", entityType:"Booking", entityId:id, before, after:updated, ip:req.ip, requestId:(req as any).id });
     return res.json({ success:true, booking:updated });
   }
+
+  if(!(await authorize("admin", "bookings", "update"))) return res.status(403).json({ success:false, error:"Forbidden." });
+  const allowed=["status","assignedStaffId","assignedStaffName","paymentStatus","paymentMethod","mpesaReceiptNo","depositPaid","depositAmount","balanceAmount","internalNotes"];
   const patch:any={}; for(const k of allowed) if(k in req.body) patch[k]=req.body[k];
   if(patch.status){
     const v=serverDb.validateBookingTransition(existing.status, patch.status);
