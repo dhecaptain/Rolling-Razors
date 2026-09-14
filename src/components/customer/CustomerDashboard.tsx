@@ -199,7 +199,7 @@ export const CustomerDashboard: React.FC = () => {
           <button
             id="tab-driver-overview"
             onClick={() => setCustomerTab('dashboard')}
-            className={`py-2 px-4 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+            className={`min-h-11 px-4 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
               customerTab === 'dashboard'
                 ? 'bg-[#D6A62E] text-[#073B32] shadow-sm'
                 : 'text-white/70 hover:text-white hover:bg-white/5'
@@ -211,7 +211,7 @@ export const CustomerDashboard: React.FC = () => {
           <button
             id="tab-driver-bookings"
             onClick={() => setCustomerTab('bookings')}
-            className={`py-2 px-4 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+            className={`min-h-11 px-4 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
               customerTab === 'bookings'
                 ? 'bg-[#D6A62E] text-[#073B32] shadow-sm'
                 : 'text-white/70 hover:text-white hover:bg-white/5'
@@ -223,7 +223,7 @@ export const CustomerDashboard: React.FC = () => {
           <button
             id="tab-driver-vehicles"
             onClick={() => setCustomerTab('vehicles')}
-            className={`py-2 px-4 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+            className={`min-h-11 px-4 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
               customerTab === 'vehicles'
                 ? 'bg-[#D6A62E] text-[#073B32] shadow-sm'
                 : 'text-white/70 hover:text-white hover:bg-white/5'
@@ -235,7 +235,7 @@ export const CustomerDashboard: React.FC = () => {
           <button
             id="tab-driver-profile"
             onClick={() => setCustomerTab('profile')}
-            className={`py-2 px-4 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+            className={`min-h-11 px-4 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
               customerTab === 'profile'
                 ? 'bg-[#D6A62E] text-[#073B32] shadow-sm'
                 : 'text-white/70 hover:text-white hover:bg-white/5'

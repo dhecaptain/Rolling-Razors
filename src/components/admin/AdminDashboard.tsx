@@ -188,7 +188,7 @@ export const AdminDashboard: React.FC = () => {
             { id: 'staff', label: `Craftsmen (${staff.length})`, icon: <UserCheck className="w-4 h-4" /> },
             { id: 'payments', label: 'M-Pesa Ledger', icon: <Smartphone className="w-4 h-4" /> }
           ].map(tab => (
-            <button key={tab.id} onClick={() => setAdminTab(tab.id as any)} className={`py-2 px-3.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${adminTab===tab.id ? 'bg-[#D6A62E] text-[#073B32] shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}>
+            <button key={tab.id} onClick={() => setAdminTab(tab.id as any)} className={`min-h-11 px-3.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${adminTab===tab.id ? 'bg-[#D6A62E] text-[#073B32] shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}>
               {tab.icon}<span>{tab.label}</span>
             </button>
           ))}
