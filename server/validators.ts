@@ -70,6 +70,13 @@ export const stkPushSchema = z.object({
   transactionDesc: z.string().optional(),
 });
 
+export const paystackInitSchema = z.object({
+  amount: z.number().min(3).max(150000),
+  email: z.string().email("A valid email is required for card checkout.").optional(),
+  bookingId: z.string().optional(),
+  invoiceId: z.string().optional(),
+});
+
 export const buildDraftSchema = z.object({
   material: z.string().min(1).max(100),
   color: z.string().min(1).max(100),

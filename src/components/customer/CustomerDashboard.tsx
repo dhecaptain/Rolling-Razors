@@ -36,6 +36,7 @@ export const CustomerDashboard: React.FC = () => {
     updateProfile,
     workOrders, 
     openMpesaPayment, 
+    openPaystackPayment,
     setView,
     openAuth,
     setBookingWizardInitialServiceId,
@@ -125,10 +126,10 @@ export const CustomerDashboard: React.FC = () => {
   };
 
   const handlePayBookingDeposit = (booking: Booking) => {
-    openMpesaPayment({
+    openPaystackPayment({
       bookingId: booking.id,
       amount: booking.depositAmount,
-      phone: booking.customerPhone,
+      email: booking.customerEmail,
       onSuccess: () => {
         setSelectedBooking(null);
       }

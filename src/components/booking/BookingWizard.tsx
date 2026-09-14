@@ -14,8 +14,8 @@ import {
   MapPin, 
   User, 
   Phone, 
-  Mail, 
-  Smartphone,
+Mail, 
+    CreditCard,
   CheckCircle2,
   FileText,
   MessageCircle
@@ -29,6 +29,7 @@ export const BookingWizard: React.FC = () => {
     currentUser, 
     setView, 
     openMpesaPayment, 
+    openPaystackPayment,
     openAuth,
     bookingWizardInitialServiceId,
     setBookingWizardInitialServiceId,
@@ -39,7 +40,7 @@ export const BookingWizard: React.FC = () => {
     openLegalModal
   } = useApp();
 
-  // Wizard Steps: 1: Service, 2: Vehicle & Customization, 3: Date & Details, 4: Deposit & M-Pesa, 5: Confirmed
+  // Wizard Steps: 1: Service, 2: Vehicle & Customization, 3: Date & Details, 4: Deposit & Pay, 5: Confirmed
   const [currentStep, setCurrentStep] = useState<number>(1);
 
   // Form State
@@ -214,7 +215,7 @@ export const BookingWizard: React.FC = () => {
       estimatedPrice: serviceCost,
       depositAmount: depositAmount,
       depositPaid: false,
-      paymentMethod: 'mpesa',
+      paymentMethod: 'paystack',
       status: 'pending',
       privacyAccepted: true,
       termsAccepted: true,
@@ -229,19 +230,19 @@ export const BookingWizard: React.FC = () => {
     setBookingWizardDraft(null);
     setConfirmedBookingId(newBooking.id);
 
-    // 2. Trigger M-Pesa STK push prompt
-    openMpesaPayment({
+    // 2. Trigger Paystack checkout (card / bank / M-Pesa mobile money)
+    openPaystackPayment({
       bookingId: newBooking.id,
       amount: depositAmount,
-      phone: customerPhone,
-      onSuccess: (receiptCode) => {
+      email: customerEmail,
+      onSuccess: () => {
         setCurrentStep(5);
         try {
           confetti({
             particleCount: 100,
             spread: 80,
             origin: { y: 0.5 },
-            colors: ['#073B32', '#D6A62E', '#25D366', '#F5F1E8']
+            colors: ['#073B32', '#D6A62E', '#2563EB', '#F5F1E8']
           });
         } catch {}
       }
@@ -311,7 +312,7 @@ export const BookingWizard: React.FC = () => {
 
   const handleShareWhatsApp = () => {
     const text = `Hello Rolling Razors Customs! I have just booked service *${selectedService.name}* for my *${vehicleMake} ${vehicleModel} (${vehicleReg})* under Booking ID *${confirmedBookingId}*. Date: ${selectedDate} at ${selectedTime}.`;
-    window.open(`https://wa.me/254712345678?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+    window.open(`https://wa.me/254795802466?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -827,12 +828,12 @@ export const BookingWizard: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Safaricom Paybill Notice */}
+                  {/* Paystack Checkout Notice */}
                   <div className="p-3 bg-[#073B32] rounded-xl border border-white/5 text-[11px] text-white/70 space-y-1">
-                    <div className="flex items-center gap-1.5 text-[#25D366] font-bold">
-                      <Smartphone className="w-3.5 h-3.5" /> Instant Lipa na M-Pesa Online
+                    <div className="flex items-center gap-1.5 text-[#2563EB] font-bold">
+                      <CreditCard className="w-3.5 h-3.5" /> Instant Paystack Secure Checkout
                     </div>
-                    <p>Paybill: <strong>889900</strong> • Automatic payment confirmation</p>
+                    <p>Card • Bank Transfer • M-Pesa • Automatic payment confirmation</p>
                   </div>
                 </div>
 
@@ -869,13 +870,13 @@ export const BookingWizard: React.FC = () => {
                   </button>
 
                   <button
-                    id="wizard-pay-mpesa-deposit-btn"
+                    id="wizard-pay-deposit-btn"
                     type="button"
                     onClick={handleCompleteBookingWithMpesa}
                     className="py-3.5 px-6 rounded-xl bg-[#D6A62E] hover:bg-[#c39626] text-[#073B32] font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl cursor-pointer"
                   >
-                    <Smartphone className="w-4 h-4" />
-                    <span>Pay Deposit with M-Pesa (KES {depositAmount.toLocaleString()})</span>
+                    <CreditCard className="w-4 h-4" />
+                    <span>Pay Deposit Now (KES {depositAmount.toLocaleString()})</span>
                   </button>
                 </div>
               </div>

@@ -462,7 +462,8 @@ function mapBooking(r: any): Booking {
     slotStart: r.slotStart ? (r.slotStart instanceof Date ? r.slotStart.toISOString() : String(r.slotStart)) : undefined,
     estimatedPrice: r.estimatedPrice, depositAmount: r.depositAmount, balanceAmount: r.balanceAmount ?? undefined, depositPaid: r.depositPaid, paymentStatus: r.paymentStatus as any, paymentMethod: r.paymentMethod || undefined, mpesaReceiptNo: r.mpesaReceiptNo || undefined,
     status: r.status as any, assignedStaffId: r.assignedStaffId || undefined, assignedStaffName: r.assignedStaffName || undefined, workOrderId: r.workOrderId || undefined, timeline: r.timeline as any, internalNotes: r.internalNotes || undefined, createdAt: r.createdAt.toISOString(),
-    privacyAcceptedAt: r.privacyAcceptedAt?.toISOString(), termsAcceptedAt: r.termsAcceptedAt?.toISOString(),
+    privacyAcceptedAt: r.privacyAcceptedAt ? (r.privacyAcceptedAt instanceof Date ? r.privacyAcceptedAt.toISOString() : String(r.privacyAcceptedAt)) : undefined,
+    termsAcceptedAt: r.termsAcceptedAt ? (r.termsAcceptedAt instanceof Date ? r.termsAcceptedAt.toISOString() : String(r.termsAcceptedAt)) : undefined,
   };
 }
 function toBookingData(b: Booking): any {

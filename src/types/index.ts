@@ -225,7 +225,7 @@ export interface Invoice {
   depositPaid: number;
   balanceDue: number;
   total: number;
-  paymentMethod: 'M-Pesa' | 'Cash' | 'Bank' | 'Other';
+  paymentMethod: 'M-Pesa' | 'Paystack' | 'Cash' | 'Bank' | 'Other';
   paymentStatus: 'Paid' | 'Deposit Paid' | 'Pending' | 'Overdue';
   mpesaRef?: string;
   issueDate: string;

@@ -205,6 +205,9 @@ function matchesWhere(item: any, where?: any): boolean {
       if ("notIn" in expected && Array.isArray(expected.notIn)) {
         if (expected.notIn.includes(actual)) return false;
       }
+      if ("not" in expected && expected.not !== undefined) {
+        if (actual === expected.not) return false;
+      }
       if ("gte" in expected) {
         const gteVal = expected.gte instanceof Date ? expected.gte.getTime() : expected.gte;
         const actualVal = actual instanceof Date ? actual.getTime() : actual;
@@ -321,6 +324,26 @@ function createModelHandler(list: any[], dbStore: InMemoryDb, primaryKey = "id")
       list[idx] = updated;
       persistDb(dbStore);
       return { ...updated };
+    },
+
+    async updateMany(args?: { where?: any; data?: any }) {
+      const data = { ...(args?.data || {}) };
+      let count = 0;
+      for (let i = 0; i < list.length; i++) {
+        if (!matchesWhere(list[i], args?.where)) continue;
+        const current = list[i];
+        if (data.version && typeof data.version === "object" && "increment" in data.version) {
+          data.version = (current.version || 0) + data.version.increment;
+        }
+        list[i] = {
+          ...current,
+          ...data,
+          updatedAt: new Date(),
+        };
+        count++;
+      }
+      if (count > 0) persistDb(dbStore);
+      return { count };
     },
 
     async upsert(args: { where: any; update: any; create: any }) {

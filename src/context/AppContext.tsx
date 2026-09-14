@@ -60,6 +60,15 @@ export interface MpesaPromptState {
   onSuccess?: (receiptCode: string) => void;
 }
 
+export interface PaystackPromptState {
+  isOpen: boolean;
+  amount: number;
+  bookingId?: string;
+  invoiceId?: string;
+  email?: string;
+  onSuccess?: (reference: string) => void;
+}
+
 interface AppContextType {
   // Navigation & View
   view: AppView;
@@ -144,6 +153,17 @@ interface AppContextType {
     onSuccess?: (code: string) => void
   ) => void;
   closeMpesaPayment: () => void;
+
+  // Paystack Integration (card / bank / M-Pesa mobile-money)
+  paystackPrompt: PaystackPromptState;
+  openPaystackPayment: (params: {
+    amount: number;
+    bookingId?: string;
+    invoiceId?: string;
+    email?: string;
+    onSuccess?: (reference: string) => void;
+  }) => void;
+  closePaystackPayment: () => void;
   addService: (serviceData: Omit<Service, 'id'>) => void;
   
   // Toast notifications
@@ -404,6 +424,12 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
   const [mpesaPrompt, setMpesaPrompt] = useState<MpesaPromptState>({
     isOpen: false,
     phone: '+254712901234',
+    amount: 5000
+  });
+
+  // Paystack checkout state
+  const [paystackPrompt, setPaystackPrompt] = useState<PaystackPromptState>({
+    isOpen: false,
     amount: 5000
   });
 
@@ -681,6 +707,21 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
 
   const closeMpesaPayment = () => {
     setMpesaPrompt(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const openPaystackPayment = (params: { amount: number; bookingId?: string; invoiceId?: string; email?: string; onSuccess?: (reference: string) => void }) => {
+    setPaystackPrompt({
+      isOpen: true,
+      amount: params.amount,
+      bookingId: params.bookingId,
+      invoiceId: params.invoiceId,
+      email: params.email,
+      onSuccess: params.onSuccess
+    });
+  };
+
+  const closePaystackPayment = () => {
+    setPaystackPrompt(prev => ({ ...prev, isOpen: false }));
   };
 
   const addBooking = async (bookingData: Omit<Booking, 'id' | 'createdAt' | 'timeline' | 'workOrderId'>): Promise<Booking> => {
@@ -1061,7 +1102,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
           depositPaid: amount,
           balanceDue: newBalance,
           paymentStatus: newBalance === 0 ? 'Paid' : 'Deposit Paid',
-          paymentMethod: (method as 'M-Pesa' | 'Cash' | 'Bank' | 'Other') || 'M-Pesa',
+          paymentMethod: (method as 'M-Pesa' | 'Paystack' | 'Cash' | 'Bank' | 'Other') || 'M-Pesa',
           mpesaRef: transactionReference
         };
         const next = [...prev];
@@ -1093,7 +1134,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
             depositPaid: amount,
             balanceDue: newBalance,
             total: b.estimatedPrice,
-            paymentMethod: (method as 'M-Pesa' | 'Cash' | 'Bank' | 'Other') || 'M-Pesa',
+            paymentMethod: (method as 'M-Pesa' | 'Paystack' | 'Cash' | 'Bank' | 'Other') || 'M-Pesa',
             paymentStatus: newBalance === 0 ? 'Paid' : 'Deposit Paid',
             mpesaRef: transactionReference,
             issueDate: nowStr,
@@ -1311,7 +1352,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
       depositPaid: depositPaid,
       balanceDue: balanceDue,
       total: estimatedPrice,
-      paymentMethod: (booking?.paymentMethod as 'M-Pesa' | 'Cash' | 'Bank' | 'Other') || 'M-Pesa',
+      paymentMethod: (booking?.paymentMethod as 'M-Pesa' | 'Paystack' | 'Cash' | 'Bank' | 'Other') || 'M-Pesa',
       paymentStatus: paymentStatus,
       mpesaRef: booking?.mpesaReceiptNo || (depositPaid > 0 ? 'MP' + Math.random().toString(36).substring(2, 8).toUpperCase() : undefined),
       issueDate: now,
@@ -1401,6 +1442,9 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
         mpesaPrompt,
         openMpesaPayment,
         closeMpesaPayment,
+        paystackPrompt,
+        openPaystackPayment,
+        closePaystackPayment,
         toasts,
         addToast,
         removeToast,

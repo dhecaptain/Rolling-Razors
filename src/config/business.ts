@@ -63,14 +63,14 @@ export const BUSINESS_CONFIG: BusinessConfig = {
   tagline: "Your Vision, Our Craftsmanship.",
   shortTagline: "Kenyan Master Upholsterers & Interior Customization",
   phone: {
-    raw: "254712345678",
-    formatted: "0712 345 678",
-    international: "+254 712 345 678",
-    telLink: "tel:+254712345678"
+    raw: "254795802466",
+    formatted: "0795 802 466",
+    international: "+254 795 802 466",
+    telLink: "tel:+254795802466"
   },
   whatsapp: {
-    number: "254712345678",
-    link: "https://wa.me/254712345678",
+    number: "254795802466",
+    link: "https://wa.me/254795802466",
     defaultMessage: "Hello Rolling Razors Customs! I would like to make an inquiry about automotive upholstery and custom seats."
   },
   email: {
@@ -112,6 +112,6 @@ export const BUSINESS_CONFIG: BusinessConfig = {
     facebook: "https://facebook.com/rollingrazorskenya",
     instagram: "https://instagram.com/rollingrazorscustoms",
     tiktok: "https://tiktok.com/@rollingrazorscustoms",
-    whatsapp: "https://wa.me/254712345678"
+    whatsapp: "https://wa.me/254795802466"
   }
 };

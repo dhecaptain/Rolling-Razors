@@ -68,6 +68,11 @@ export const env = {
   MPESA_SHORTCODE: (process.env.MPESA_SHORTCODE || "").trim(),
   MPESA_ENVIRONMENT: (process.env.MPESA_ENVIRONMENT || "sandbox").trim().toLowerCase(),
   MPESA_CALLBACK_SECRET: (process.env.MPESA_CALLBACK_SECRET || "").trim(),
+
+  // --- Paystack (card / bank / mobile-money deposits; KES) ---
+  PAYSTACK_SECRET_KEY: (process.env.PAYSTACK_SECRET_KEY || "").trim(),
+  PAYSTACK_ENVIRONMENT: (process.env.PAYSTACK_ENVIRONMENT || "test").trim().toLowerCase(),
+  PAYSTACK_WEBHOOK_SECRET: (process.env.PAYSTACK_WEBHOOK_SECRET || "").trim(),
   CORS_ORIGIN: (process.env.CORS_ORIGIN || "").trim(),
   BCRYPT_ROUNDS: Number(process.env.BCRYPT_ROUNDS || 12),
   // Rate limits (per minute). Production defaults; override in tests to avoid flakiness.
@@ -75,6 +80,7 @@ export const env = {
   RATE_LIMIT_AUTH_MAX: Number(process.env.RATE_LIMIT_AUTH_MAX || 10),
   RATE_LIMIT_ADMIN_MAX: Number(process.env.RATE_LIMIT_ADMIN_MAX || 5),
   RATE_LIMIT_MPESA_MAX: Number(process.env.RATE_LIMIT_MPESA_MAX || 6),
+  RATE_LIMIT_PAYSTACK_MAX: Number(process.env.RATE_LIMIT_PAYSTACK_MAX || 10),
   // "memory" (in-process; local dev + tests) | "upstash" (distributed, shared across Vercel instances)
   RATE_LIMIT_STORE: rateLimitStore,
   SENTRY_DSN: (process.env.SENTRY_DSN || "").trim(),
@@ -146,6 +152,10 @@ if (env.NODE_ENV === "production" && !env.MPESA_CALLBACK_SECRET) {
 
 export function isMpesaConfigured(): boolean {
   return Boolean(env.MPESA_CONSUMER_KEY && env.MPESA_CONSUMER_SECRET);
+}
+
+export function isPaystackConfigured(): boolean {
+  return Boolean(env.PAYSTACK_SECRET_KEY && (env.PAYSTACK_ENVIRONMENT === "test" || env.PAYSTACK_ENVIRONMENT === "live"));
 }
 
 export function isClerkEnabled(): boolean {

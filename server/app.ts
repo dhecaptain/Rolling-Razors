@@ -19,7 +19,7 @@ import { rateLimitMiddleware } from "./rates";
 import { initSentry, Sentry } from "./sentry";
 import { requireCasbin, authorize } from "./casbin/enforcer";
 import { normalizePhoneKe, toDarajaPhone, phoneKey, phonesMatch, isValidKePhone } from "./phone";
-import { validate, adminLoginSchema, customerLoginSchema, customerRegisterSchema, stkPushSchema, bookingCreateSchema, vehicleCreateSchema, buildDraftSchema } from "./validators";
+import { validate, adminLoginSchema, customerLoginSchema, customerRegisterSchema, stkPushSchema, paystackInitSchema, bookingCreateSchema, vehicleCreateSchema, buildDraftSchema } from "./validators";
 import { Booking, Customer, User, Vehicle, WorkOrder, UserRole } from "../src/types";
 
 initSentry();
@@ -45,7 +45,7 @@ app.use(helmet({
       imgSrc: ["'self'", "data:", "https://images.unsplash.com", "https:", "blob:"],
       // Clerk bundles clerk-js via the React SDK, but hosted components / bot
       // protection (Turnstile) load resources from Clerk + Cloudflare origins.
-      scriptSrc: ["'self'", "https://*.clerk.accounts.dev", "https://*.clerk.com", "https://challenges.cloudflare.com"],
+      scriptSrc: ["'self'", "https://*.clerk.accounts.dev", "https://*.clerk.com", "https://challenges.cloudflare.com", "https://js.paystack.co"],
       connectSrc: [
         "'self'",
         "https://api.safaricom.co.ke",
@@ -53,8 +53,9 @@ app.use(helmet({
         "https://*.clerk.accounts.dev",
         "https://*.clerk.com",
         "https://clerk.rollingrazors.co.ke",
+        "https://api.paystack.co",
       ],
-      frameSrc: ["'self'", "https://*.clerk.accounts.dev", "https://*.clerk.com", "https://challenges.cloudflare.com"],
+      frameSrc: ["'self'", "https://*.clerk.accounts.dev", "https://*.clerk.com", "https://challenges.cloudflare.com", "https://checkout.paystack.com"],
       workerSrc: ["'self'", "blob:"],
       frameAncestors: ["'none'"],
     },
@@ -73,7 +74,7 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use(express.json({ limit: "100kb" }));
+app.use(express.json({ limit: "100kb", verify: (_req, _res, buf) => { (_req as any).rawBody = buf; } }));
 app.use(pinoHttp({
   logger,
   customProps: (req) => ({ requestId: (req as any).id }),
@@ -94,6 +95,7 @@ const generalLimiter = rateLimitMiddleware({ name: "general", max: env.RATE_LIMI
 const customerAuthLimiter = rateLimitMiddleware({ name: "customer-auth", max: env.RATE_LIMIT_AUTH_MAX, message: "Too many customer attempts. Try again shortly." });
 const adminAuthLimiter = rateLimitMiddleware({ name: "admin-auth", max: env.RATE_LIMIT_ADMIN_MAX, message: "Too many admin attempts. Try again in 5 minutes." });
 const mpesaLimiter = rateLimitMiddleware({ name: "mpesa", max: env.RATE_LIMIT_MPESA_MAX, message: "M-Pesa rate limit: please wait." });
+const paystackLimiter = rateLimitMiddleware({ name: "paystack", max: env.RATE_LIMIT_PAYSTACK_MAX, message: "Payment rate limit: please wait a moment." });
 const callbackLimiter = rateLimitMiddleware({ name: "mpesa-callback", max: 60 });
 app.use("/api/", generalLimiter);
 
@@ -765,10 +767,182 @@ app.post("/api/mpesa/reconcile", authenticate, requireAdmin, async (_req, res) =
   }
   res.json({ success: true, checked, updated });
 });
+
+// --- Paystack (card / bank / mobile-money deposits, KES) ---
+// Paystack test vs live mode is decided by which secret key is configured; the
+// API endpoint is identical for both. Transactions are persisted in the same
+// table as M-Pesa using the Paystack `reference` as the checkoutRequestId, so
+// the shared claim/apply/reconcile machinery handles them unchanged.
+const PAYSTACK_API = "https://api.paystack.co";
+
+function getPaystackConfig() {
+  return { key: env.PAYSTACK_SECRET_KEY, isProd: env.PAYSTACK_ENVIRONMENT === "live" };
+}
+
+function makePaystackReference(): string {
+  return `PSK-${Date.now().toString(36).toUpperCase()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+}
+
+async function paystackVerify(reference: string): Promise<{ ok: boolean; status?: "SUCCESS" | "FAILED" | "PENDING"; amount?: number; receiptNumber?: string; failureReason?: string; error?: string }> {
+  const cfg = getPaystackConfig();
+  if (!cfg.key) return { ok: false, error: "Paystack gateway unavailable: secret key not configured." };
+  try {
+    const res = await fetch(`${PAYSTACK_API}/transaction/verify/${encodeURIComponent(reference)}`, { headers: { Authorization: `Bearer ${cfg.key}` } });
+    const text = await res.text();
+    let data: any; try { data = JSON.parse(text); } catch { data = {}; }
+    if (!res.ok || !data?.status) return { ok: false, error: data?.message || `Paystack verification failed (HTTP ${res.status}).` };
+    const t = data.data || {};
+    const status = t.status === "success" ? "SUCCESS" : t.status === "failed" || t.status === "abandoned" ? "FAILED" : "PENDING";
+    return { ok: true, status, amount: Number(t.amount), receiptNumber: typeof t.reference === "string" ? t.reference : String(t.id || reference), failureReason: t.gateway_response || undefined };
+  } catch (err: any) {
+    logger.error({ err }, "[PAYSTACK] verify network failure");
+    return { ok: false, error: `Paystack connection error: ${err.message || "Network timeout"}` };
+  }
+}
+
+app.post("/api/paystack/initialize", paystackLimiter, authenticate, async (req, res) => {
+  const v = validate(paystackInitSchema, req.body);
+  if (!v.success) return res.status(400).json({ success: false, error: v.error });
+  const { amount, email, bookingId, invoiceId } = v.data as any;
+  const cfg = getPaystackConfig();
+  if (!cfg.key) return res.status(503).json({ success: false, error: "Paystack payment gateway unavailable: secret key not configured." });
+
+  let payerEmail = (email || (req as any).user?.email || "").trim();
+  if (bookingId) {
+    const booking = await serverDb.getBooking(bookingId);
+    if (!booking) return res.status(404).json({ success: false, error: "Booking not found." });
+    const user = (req as any).user;
+    if (!user || (user.role !== "admin" && booking.customerId !== user.id)) return res.status(403).json({ success: false, error: "Not your booking." });
+    const expected = Math.round(booking.depositAmount);
+    if (Math.round(Number(amount)) !== expected) return res.status(400).json({ success: false, error: `Amount mismatch: expected KES ${expected.toLocaleString()} for booking ${bookingId}.` });
+    if (booking.depositPaid) return res.status(409).json({ success: false, error: "Deposit already paid for this booking." });
+    const recentTx = await prisma.mpesaTransaction.findFirst({ where: { bookingId, status: "PENDING", createdAt: { gte: new Date(Date.now() - 5 * 60 * 1000) } } });
+    if (recentTx) {
+      if (recentTx.merchantRequestId === "PAYSTACK") {
+        // A stale Paystack checkout charges nothing until the popup is
+        // completed, so fail it and let the customer retry with a fresh
+        // checkout — unless it actually succeeded, in which case the deposit
+        // is already paid.
+        const stale = await paystackVerify(recentTx.checkoutRequestId);
+        if (!stale.ok) return res.status(502).json({ success: false, error: "Could not confirm the previous checkout status with Paystack. Please try again in a moment." });
+        if (stale.status === "SUCCESS") {
+          await applyMpesaSuccess(recentTx, stale.receiptNumber || recentTx.checkoutRequestId);
+          return res.status(409).json({ success: false, error: "Deposit already paid for this booking." });
+        }
+        await prisma.mpesaTransaction.update({ where: { checkoutRequestId: recentTx.checkoutRequestId }, data: { status: "FAILED", failureReason: stale.status === "FAILED" ? "Checkout abandoned." : "Superseded by a new checkout." } });
+      } else {
+        return res.status(409).json({ success: false, error: "A payment is already pending for this booking. Complete it or wait 5 minutes." });
+      }
+    }
+    if (!payerEmail) {
+      const customer = await serverDb.getCustomer(booking.customerId);
+      payerEmail = customer?.email || "";
+    }
+  }
+  if (!payerEmail) payerEmail = "customer@rollingrazors.co.ke";
+
+  const amountCents = Math.round(Number(amount) * 100);
+  const reference = makePaystackReference();
+  const callbackUrl = `${env.APP_URL}/checkout/callback?reference=${reference}`;
+  try {
+    const initRes = await fetch(`${PAYSTACK_API}/transaction/initialize`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${cfg.key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ email: payerEmail, amount: amountCents, currency: "KES", reference, callback_url: callbackUrl, metadata: { bookingId, invoiceId, amount: Math.round(Number(amount)) } }),
+    });
+    const text = await initRes.text();
+    let initData: any; try { initData = JSON.parse(text); } catch { initData = {}; }
+    if (!initRes.ok || !initData?.status || !initData?.data?.authorization_url) {
+      logger.error({ initData }, "[PAYSTACK] initialize rejected");
+      return res.status(502).json({ success: false, error: initData?.message || "Paystack could not start the checkout. Please try again." });
+    }
+    await serverDb.saveTransaction({
+      merchantRequestId: "PAYSTACK",
+      checkoutRequestId: reference,
+      bookingId,
+      invoiceId,
+      amount: Math.round(Number(amount)),
+      phone: String((req as any).user?.phone || "card-checkout").slice(0, 40),
+      status: "PENDING",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    // Supersede any other lingering Paystack pendings for this booking so an
+    // abandoned checkout can never double-charge or block a customer later.
+    await prisma.mpesaTransaction.updateMany({ where: { bookingId, status: "PENDING", merchantRequestId: "PAYSTACK", checkoutRequestId: { not: reference } }, data: { status: "FAILED", failureReason: "Superseded by a new checkout." } });
+    return res.json({ success: true, reference, authorization_url: initData.data.authorization_url, access_code: initData.data.access_code });
+  } catch (err: any) {
+    logger.error({ err }, "[PAYSTACK] initialize network failure");
+    return res.status(502).json({ success: false, error: `Paystack connection error: ${err.message || "Network timeout"}` });
+  }
+});
+
+app.get("/api/paystack/verify", authenticate, async (req, res) => {
+  const reference = String(req.query.reference || "").trim();
+  if (!reference) return res.status(400).json({ success: false, error: "Missing reference." });
+  const tx = await serverDb.getTransaction(reference);
+  if (!tx) return res.status(404).json({ success: false, error: "Transaction not found." });
+  const user = (req as any).user;
+  if (user.role !== "admin" && tx.bookingId) {
+    const booking = await serverDb.getBooking(tx.bookingId);
+    if (!booking || booking.customerId !== user.id) return res.status(403).json({ success: false, error: "Not your transaction." });
+  }
+  const verified = await paystackVerify(reference);
+  if (!verified.ok) return res.status(502).json({ success: false, error: verified.error });
+  if (tx.status === "PENDING") {
+    if (verified.status === "SUCCESS") {
+      if (verified.amount !== undefined && Math.round(verified.amount) !== Math.round(tx.amount * 100)) {
+        await serverDb.updateTransaction(reference, { status: "FAILED", failureReason: `Amount mismatch: Paystack charged ${verified.amount} subunits for a KES ${tx.amount} deposit.` });
+      } else {
+        const result = await applyMpesaSuccess(tx, verified.receiptNumber || reference);
+        logger.info({ reference, claimed: result.claimed }, "[PAYSTACK] verify applied SUCCESS");
+      }
+    } else if (verified.status === "FAILED") {
+      await serverDb.updateTransaction(reference, { status: "FAILED", failureReason: verified.failureReason || "Payment was not completed." });
+    }
+  }
+  const current = await serverDb.getTransaction(reference);
+  return res.json({ success: true, status: current?.status || verified.status, transaction: current });
+});
+
+app.post("/api/paystack/webhook", callbackLimiter, async (req, res) => {
+  if (env.PAYSTACK_WEBHOOK_SECRET) {
+    const signature = String(req.headers["x-paystack-signature"] || "").trim();
+    const rawBody = Buffer.isBuffer((req as any).rawBody) ? (req as any).rawBody : Buffer.from(JSON.stringify(req.body || {}));
+    const expected = crypto.createHmac("sha512", env.PAYSTACK_WEBHOOK_SECRET).update(rawBody).digest("hex");
+    if (!signature || !safeEqual(signature, expected)) {
+      logger.warn({ ip: req.ip, requestId: (req as any).id }, "[PAYSTACK] webhook signature invalid");
+      return res.status(401).json({ success: false, error: "Invalid signature" });
+    }
+  }
+  const event = req.body?.event;
+  if (event === "charge.success") {
+    const reference = String(req.body?.data?.reference || "").trim();
+    if (reference) {
+      logger.info({ reference, requestId: (req as any).id }, "[PAYSTACK] charge.success received");
+      const existing = await serverDb.getTransaction(reference);
+      if (!existing) {
+        logger.warn({ reference, requestId: (req as any).id }, "[PAYSTACK] webhook for unknown transaction");
+      } else if (existing.status !== "PENDING") {
+        logger.info({ reference, status: existing.status }, "[PAYSTACK] webhook idempotent skip");
+      } else {
+        const verified = await paystackVerify(reference);
+        if (verified.ok && verified.status === "SUCCESS") {
+          const result = await applyMpesaSuccess(existing, verified.receiptNumber || reference);
+          logger.info({ reference, claimed: result.claimed }, "[PAYSTACK] webhook applied SUCCESS");
+        } else {
+          logger.warn({ reference, verified }, "[PAYSTACK] webhook could not confirm SUCCESS — left PENDING");
+        }
+      }
+    }
+  }
+  return res.json({ success: true });
+});
 app.get("/api/health", async (_req,res)=>{
-  const checks:any={ db:"unknown", daraja:"unknown" };
+  const checks:any={ db:"unknown", daraja:"unknown", paystack:"unknown" };
   try{ await prisma.$queryRaw`SELECT 1`; checks.db="connected"; }catch(e){ checks.db="disconnected"; checks.dbError=String(e).slice(0,200); }
   const darajaCfg=getDarajaConfig(); checks.daraja= darajaCfg.consumerKey && darajaCfg.consumerSecret ? "configured" : "not_configured";
+  checks.paystack= getPaystackConfig().key ? "configured" : "not_configured";
   checks.uptime=process.uptime(); checks.timestamp=new Date().toISOString(); checks.env=env.NODE_ENV;
   const status= checks.db==="connected" ? "ok" : "degraded";
   res.status(status==="ok"?200:503).json({ status, service:"Rolling Razors Customs API", authProvider: env.AUTH_PROVIDER, ...checks });

@@ -9,6 +9,7 @@ const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard').th
 const AuthView = lazy(() => import('./components/auth/AuthView').then(m => ({ default: m.AuthView })));
 import { WhatsAppFloat } from './components/common/WhatsAppFloat';
 import { MpesaModal } from './components/common/MpesaModal';
+import { PaystackModal } from './components/common/PaystackModal';
 import { ToastContainer } from './components/common/ToastContainer';
 import { LegalModal } from './components/common/LegalModal';
 import { CookieConsentBanner } from './components/common/CookieConsentBanner';
@@ -105,6 +106,7 @@ const MainContent: React.FC = () => {
       {/* Modals, Overlays and Floating Tools */}
       <WhatsAppFloat />
       <MpesaModal />
+      <PaystackModal />
       <ToastContainer />
       <LegalModal
         isOpen={legalModal.isOpen}
