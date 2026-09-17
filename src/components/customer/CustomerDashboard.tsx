@@ -504,8 +504,8 @@ export const CustomerDashboard: React.FC = () => {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {myVehicles.map((v) => {
-                  const regDisplay = v.registrationNo || v.registrationNumber || 'NO PLATE';
-                  const typeDisplay = v.type || v.vehicleType || 'Car';
+                  const regDisplay = v.registrationNo || (v as any).registrationNumber || 'NO PLATE';
+                  const typeDisplay = v.type || (v as any).vehicleType || 'Car';
                   return (
                     <div
                       key={v.id}

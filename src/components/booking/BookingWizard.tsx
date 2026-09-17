@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Service, VehicleType } from '../../types';
+import { INITIAL_SERVICES } from '../../data/mockData';
 import { 
   Scissors, 
   Calendar, 
@@ -106,8 +107,8 @@ export const BookingWizard: React.FC = () => {
     }
   }, [bookingWizardInitialServiceId, bookingWizardDraft]);
 
-  const selectedService = services.find(s => s.id === selectedServiceId) || services[0];
-  const serviceCost = selectedService.startingPrice;
+  const selectedService = services.find(s => s.id === selectedServiceId) || services[0] || INITIAL_SERVICES[0];
+  const serviceCost = selectedService?.startingPrice ?? 18000;
   const depositAmount = Math.round(serviceCost * 0.35); // 35% deposit
   const balanceRemaining = serviceCost - depositAmount;
 
