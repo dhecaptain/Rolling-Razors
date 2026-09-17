@@ -8,7 +8,7 @@ export const vehicleDetailsSchema = z.object({
   model: z.string().min(1).max(50),
   year: z.number().int().min(1980).max(2030),
   registrationNo: z.string().min(3).max(20),
-  photoUrl: z.string().url().optional().or(z.literal("")),
+  photoUrl: z.string().max(2000).optional().or(z.literal("")),
 });
 
 export const bookingCreateSchema = z.object({
@@ -39,10 +39,28 @@ export const vehicleCreateSchema = z.object({
   year: z.number().int().min(1980).max(2030),
   registrationNo: z.string().min(2).max(20),
   color: z.string().max(30).optional(),
-  image: z.string().url().optional().or(z.literal("")),
+  image: z.string().max(2000).optional().or(z.literal("")),
   previousServicesCount: z.number().int().min(0).optional(),
   notes: z.string().max(1000).optional(),
 }).passthrough();
+
+export const uploadImageSchema = z.object({
+  category: z.enum([
+    "booking-reference",
+    "work-order-before",
+    "work-order-progress",
+    "work-order-after",
+    "vehicle",
+    "service",
+    "avatar",
+    "general",
+  ]),
+  entityId: z.string().max(100).optional(),
+  originalFilename: z.string().max(200).optional(),
+  mimeType: z.string().max(100),
+  base64Data: z.string().min(1),
+  isPrivate: z.boolean().optional(),
+});
 
 export const adminLoginSchema = z.object({
   identifier: z.string().min(3),

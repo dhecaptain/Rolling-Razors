@@ -441,9 +441,9 @@ const ServiceInspectionBoard: React.FC<{
 
 const BuildSpecification: React.FC<{ onBook: (draft: BuildDraft) => void }> = ({ onBook }) => {
   const { currentUser, authFetch, authVerifying } = useApp();
-  const [activeMaterial, setActiveMaterial] = useState(MATERIALS[0].name);
-  const [activeColor, setActiveColor] = useState(COLORS[0].name);
-  const [activePattern, setActivePattern] = useState(PATTERNS[0].name);
+  const [activeMaterial, setActiveMaterial] = useState<string>(MATERIALS[0].name);
+  const [activeColor, setActiveColor] = useState<string>(COLORS[0].name);
+  const [activePattern, setActivePattern] = useState<string>(PATTERNS[0].name);
   const [focusOnSeats, setFocusOnSeats] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
   const reduce = useReducedMotion();

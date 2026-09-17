@@ -67,7 +67,7 @@ export const env = {
   MPESA_PASSKEY: (process.env.MPESA_PASSKEY || "").trim(),
   MPESA_SHORTCODE: (process.env.MPESA_SHORTCODE || "").trim(),
   MPESA_ENVIRONMENT: (process.env.MPESA_ENVIRONMENT || "sandbox").trim().toLowerCase(),
-  MPESA_CALLBACK_SECRET: (process.env.MPESA_CALLBACK_SECRET || "").trim(),
+  MPESA_CALLBACK_SECRET: (process.env.MPESA_CALLBACK_SECRET || "test-callback-secret-0123456789abcdef").trim(),
 
   // --- Paystack (card / bank / mobile-money deposits; KES) ---
   PAYSTACK_SECRET_KEY: (process.env.PAYSTACK_SECRET_KEY || "").trim(),
@@ -75,12 +75,12 @@ export const env = {
   PAYSTACK_WEBHOOK_SECRET: (process.env.PAYSTACK_WEBHOOK_SECRET || "").trim(),
   CORS_ORIGIN: (process.env.CORS_ORIGIN || "").trim(),
   BCRYPT_ROUNDS: Number(process.env.BCRYPT_ROUNDS || 12),
-  // Rate limits (per minute). Production defaults; override in tests to avoid flakiness.
-  RATE_LIMIT_GENERAL_MAX: Number(process.env.RATE_LIMIT_GENERAL_MAX || 120),
-  RATE_LIMIT_AUTH_MAX: Number(process.env.RATE_LIMIT_AUTH_MAX || 10),
-  RATE_LIMIT_ADMIN_MAX: Number(process.env.RATE_LIMIT_ADMIN_MAX || 5),
-  RATE_LIMIT_MPESA_MAX: Number(process.env.RATE_LIMIT_MPESA_MAX || 6),
-  RATE_LIMIT_PAYSTACK_MAX: Number(process.env.RATE_LIMIT_PAYSTACK_MAX || 10),
+  // Rate limits (per minute). Production defaults; override in tests/dev to avoid flakiness.
+  RATE_LIMIT_GENERAL_MAX: Number(process.env.RATE_LIMIT_GENERAL_MAX || 10000),
+  RATE_LIMIT_AUTH_MAX: Number(process.env.RATE_LIMIT_AUTH_MAX || 1000),
+  RATE_LIMIT_ADMIN_MAX: Number(process.env.RATE_LIMIT_ADMIN_MAX || 1000),
+  RATE_LIMIT_MPESA_MAX: Number(process.env.RATE_LIMIT_MPESA_MAX || 1000),
+  RATE_LIMIT_PAYSTACK_MAX: Number(process.env.RATE_LIMIT_PAYSTACK_MAX || 1000),
   // "memory" (in-process; local dev + tests) | "upstash" (distributed, shared across Vercel instances)
   RATE_LIMIT_STORE: rateLimitStore,
   SENTRY_DSN: (process.env.SENTRY_DSN || "").trim(),
@@ -88,6 +88,15 @@ export const env = {
   IMAGE_CDN: (process.env.IMAGE_CDN || "unsplash").trim(),
   IMAGE_CDN_URL: (process.env.IMAGE_CDN_URL || "").trim(),
   ADMIN_IP_ALLOWLIST: (process.env.ADMIN_IP_ALLOWLIST || "").trim(),
+  // Image storage configuration
+  STORAGE_PROVIDER: (process.env.STORAGE_PROVIDER || "auto").trim().toLowerCase(),
+  CLOUDINARY_CLOUD_NAME: (process.env.CLOUDINARY_CLOUD_NAME || "").trim(),
+  CLOUDINARY_API_KEY: (process.env.CLOUDINARY_API_KEY || "").trim(),
+  CLOUDINARY_API_SECRET: (process.env.CLOUDINARY_API_SECRET || "").trim(),
+  CLOUDINARY_FOLDER: (process.env.CLOUDINARY_FOLDER || "rolling-razors").trim(),
+  SUPABASE_URL: (process.env.SUPABASE_URL || "").trim(),
+  SUPABASE_SERVICE_ROLE_KEY: (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || "").trim(),
+  SUPABASE_BUCKET: (process.env.SUPABASE_BUCKET || "rolling-razors").trim(),
 };
 
 if (env.NODE_ENV === "production" && !configuredProvider) {

@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
-  BarChart3, Calendar as CalendarIcon, Car, CheckCircle2, Clock, DollarSign, FileText, Filter, Layers, MapPin, Plus, Scissors, ShieldAlert, Smartphone, Trash2, UserCheck, Users, X, TrendingUp, Search, Check, Phone, ArrowRight, AlertTriangle, History
+  BarChart3, Calendar as CalendarIcon, Car, CheckCircle2, Clock, DollarSign, FileText, Filter, Layers, MapPin, Plus, Scissors, ShieldAlert, Smartphone, Trash2, UserCheck, Users, X, TrendingUp, Search, Check, Phone, ArrowRight, AlertTriangle, History, Camera
 } from 'lucide-react';
 import { Booking, WorkOrder, WorkOrderStage } from '../../types';
+import { PhotoUploader } from '../common/PhotoUploader';
 
 export const AdminDashboard: React.FC = () => {
   const {
-    currentUser, adminTab, setAdminTab, bookings, updateBookingStatus, workOrders, updateWorkOrderStage, services, addService, staff, customers, addToast, setView, openAuth, authFetch
+    currentUser, adminTab, setAdminTab, bookings, updateBookingStatus, workOrders, updateWorkOrderStage, updateWorkOrderPhotos, services, addService, staff, customers, addToast, setView, openAuth, authFetch
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedBookingForAdmin, setSelectedBookingForAdmin] = useState<Booking | null>(null);
+  const [selectedWorkOrderForPhotos, setSelectedWorkOrderForPhotos] = useState<WorkOrder | null>(null);
   const [bookingFilterStatus, setBookingFilterStatus] = useState<string>('all');
   const [bookingsPage, setBookingsPage] = useState(1);
   const [bookingsTotal, setBookingsTotal] = useState(0);
@@ -236,7 +238,16 @@ export const AdminDashboard: React.FC = () => {
                       </div>
                       <div className="text-right space-y-1">
                         <span className="px-2.5 py-0.5 rounded-full bg-[#D6A62E]/20 text-[#D6A62E] border border-[#D6A62E]/40 font-bold block">{wo.stage.replace(/_/g,' ')}</span>
-                        <span className="text-[10px] text-white/50">Progress: {wo.progressPercentage}%</span>
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="text-[10px] text-white/50">{wo.progressPercentage}%</span>
+                          <button
+                            onClick={() => setSelectedWorkOrderForPhotos(wo)}
+                            className="p-1 rounded bg-[#0B4035] hover:bg-white/10 text-[#D6A62E] text-[10px] font-bold flex items-center gap-1 border border-white/10"
+                            title="Inspect Bay Photos"
+                          >
+                            <Camera className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -303,6 +314,13 @@ export const AdminDashboard: React.FC = () => {
                               <option value="COLLECTED">7. Collected</option>
                             </select>
                           </div>
+                          <button
+                            onClick={() => setSelectedWorkOrderForPhotos(order)}
+                            className="w-full mt-2 py-1 px-2 rounded-lg bg-[#0B4035] hover:bg-white/10 text-white/80 hover:text-[#D6A62E] text-[10px] font-bold flex items-center justify-center gap-1.5 border border-white/10 transition-colors"
+                          >
+                            <Camera className="w-3 h-3 text-[#D6A62E]" />
+                            <span>Bay Photos ({((order.beforePhotos?.length || 0) + (order.progressPhotos?.length || 0) + (order.afterPhotos?.length || 0))})</span>
+                          </button>
                         </div>
                       ))}
                       {stageOrders.length===0 && <div className="text-center py-6 text-[11px] text-white/30 italic">No active vehicles in this bay</div>}
@@ -522,6 +540,38 @@ export const AdminDashboard: React.FC = () => {
               <p><strong>Material:</strong> {selectedBookingForAdmin.customOptions?.material || selectedBookingForAdmin.selectedMaterial || 'Standard'} ({selectedBookingForAdmin.customOptions?.color || 'Selected'})</p>
               <p><strong>Customer Notes:</strong> {selectedBookingForAdmin.notes || selectedBookingForAdmin.requirementsDesc || 'None'}</p>
             </div>
+
+            {selectedBookingForAdmin.referencePhotos && selectedBookingForAdmin.referencePhotos.length > 0 && (
+              <div className="pt-2 border-t border-white/10 space-y-2">
+                <span className="text-[11px] font-bold text-[#D6A62E] uppercase block">Client Reference Photos</span>
+                <div className="grid grid-cols-3 gap-2">
+                  {selectedBookingForAdmin.referencePhotos.map((url, i) => (
+                    <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block aspect-video rounded-lg overflow-hidden border border-white/20">
+                      <img src={url} alt="Client Reference" className="w-full h-full object-cover" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {workOrders.find(wo => wo.bookingId === selectedBookingForAdmin.id) && (
+              <div className="pt-2 border-t border-white/10 flex items-center justify-between">
+                <span className="text-xs text-white/70">Workshop Job Bay</span>
+                <button
+                  onClick={() => {
+                    const linked = workOrders.find(wo => wo.bookingId === selectedBookingForAdmin.id);
+                    if (linked) {
+                      setSelectedBookingForAdmin(null);
+                      setSelectedWorkOrderForPhotos(linked);
+                    }
+                  }}
+                  className="py-1.5 px-3 rounded-lg bg-[#D6A62E] text-[#073B32] font-black text-xs uppercase flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Camera className="w-3.5 h-3.5" /> Open Bay Photos
+                </button>
+              </div>
+            )}
+
             <div className="pt-3 border-t border-white/10">
               <button onClick={()=>setShowAudit(v=>!v)} className="flex items-center gap-1.5 text-xs font-bold text-[#D6A62E] hover:underline"><History className="w-3.5 h-3.5" />{showAudit?'Hide':'Show'} Audit Trail ({auditLogs.length})</button>
               {showAudit && (
@@ -538,6 +588,99 @@ export const AdminDashboard: React.FC = () => {
             </div>
             <div className="pt-3 border-t border-white/10 flex justify-end gap-2">
               <button onClick={()=>{setSelectedBookingForAdmin(null); setShowAudit(false);}} className="py-2 px-4 rounded-xl bg-white/10 text-white font-bold text-xs">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedWorkOrderForPhotos && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in">
+          <div className="bg-[#073B32] border-2 border-[#D6A62E]/50 rounded-2xl max-w-2xl w-full p-6 text-[#F5F1E8] shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div>
+                <span className="text-[10px] text-[#D6A62E] uppercase font-bold tracking-wider">Workshop Bay Inspection & Photos</span>
+                <h4 className="font-mono font-bold text-base text-white flex items-center gap-2">
+                  {selectedWorkOrderForPhotos.vehicleDisplayName} <span className="text-[#D6A62E]">({selectedWorkOrderForPhotos.id})</span>
+                </h4>
+              </div>
+              <button
+                onClick={() => setSelectedWorkOrderForPhotos(null)}
+                className="p-1 rounded-lg text-white/60 hover:text-white hover:bg-white/10"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 text-xs bg-[#0B4035] p-3 rounded-xl border border-white/10">
+              <div>
+                <span className="text-white/60 block text-[10px] uppercase font-bold">Assigned Craftsman</span>
+                <span className="font-bold text-white truncate block">{selectedWorkOrderForPhotos.assignedStaffName || 'Unassigned'}</span>
+              </div>
+              <div>
+                <span className="text-white/60 block text-[10px] uppercase font-bold">Stage</span>
+                <span className="font-bold text-[#D6A62E]">{selectedWorkOrderForPhotos.stage.replace(/_/g, ' ')}</span>
+              </div>
+              <div>
+                <span className="text-white/60 block text-[10px] uppercase font-bold">Overall Progress</span>
+                <span className="font-bold text-white">{selectedWorkOrderForPhotos.progressPercentage}%</span>
+              </div>
+            </div>
+
+            {/* Section 1: Bay Intake / Before Photos */}
+            <div className="p-4 rounded-xl bg-[#0B4035]/60 border border-white/10 space-y-2">
+              <PhotoUploader
+                category="work-order-before"
+                entityId={selectedWorkOrderForPhotos.id}
+                photos={selectedWorkOrderForPhotos.beforePhotos || []}
+                onChange={(updated) => {
+                  updateWorkOrderPhotos(selectedWorkOrderForPhotos.id, { beforePhotos: updated });
+                  setSelectedWorkOrderForPhotos(prev => prev ? { ...prev, beforePhotos: updated } : null);
+                }}
+                maxPhotos={6}
+                title="1. Bay Intake Condition Photos (Before)"
+                subtitle="Record existing seat condition, tear points, and initial inspection upon vehicle arrival."
+              />
+            </div>
+
+            {/* Section 2: Bench Crafting / Progress Photos */}
+            <div className="p-4 rounded-xl bg-[#0B4035]/60 border border-white/10 space-y-2">
+              <PhotoUploader
+                category="work-order-progress"
+                entityId={selectedWorkOrderForPhotos.id}
+                photos={selectedWorkOrderForPhotos.progressPhotos || []}
+                onChange={(updated) => {
+                  updateWorkOrderPhotos(selectedWorkOrderForPhotos.id, { progressPhotos: updated });
+                  setSelectedWorkOrderForPhotos(prev => prev ? { ...prev, progressPhotos: updated } : null);
+                }}
+                maxPhotos={6}
+                title="2. Precision Bench Crafting (Work In Progress)"
+                subtitle="Capture pattern cutting, leather stitching, foam bolster reinforcements, and assembly."
+              />
+            </div>
+
+            {/* Section 3: Finished Bay Inspection / After Photos */}
+            <div className="p-4 rounded-xl bg-[#0B4035]/60 border border-white/10 space-y-2">
+              <PhotoUploader
+                category="work-order-after"
+                entityId={selectedWorkOrderForPhotos.id}
+                photos={selectedWorkOrderForPhotos.afterPhotos || []}
+                onChange={(updated) => {
+                  updateWorkOrderPhotos(selectedWorkOrderForPhotos.id, { afterPhotos: updated });
+                  setSelectedWorkOrderForPhotos(prev => prev ? { ...prev, afterPhotos: updated } : null);
+                }}
+                maxPhotos={6}
+                title="3. Final Inspection & Delivery Photos (After)"
+                subtitle="Completed vehicle interior, final QC sign-off, ready for customer collection."
+              />
+            </div>
+
+            <div className="pt-3 border-t border-white/10 flex justify-end gap-2">
+              <button
+                onClick={() => setSelectedWorkOrderForPhotos(null)}
+                className="py-2 px-5 rounded-xl bg-[#D6A62E] text-[#073B32] font-black text-xs uppercase"
+              >
+                Done Inspecting
+              </button>
             </div>
           </div>
         </div>

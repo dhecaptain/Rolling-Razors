@@ -19,7 +19,8 @@ import { rateLimitMiddleware } from "./rates";
 import { initSentry, Sentry } from "./sentry";
 import { requireCasbin, authorize } from "./casbin/enforcer";
 import { normalizePhoneKe, toDarajaPhone, phoneKey, phonesMatch, isValidKePhone } from "./phone";
-import { validate, adminLoginSchema, customerLoginSchema, customerRegisterSchema, stkPushSchema, paystackInitSchema, bookingCreateSchema, vehicleCreateSchema, buildDraftSchema } from "./validators";
+import { validate, adminLoginSchema, customerLoginSchema, customerRegisterSchema, stkPushSchema, paystackInitSchema, bookingCreateSchema, vehicleCreateSchema, buildDraftSchema, uploadImageSchema } from "./validators";
+import { storageService } from "./storage";
 import { Booking, Customer, User, Vehicle, WorkOrder, UserRole } from "../src/types";
 
 initSentry();
@@ -74,7 +75,7 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use(express.json({ limit: "100kb", verify: (_req, _res, buf) => { (_req as any).rawBody = buf; } }));
+app.use(express.json({ limit: "15mb", verify: (_req, _res, buf) => { (_req as any).rawBody = buf; } }));
 app.use(pinoHttp({
   logger,
   customProps: (req) => ({ requestId: (req as any).id }),
@@ -92,7 +93,12 @@ if (env.AUTH_PROVIDER === "clerk") {
 }
 
 const generalLimiter = rateLimitMiddleware({ name: "general", max: env.RATE_LIMIT_GENERAL_MAX });
-const customerAuthLimiter = rateLimitMiddleware({ name: "customer-auth", max: env.RATE_LIMIT_AUTH_MAX, message: "Too many customer attempts. Try again shortly." });
+const customerAuthLimiter = rateLimitMiddleware({
+  name: "customer-auth",
+  max: env.RATE_LIMIT_AUTH_MAX,
+  message: "Too many customer attempts. Try again shortly.",
+  keyFns: [(req) => (req.body?.phone ? `${req.ip}:${req.body.phone}` : undefined)]
+});
 const adminAuthLimiter = rateLimitMiddleware({ name: "admin-auth", max: env.RATE_LIMIT_ADMIN_MAX, message: "Too many admin attempts. Try again in 5 minutes." });
 const mpesaLimiter = rateLimitMiddleware({ name: "mpesa", max: env.RATE_LIMIT_MPESA_MAX, message: "M-Pesa rate limit: please wait." });
 const paystackLimiter = rateLimitMiddleware({ name: "paystack", max: env.RATE_LIMIT_PAYSTACK_MAX, message: "Payment rate limit: please wait a moment." });
@@ -524,7 +530,7 @@ app.get("/api/work-orders", authenticate, async (req,res)=>{
 });
 
 app.patch("/api/work-orders/:id", authenticate, requireAdmin, requireCasbin("work-orders","update"), async (req,res)=>{
-  const { id }=req.params; const allowed=["stage","progressPercentage","assignedStaffId","assignedStaffName","priority","internalNotes","actualCost","version"]; const patch:any={}; for(const k of allowed) if(k in req.body) patch[k]=req.body[k];
+  const { id }=req.params; const allowed=["stage","progressPercentage","assignedStaffId","assignedStaffName","priority","internalNotes","actualCost","version","beforePhotos","progressPhotos","afterPhotos","targetCompletionDate","materialsRequired"]; const patch:any={}; for(const k of allowed) if(k in req.body) patch[k]=req.body[k];
   const user=(req as any).user;
   const result=await serverDb.updateWorkOrderWithVersion(id, patch, { id:user.id, name:user.name, role:user.role, ip:req.ip, requestId:(req as any).id });
   if(result.conflict) return res.status(409).json({ success:false, error:result.error, conflict:true });
@@ -534,6 +540,99 @@ app.patch("/api/work-orders/:id", authenticate, requireAdmin, requireCasbin("wor
     if(low.length) logger.warn({ workOrderId:id, low:low.map((i:any)=>i.sku) }, "[Inventory] low stock warning on stage transition");
   }
   res.json({ success:true, workOrder:result.workOrder });
+});
+
+/**
+ * Storage & Image Upload Endpoints
+ * Supports pluggable zero-cost Cloudinary, Supabase Storage, and Local fallback.
+ */
+app.post("/api/uploads", authenticate, async (req, res) => {
+  const v = validate(uploadImageSchema, req.body);
+  if (!v.success) return res.status(400).json({ success: false, error: v.error });
+  const { category, entityId, originalFilename, mimeType, base64Data, isPrivate } = v.data;
+  const user = (req as any).user;
+
+  try {
+    const cleanBase64 = base64Data.replace(/^data:[^;]+;base64,/, "");
+    const buffer = Buffer.from(cleanBase64, "base64");
+
+    const result = await storageService.uploadImage(buffer, {
+      category,
+      entityId,
+      originalFilename,
+      mimeType,
+      isPrivate,
+      userId: user.id,
+    });
+
+    res.status(201).json({ success: true, file: result });
+  } catch (err: any) {
+    logger.error({ err, category }, "[Upload] Upload failed");
+    res.status(400).json({ success: false, error: err.message || "Failed to process image upload." });
+  }
+});
+
+// Secure file access for locally stored images or signed token verification
+app.get("/api/uploads/file/:encodedKey", async (req, res) => {
+  const { encodedKey } = req.params;
+  const key = decodeURIComponent(encodedKey);
+  const { exp, sig } = req.query as { exp?: string; sig?: string };
+
+  const isPrivate = key.startsWith("work-order") || key.startsWith("booking-reference");
+
+  if (isPrivate) {
+    let authorized = false;
+    if (exp && sig && storageService.localProvider.verifySignature(key, exp, sig)) {
+      authorized = true;
+    } else {
+      let token: string | undefined;
+      const h = req.headers.authorization;
+      if (h?.startsWith("Bearer ")) token = h.split(" ")[1];
+      else if ((req as any).cookies?.rr_auth_token) token = (req as any).cookies.rr_auth_token;
+      else if ((req as any).cookies?.admin_token) token = (req as any).cookies.admin_token;
+      if (token && verifyToken(token)) {
+        authorized = true;
+      }
+    }
+
+    if (!authorized) {
+      return res.status(403).json({ success: false, error: "Access denied to private workshop asset." });
+    }
+  }
+
+  const filePath = storageService.localProvider.getFilePath(key);
+  if (!filePath) {
+    return res.status(404).json({ success: false, error: "File not found." });
+  }
+
+  const ext = path.extname(filePath).toLowerCase();
+  const mimeMap: Record<string, string> = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".heic": "image/heic",
+  };
+  const contentType = mimeMap[ext] || "application/octet-stream";
+  res.setHeader("Content-Type", contentType);
+  res.setHeader("Content-Disposition", "inline");
+  res.setHeader("Cache-Control", isPrivate ? "private, max-age=3600" : "public, max-age=86400, immutable");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.sendFile(filePath);
+});
+
+// Delete uploaded image (creator or admin only)
+app.delete("/api/uploads/:encodedKey", authenticate, async (req, res) => {
+  const { encodedKey } = req.params;
+  const key = decodeURIComponent(encodedKey);
+  const user = (req as any).user;
+
+  if (user.role !== "admin" && !key.includes(user.id)) {
+    return res.status(403).json({ success: false, error: "Forbidden: insufficient permissions to delete asset." });
+  }
+
+  const deleted = await storageService.deleteImage(key);
+  res.json({ success: deleted });
 });
 
 app.get("/api/invoices", authenticate, async (req,res)=>{

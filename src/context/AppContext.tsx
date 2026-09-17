@@ -125,6 +125,7 @@ interface AppContextType {
   // Work order actions
   updateWorkOrderStage: (workOrderId: string, stage: WorkOrderStage) => void;
   addWorkOrderNote: (workOrderId: string, note: string) => void;
+  updateWorkOrderPhotos: (workOrderId: string, photos: { beforePhotos?: string[]; progressPhotos?: string[]; afterPhotos?: string[] }) => Promise<void>;
   
   // Vehicle actions
   addVehicle: (vehicle: Omit<Vehicle, 'id' | 'previousServicesCount'>) => void;
@@ -1235,6 +1236,37 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
     addToast('info', 'Work Order Note Added', 'Internal note saved.');
   };
 
+  const updateWorkOrderPhotos = async (
+    workOrderId: string,
+    photos: { beforePhotos?: string[]; progressPhotos?: string[]; afterPhotos?: string[] }
+  ) => {
+    const currentWo = workOrders.find(w => w.id === workOrderId);
+    const version = (currentWo as any)?.version ?? 0;
+
+    setWorkOrders(prev => prev.map(wo => {
+      if (wo.id !== workOrderId) return wo;
+      return {
+        ...wo,
+        ...photos,
+      };
+    }));
+
+    try {
+      const res = await authFetch(`/api/work-orders/${workOrderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...photos, version }),
+      });
+      const data = await res.json();
+      if (data.success && data.workOrder) {
+        setWorkOrders(prev => prev.map(wo => wo.id === workOrderId ? { ...wo, ...data.workOrder } : wo));
+      }
+      addToast('success', 'Photos Updated', 'Workshop inspection photos saved successfully.');
+    } catch (err) {
+      console.warn('Could not sync work order photos:', err);
+    }
+  };
+
   const addVehicle = (vehicleData: Omit<Vehicle, 'id' | 'previousServicesCount'>) => {
     const reg = (vehicleData.registrationNo || 'KAA 000A').toUpperCase().trim();
     const normReg = reg.replace(/\s+/g, "");
@@ -1430,6 +1462,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
         assignStaffToBooking,
         updateWorkOrderStage,
         addWorkOrderNote,
+        updateWorkOrderPhotos,
         addVehicle,
         deleteVehicle,
         addService,

@@ -22,6 +22,7 @@ Mail,
   MessageCircle
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { PhotoUploader } from '../common/PhotoUploader';
 
 export const BookingWizard: React.FC = () => {
   const { 
@@ -57,6 +58,7 @@ export const BookingWizard: React.FC = () => {
   const [color, setColor] = useState<string>('Saddle Brown & Black');
   const [pattern, setPattern] = useState<string>('Diamond Quilted');
   const [notes, setNotes] = useState<string>('Please reinforce the driver seat lumbar bolster with heavy-duty orthopedic foam.');
+  const [referencePhotos, setReferencePhotos] = useState<string[]>([]);
 
   // Date and Time
   const tomorrow = new Date();
@@ -217,6 +219,7 @@ export const BookingWizard: React.FC = () => {
       depositAmount: depositAmount,
       depositPaid: false,
       paymentMethod: 'paystack',
+      referencePhotos: referencePhotos.length > 0 ? referencePhotos : undefined,
       status: 'pending',
       privacyAccepted: true,
       termsAccepted: true,
@@ -295,6 +298,7 @@ export const BookingWizard: React.FC = () => {
       depositAmount: depositAmount,
       depositPaid: false,
       paymentMethod: 'cash_at_workshop',
+      referencePhotos: referencePhotos.length > 0 ? referencePhotos : undefined,
       status: 'pending',
       privacyAccepted: true,
       termsAccepted: true,
@@ -583,6 +587,18 @@ export const BookingWizard: React.FC = () => {
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="e.g. Please bolster driver thigh support, repair sagging roof headliner, match door cards."
                   className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-[#F5F1E8] text-xs focus:outline-none focus:border-[#D6A62E]"
+                />
+              </div>
+
+              {/* Reference & Inspiration Photos */}
+              <div className="pt-2">
+                <PhotoUploader
+                  category="booking-reference"
+                  photos={referencePhotos}
+                  onChange={setReferencePhotos}
+                  maxPhotos={4}
+                  title="Reference & Inspiration Photos (Optional)"
+                  subtitle="Upload photos of your existing seats, worn bolsters, or custom stitching patterns you'd like our craftsmen to replicate."
                 />
               </div>
 

@@ -54,6 +54,23 @@ export async function loginCustomer(request: APIRequestContext, phone: string, p
   expect(res.ok(), `customer login failed (${res.status()}): ${raw}`).toBeTruthy();
 }
 
+export async function loginAdmin(request: APIRequestContext): Promise<void> {
+  const res = await request.post("/api/auth/admin/login", {
+    data: {
+      identifier: process.env.ADMIN_EMAIL || "ci@rollingrazors.co.ke",
+      password: process.env.ADMIN_PASSWORD || "ci-test-pass",
+    },
+  });
+  if (!res.ok()) {
+    await request.post("/api/auth/admin/login", {
+      data: {
+        identifier: "james@rollingrazors.co.ke",
+        password: "RollingRazors@2026!",
+      },
+    });
+  }
+}
+
 /**
  * Generates a collision-resistant future appointment slot. The backend rejects
  * duplicate (date, time) pairs, and Playwright runs specs in parallel, so we

@@ -19,7 +19,9 @@ import {
   Phone,
   Trash2,
   Edit,
-  X
+  X,
+  Camera,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Booking, Vehicle } from '../../types';
 import { phoneKey, phonesMatch } from '../../utils/phone';
@@ -44,6 +46,7 @@ export const CustomerDashboard: React.FC = () => {
   } = useApp();
 
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [inspectedImage, setInspectedImage] = useState<string | null>(null);
   const [showAddVehicleModal, setShowAddVehicleModal] = useState<boolean>(false);
   
   // New vehicle form state
@@ -320,6 +323,75 @@ export const CustomerDashboard: React.FC = () => {
                     </div>
                   ))}
                 </div>
+
+                {/* Workshop Inspection & Proof Photos */}
+                {((activeWorkOrder?.beforePhotos && activeWorkOrder.beforePhotos.length > 0) ||
+                  (activeWorkOrder?.progressPhotos && activeWorkOrder.progressPhotos.length > 0) ||
+                  (activeWorkOrder?.afterPhotos && activeWorkOrder.afterPhotos.length > 0) ||
+                  (latestActiveBooking.referencePhotos && latestActiveBooking.referencePhotos.length > 0)) && (
+                  <div className="pt-4 mt-2 border-t border-white/10 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-[#D6A62E] uppercase tracking-wider flex items-center gap-1.5">
+                        <Camera className="w-3.5 h-3.5" /> Workshop Inspection & Craftsmanship Photos
+                      </h4>
+                      <span className="text-[11px] text-white/50">Click photo to zoom</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {latestActiveBooking.referencePhotos?.map((url, i) => (
+                        <div
+                          key={`ref-${i}`}
+                          onClick={() => setInspectedImage(url)}
+                          className="group relative aspect-video rounded-xl overflow-hidden bg-[#073B32] border border-[#D6A62E]/30 cursor-pointer hover:border-[#D6A62E] transition-all"
+                        >
+                          <img src={url} alt="Inspiration reference" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[9px] font-bold text-amber-300">
+                            Client Request
+                          </span>
+                        </div>
+                      ))}
+
+                      {activeWorkOrder?.beforePhotos?.map((url, i) => (
+                        <div
+                          key={`before-${i}`}
+                          onClick={() => setInspectedImage(url)}
+                          className="group relative aspect-video rounded-xl overflow-hidden bg-[#073B32] border border-blue-400/30 cursor-pointer hover:border-blue-400 transition-all"
+                        >
+                          <img src={url} alt="Bay intake photo" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[9px] font-bold text-blue-300">
+                            Bay Intake
+                          </span>
+                        </div>
+                      ))}
+
+                      {activeWorkOrder?.progressPhotos?.map((url, i) => (
+                        <div
+                          key={`prog-${i}`}
+                          onClick={() => setInspectedImage(url)}
+                          className="group relative aspect-video rounded-xl overflow-hidden bg-[#073B32] border border-[#D6A62E]/40 cursor-pointer hover:border-[#D6A62E] transition-all"
+                        >
+                          <img src={url} alt="Bench stitching photo" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[9px] font-bold text-[#D6A62E]">
+                            Bench Crafting
+                          </span>
+                        </div>
+                      ))}
+
+                      {activeWorkOrder?.afterPhotos?.map((url, i) => (
+                        <div
+                          key={`after-${i}`}
+                          onClick={() => setInspectedImage(url)}
+                          className="group relative aspect-video rounded-xl overflow-hidden bg-[#073B32] border border-emerald-400/40 cursor-pointer hover:border-emerald-400 transition-all"
+                        >
+                          <img src={url} alt="Finished inspection photo" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[9px] font-bold text-emerald-300">
+                            Quality Approved
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="p-6 rounded-3xl bg-[#0B4035] border border-[#D6A62E]/20 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -773,6 +845,38 @@ export const CustomerDashboard: React.FC = () => {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Image Inspection Zoom Modal */}
+      {inspectedImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setInspectedImage(null)}
+        >
+          <div
+            className="relative max-w-4xl max-h-[85vh] bg-[#073B32] border border-[#D6A62E]/40 rounded-2xl overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-3 border-b border-white/10 bg-[#0B4035]">
+              <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                <ImageIcon className="w-3.5 h-3.5 text-[#D6A62E]" /> Workshop Craftsmanship Inspection
+              </span>
+              <button
+                onClick={() => setInspectedImage(null)}
+                className="p-1 rounded-lg text-white/60 hover:text-white hover:bg-white/10"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-2 flex items-center justify-center max-h-[75vh] overflow-auto">
+              <img
+                src={inspectedImage}
+                alt="Workshop inspection photo"
+                className="max-h-[70vh] w-auto object-contain rounded-lg"
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>

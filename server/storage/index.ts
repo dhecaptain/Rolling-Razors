@@ -1,0 +1,113 @@
+import { StorageProvider, UploadOptions, UploadResult, ImageCategory } from "./provider";
+import { LocalStorageProvider } from "./local";
+import { CloudinaryStorageProvider } from "./cloudinary";
+import { SupabaseStorageProvider } from "./supabase";
+import { logger } from "../logger";
+
+export * from "./provider";
+export * from "./validation";
+export * from "./local";
+export * from "./cloudinary";
+export * from "./supabase";
+
+export class StorageService {
+  private provider: StorageProvider;
+  readonly localProvider: LocalStorageProvider;
+
+  constructor() {
+    this.localProvider = new LocalStorageProvider();
+    this.provider = this.createProvider();
+  }
+
+  private createProvider(): StorageProvider {
+    const providerPref = (process.env.STORAGE_PROVIDER || "auto").trim().toLowerCase();
+
+    // 1. Cloudinary Free Tier check
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const cloudKey = process.env.CLOUDINARY_API_KEY;
+    const cloudSecret = process.env.CLOUDINARY_API_SECRET;
+
+    if (
+      (providerPref === "cloudinary" || providerPref === "auto") &&
+      cloudName &&
+      cloudKey &&
+      cloudSecret
+    ) {
+      logger.info({ provider: "cloudinary", cloudName }, "[Storage] Using Cloudinary Free Tier provider");
+      return new CloudinaryStorageProvider({
+        cloudName,
+        apiKey: cloudKey,
+        apiSecret: cloudSecret,
+        folder: process.env.CLOUDINARY_FOLDER || "rolling-razors",
+      });
+    }
+
+    // 2. Supabase Storage Free Tier check
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
+
+    if (
+      (providerPref === "supabase" || providerPref === "auto") &&
+      supabaseUrl &&
+      supabaseKey
+    ) {
+      logger.info({ provider: "supabase", url: supabaseUrl }, "[Storage] Using Supabase Storage provider");
+      return new SupabaseStorageProvider({
+        url: supabaseUrl,
+        serviceRoleKey: supabaseKey,
+        bucket: process.env.SUPABASE_BUCKET || "rolling-razors",
+      });
+    }
+
+    // 3. Fallback: Local filesystem provider
+    logger.info({ provider: "local" }, "[Storage] Using Local filesystem storage provider");
+    return this.localProvider;
+  }
+
+  get providerName(): string {
+    return this.provider.name;
+  }
+
+  async uploadImage(buffer: Buffer, options: UploadOptions): Promise<UploadResult> {
+    try {
+      const result = await this.provider.upload(buffer, options);
+      logger.info(
+        {
+          key: result.key,
+          category: result.category,
+          size: result.size,
+          provider: this.provider.name,
+        },
+        "[Storage] Image uploaded successfully"
+      );
+      return result;
+    } catch (err) {
+      logger.error({ err, category: options.category, provider: this.provider.name }, "[Storage] Image upload failed");
+      throw err;
+    }
+  }
+
+  async deleteImage(key: string): Promise<boolean> {
+    try {
+      const success = await this.provider.delete(key);
+      logger.info({ key, success, provider: this.provider.name }, "[Storage] Image delete operation executed");
+      return success;
+    } catch (err) {
+      logger.warn({ err, key }, "[Storage] Image delete failed");
+      return false;
+    }
+  }
+
+  async getImageUrl(key: string, isPrivate?: boolean): Promise<string> {
+    return this.provider.getUrl(key, isPrivate);
+  }
+
+  async getSignedUrl(key: string, expiresInSeconds: number = 3600): Promise<string> {
+    if (this.provider.getSignedUrl) {
+      return this.provider.getSignedUrl(key, expiresInSeconds);
+    }
+    return this.provider.getUrl(key, false);
+  }
+}
+
+export const storageService = new StorageService();
