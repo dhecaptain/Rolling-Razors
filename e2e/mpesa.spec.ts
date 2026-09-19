@@ -35,6 +35,29 @@ test.describe("M-Pesa", () => {
     expect(res.status()).toBe(401);
   });
 
+  test("STK push rejects request without bookingId or invoiceId", async ({ request }) => {
+    await registerCustomer(request);
+    const res = await request.post("/api/mpesa/stkpush", {
+      data: { phone: "0712345678", amount: 100 },
+    });
+    expect(res.status()).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/valid bookingid or invoiceid/i);
+  });
+
+  test("customer cannot initiate STK push for another customer's booking", async ({ playwright }) => {
+    const ctxA = await playwright.request.newContext();
+    const A = await registerCustomer(ctxA);
+    const bookingA = await createBooking(ctxA, A.user, A.phone, A.email);
+
+    const ctxB = await playwright.request.newContext();
+    await registerCustomer(ctxB);
+    const res = await ctxB.post("/api/mpesa/stkpush", {
+      data: { phone: "0712345678", amount: Math.round(bookingA.depositAmount), bookingId: bookingA.id },
+    });
+    expect(res.status()).toBe(403);
+  });
+
   test("STK push validation - authenticated, unknown booking", async ({ request }) => {
     await registerCustomer(request);
     const res = await request.post("/api/mpesa/stkpush", {

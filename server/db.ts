@@ -389,13 +389,50 @@ class PrismaDatabaseManager {
     return prisma.auditLog.findMany({ where, orderBy: { createdAt: "desc" }, take: limit });
   }
 
+  validateWorkOrderTransition(from: string, to: string): { valid: boolean; error?: string } {
+    const allowed: Record<string, string[]> = {
+      BOOKED: ["VEHICLE_RECEIVED", "MATERIALS_PREPARED"],
+      VEHICLE_RECEIVED: ["MATERIALS_PREPARED", "IN_PROGRESS", "BOOKED"],
+      MATERIALS_PREPARED: ["IN_PROGRESS", "VEHICLE_RECEIVED"],
+      IN_PROGRESS: ["QUALITY_CHECK", "MATERIALS_PREPARED"],
+      QUALITY_CHECK: ["READY_FOR_COLLECTION", "IN_PROGRESS"],
+      READY_FOR_COLLECTION: ["COLLECTED", "QUALITY_CHECK"],
+      COLLECTED: [],
+    };
+    if (from === to) return { valid: true };
+    const next = allowed[from] || [];
+    if (!next.includes(to)) {
+      return { valid: false, error: `Invalid stage transition ${from} → ${to}. Allowed: ${next.join(", ") || "none (job is completed)"}` };
+    }
+    return { valid: true };
+  }
+
   async updateWorkOrderWithVersion(id: string, patch: Partial<WorkOrder> & { version?: number }, actor?: { id: string; name: string; role: string; ip?: string; requestId?: string }): Promise<{ workOrder?: WorkOrder; error?: string; conflict?: boolean }> {
     const existing = await prisma.workOrder.findUnique({ where: { id } });
     if (!existing) return { error: "Work order not found." };
     if (patch.version !== undefined && patch.version !== existing.version) {
       return { error: `Version conflict: expected ${existing.version}, got ${patch.version}. Reload and try again.`, conflict: true };
     }
+    if (existing.stage === "COLLECTED" && patch.stage && patch.stage !== "COLLECTED") {
+      return { error: "Completed jobs cannot be transitioned to another stage.", conflict: true };
+    }
+    if (patch.stage && patch.stage !== existing.stage) {
+      const v = this.validateWorkOrderTransition(existing.stage, patch.stage);
+      if (!v.valid) return { error: v.error, conflict: true };
+    }
     const { version, ...rest } = patch as any;
+    const stageProgress: Record<string, number> = {
+      BOOKED: 10,
+      VEHICLE_RECEIVED: 25,
+      MATERIALS_PREPARED: 40,
+      IN_PROGRESS: 60,
+      QUALITY_CHECK: 80,
+      READY_FOR_COLLECTION: 95,
+      COLLECTED: 100,
+    };
+    if (patch.stage && rest.progressPercentage === undefined && stageProgress[patch.stage] !== undefined) {
+      rest.progressPercentage = stageProgress[patch.stage];
+    }
     const before = existing;
     try {
       const updated = await prisma.workOrder.update({

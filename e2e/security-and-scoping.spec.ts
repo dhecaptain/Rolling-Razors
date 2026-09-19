@@ -253,6 +253,13 @@ test.describe("Security & data scoping", () => {
       data: { stage: "IN_PROGRESS", progressPercentage: 70, version: wo.version },
     });
     expect(stale.status()).toBe(409);
+
+    // Invalid transition test (MATERIALS_PREPARED cannot skip straight to COLLECTED)
+    const invalidJump = await admin.patch(`/api/work-orders/${wo.id}`, {
+      data: { stage: "COLLECTED", version: wo.version + 1 },
+    });
+    expect(invalidJump.status()).toBe(409);
+    expect((await invalidJump.json()).error).toMatch(/invalid stage transition/i);
   });
 
   test("admin can update bookings (Casbin path) while customers cannot", async ({ playwright }) => {

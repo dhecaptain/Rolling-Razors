@@ -100,7 +100,10 @@ export class LocalStorageProvider implements StorageProvider {
     if (isNaN(exp) || Math.floor(Date.now() / 1000) > exp) return false;
     const dataToSign = `${key}:${exp}`;
     const expected = crypto.createHmac("sha256", this.signingSecret).update(dataToSign).digest("hex");
-    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig));
+    const bExpected = Buffer.from(expected);
+    const bSig = Buffer.from(sig);
+    if (bExpected.length !== bSig.length) return false;
+    return crypto.timingSafeEqual(bExpected, bSig);
   }
 
   getFilePath(key: string): string | null {

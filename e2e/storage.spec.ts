@@ -81,4 +81,12 @@ test.describe("Storage & Photo Uploads", () => {
     const res = await request.get("/api/uploads/file/work-order-before-test.jpg");
     expect(res.status()).toBe(403);
   });
+
+  test("customer cannot access another customer's private work-order asset without signed url", async ({ request }) => {
+    await registerCustomer(request);
+    // Key that does not belong to this customer
+    const encoded = encodeURIComponent("work-order/wo-other-customer/test.jpg");
+    const res = await request.get(`/api/uploads/file/${encoded}`);
+    expect(res.status()).toBe(403);
+  });
 });

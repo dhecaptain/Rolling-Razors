@@ -27,6 +27,7 @@ import { PhotoUploader } from '../common/PhotoUploader';
 export const BookingWizard: React.FC = () => {
   const { 
     services, 
+    vehicles,
     addBooking, 
     currentUser, 
     setView, 
@@ -462,6 +463,42 @@ export const BookingWizard: React.FC = () => {
                 <h3 className="text-xl font-bold text-[#F5F1E8] font-display">Vehicle & Customization Specs</h3>
                 <p className="text-xs text-white/70">Tell us what you drive and how you want your upholstery styled.</p>
               </div>
+
+              {/* Saved Vehicles Quick-Fill for Returning Customers */}
+              {currentUser && vehicles && vehicles.filter(v => v.customerId === currentUser.id).length > 0 && (
+                <div className="p-3.5 rounded-xl bg-[#073B32]/80 border border-[#D6A62E]/30 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#D6A62E] flex items-center gap-1.5">
+                      <Car className="w-3.5 h-3.5" /> Your Registered Vehicles
+                    </span>
+                    <span className="text-[10px] text-white/60">Click to autofill</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {vehicles.filter(v => v.customerId === currentUser.id).map(v => (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => {
+                          setVehicleMake(v.make);
+                          setVehicleModel(v.model);
+                          setVehicleYear(v.year);
+                          setVehicleReg(v.registrationNo);
+                          if (v.type) setVehicleType(v.type as any);
+                          addToast?.('info', 'Vehicle Selected', `Loaded ${v.make} ${v.model} (${v.registrationNo})`);
+                        }}
+                        className={`px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-all ${
+                          vehicleReg === v.registrationNo
+                            ? 'bg-[#D6A62E] text-[#073B32] border-[#D6A62E] font-bold shadow-sm'
+                            : 'bg-black/30 hover:bg-[#D6A62E]/20 border-white/10 hover:border-[#D6A62E] text-white'
+                        }`}
+                      >
+                        <span className="font-bold">{v.registrationNo}</span>
+                        <span className="opacity-75">{v.make} {v.model}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Vehicle Type Selection */}
               <div>

@@ -419,7 +419,8 @@ app.get("/api/bookings", authenticate, async (req,res)=>{
   const user=(req as any).user;
   const customerId=user.role === "admin" ? (req.query.customerId as string|undefined) : user.id;
   const { data: bookings, total }=await serverDb.getBookingsPaginated(customerId, status, page, limit, q);
-  res.json({ success:true, bookings, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
+  const sanitized = user.role === "admin" ? bookings : bookings.map(b => ({ ...b, internalNotes: undefined }));
+  res.json({ success:true, bookings: sanitized, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
 });
 
 app.post("/api/bookings", authenticate, async (req,res)=>{
@@ -526,7 +527,8 @@ app.get("/api/work-orders", authenticate, async (req,res)=>{
   const user=(req as any).user;
   const customerId = user.role === "admin" ? undefined : user.id;
   const { data: workOrders, total }=await serverDb.getWorkOrdersPaginated(customerId, page, limit);
-  return res.json({ success:true, workOrders, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
+  const sanitized = user.role === "admin" ? workOrders : workOrders.map(wo => ({ ...wo, internalNotes: undefined }));
+  return res.json({ success:true, workOrders: sanitized, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
 });
 
 app.patch("/api/work-orders/:id", authenticate, requireAdmin, requireCasbin("work-orders","update"), async (req,res)=>{
@@ -590,8 +592,29 @@ app.get("/api/uploads/file/:encodedKey", async (req, res) => {
       if (h?.startsWith("Bearer ")) token = h.split(" ")[1];
       else if ((req as any).cookies?.rr_auth_token) token = (req as any).cookies.rr_auth_token;
       else if ((req as any).cookies?.admin_token) token = (req as any).cookies.admin_token;
-      if (token && verifyToken(token)) {
-        authorized = true;
+      if (token) {
+        const decoded = verifyToken(token);
+        if (decoded) {
+          if (decoded.role === "admin") {
+            authorized = true;
+          } else if (key.includes(decoded.id)) {
+            authorized = true;
+          } else {
+            const parts = key.split("/");
+            const entityId = parts[1];
+            if (entityId && entityId !== "general") {
+              const booking = await serverDb.getBooking(entityId);
+              if (booking && (booking.customerId === decoded.id || phonesMatch(booking.customerPhone, decoded.phone || ""))) {
+                authorized = true;
+              } else {
+                const wo = await serverDb.getWorkOrder(entityId);
+                if (wo && wo.customerId === decoded.id) {
+                  authorized = true;
+                }
+              }
+            }
+          }
+        }
       }
     }
 
@@ -734,15 +757,29 @@ app.post("/api/mpesa/stkpush", mpesaLimiter, authenticate, async (req,res)=>{
   const v=validate(stkPushSchema, req.body); if(!v.success) return res.status(400).json({ success:false, error:v.error });
   const { phone, amount, bookingId, invoiceId, accountReference, transactionDesc }=v.data as any; const formattedPhone=toDarajaPhone(String(phone));
   if(!isValidKePhone(String(phone))) return res.status(400).json({ success:false, error:"Invalid Kenyan phone number." });
-  if(bookingId){
-    const booking=await serverDb.getBooking(bookingId); if(!booking) return res.status(404).json({ success:false, error:"Booking not found." });
-    const user=(req as any).user;
-    if(!user || (user.role!=="admin" && booking.customerId!==user.id)) return res.status(403).json({ success:false, error:"Not your booking." });
-    const expected=Math.round(booking.depositAmount);
-    if(Math.round(Number(amount))!==expected) return res.status(400).json({ success:false, error:`Amount mismatch: expected KES ${expected.toLocaleString()} for booking ${bookingId}.` });
-    if(booking.depositPaid) return res.status(409).json({ success:false, error:"Deposit already paid for this booking." });
-    const recentTx=await prisma.mpesaTransaction.findFirst({ where:{ bookingId, status:"PENDING", createdAt:{ gte: new Date(Date.now()-5*60*1000) } } });
-    if(recentTx) return res.status(409).json({ success:false, error:"STK push already pending for this booking. Check your phone or wait 5 minutes.", CheckoutRequestID: recentTx.checkoutRequestId });
+  if (!bookingId && !invoiceId) return res.status(400).json({ success: false, error: "A valid bookingId or invoiceId is required." });
+  const user = (req as any).user;
+  if (!user) return res.status(401).json({ success: false, error: "Authentication required." });
+  if (bookingId) {
+    const booking = await serverDb.getBooking(bookingId); if (!booking) return res.status(404).json({ success: false, error: "Booking not found." });
+    if (user.role !== "admin" && booking.customerId !== user.id) return res.status(403).json({ success: false, error: "Not your booking." });
+    const expected = Math.round(booking.depositAmount);
+    if (Math.round(Number(amount)) !== expected) return res.status(400).json({ success: false, error: `Amount mismatch: expected KES ${expected.toLocaleString()} for booking ${bookingId}.` });
+    if (booking.depositPaid) return res.status(409).json({ success: false, error: "Deposit already paid for this booking." });
+    const recentTx = await prisma.mpesaTransaction.findFirst({ where: { bookingId, status: "PENDING", createdAt: { gte: new Date(Date.now() - 5 * 60 * 1000) } } });
+    if (recentTx) return res.status(409).json({ success: false, error: "STK push already pending for this booking. Check your phone or wait 5 minutes.", CheckoutRequestID: recentTx.checkoutRequestId });
+  }
+  if (invoiceId) {
+    const inv = await serverDb.getInvoice(invoiceId); if (!inv) return res.status(404).json({ success: false, error: "Invoice not found." });
+    if (user.role !== "admin") {
+      const linkedBooking = inv.bookingId ? await serverDb.getBooking(inv.bookingId) : null;
+      if (!linkedBooking || linkedBooking.customerId !== user.id) return res.status(403).json({ success: false, error: "Not your invoice." });
+    }
+    const expected = inv.balanceDue > 0 ? Math.round(inv.balanceDue) : Math.round(inv.total);
+    if (Math.round(Number(amount)) !== expected) return res.status(400).json({ success: false, error: `Amount mismatch: expected KES ${expected.toLocaleString()} for invoice ${invoiceId}.` });
+    if (inv.paymentStatus === "Paid" || inv.balanceDue <= 0) return res.status(409).json({ success: false, error: "Invoice is already fully paid." });
+    const recentTx = await prisma.mpesaTransaction.findFirst({ where: { invoiceId, status: "PENDING", createdAt: { gte: new Date(Date.now() - 5 * 60 * 1000) } } });
+    if (recentTx) return res.status(409).json({ success: false, error: "STK push already pending for this invoice. Check your phone or wait 5 minutes.", CheckoutRequestID: recentTx.checkoutRequestId });
   }
   const timestamp=new Date().toISOString().replace(/[-:T.Z]/g,"").slice(0,14); const config=getDarajaConfig();
   if(!config.consumerKey||!config.consumerSecret||!config.passkey||!config.shortcode){ logger.error("[M-PESA] Missing credentials"); return res.status(503).json({ success:false, error:"M-Pesa payment gateway unavailable: Daraja credentials not configured." }); }
@@ -906,12 +943,14 @@ app.post("/api/paystack/initialize", paystackLimiter, authenticate, async (req, 
   const cfg = getPaystackConfig();
   if (!cfg.key) return res.status(503).json({ success: false, error: "Paystack payment gateway unavailable: secret key not configured." });
 
-  let payerEmail = (email || (req as any).user?.email || "").trim();
+  if (!bookingId && !invoiceId) return res.status(400).json({ success: false, error: "A valid bookingId or invoiceId is required." });
+  const user = (req as any).user;
+  if (!user) return res.status(401).json({ success: false, error: "Authentication required." });
+  let payerEmail = (email || user?.email || "").trim();
   if (bookingId) {
     const booking = await serverDb.getBooking(bookingId);
     if (!booking) return res.status(404).json({ success: false, error: "Booking not found." });
-    const user = (req as any).user;
-    if (!user || (user.role !== "admin" && booking.customerId !== user.id)) return res.status(403).json({ success: false, error: "Not your booking." });
+    if (user.role !== "admin" && booking.customerId !== user.id) return res.status(403).json({ success: false, error: "Not your booking." });
     const expected = Math.round(booking.depositAmount);
     if (Math.round(Number(amount)) !== expected) return res.status(400).json({ success: false, error: `Amount mismatch: expected KES ${expected.toLocaleString()} for booking ${bookingId}.` });
     if (booking.depositPaid) return res.status(409).json({ success: false, error: "Deposit already paid for this booking." });
@@ -936,6 +975,31 @@ app.post("/api/paystack/initialize", paystackLimiter, authenticate, async (req, 
     if (!payerEmail) {
       const customer = await serverDb.getCustomer(booking.customerId);
       payerEmail = customer?.email || "";
+    }
+  }
+  if (invoiceId) {
+    const inv = await serverDb.getInvoice(invoiceId);
+    if (!inv) return res.status(404).json({ success: false, error: "Invoice not found." });
+    if (user.role !== "admin") {
+      const linkedBooking = inv.bookingId ? await serverDb.getBooking(inv.bookingId) : null;
+      if (!linkedBooking || linkedBooking.customerId !== user.id) return res.status(403).json({ success: false, error: "Not your invoice." });
+    }
+    const expected = inv.balanceDue > 0 ? Math.round(inv.balanceDue) : Math.round(inv.total);
+    if (Math.round(Number(amount)) !== expected) return res.status(400).json({ success: false, error: `Amount mismatch: expected KES ${expected.toLocaleString()} for invoice ${invoiceId}.` });
+    if (inv.paymentStatus === "Paid" || inv.balanceDue <= 0) return res.status(409).json({ success: false, error: "Invoice is already fully paid." });
+    const recentTx = await prisma.mpesaTransaction.findFirst({ where: { invoiceId, status: "PENDING", createdAt: { gte: new Date(Date.now() - 5 * 60 * 1000) } } });
+    if (recentTx) {
+      if (recentTx.merchantRequestId === "PAYSTACK") {
+        const stale = await paystackVerify(recentTx.checkoutRequestId);
+        if (!stale.ok) return res.status(502).json({ success: false, error: "Could not confirm previous checkout status. Please try again." });
+        if (stale.status === "SUCCESS") {
+          await applyMpesaSuccess(recentTx, stale.receiptNumber || recentTx.checkoutRequestId);
+          return res.status(409).json({ success: false, error: "Invoice is already fully paid." });
+        }
+        await prisma.mpesaTransaction.update({ where: { checkoutRequestId: recentTx.checkoutRequestId }, data: { status: "FAILED", failureReason: "Superseded by a new checkout." } });
+      } else {
+        return res.status(409).json({ success: false, error: "A payment is already pending for this invoice. Complete it or wait 5 minutes." });
+      }
     }
   }
   if (!payerEmail) payerEmail = "customer@rollingrazors.co.ke";
@@ -1027,8 +1091,13 @@ app.post("/api/paystack/webhook", callbackLimiter, async (req, res) => {
       } else {
         const verified = await paystackVerify(reference);
         if (verified.ok && verified.status === "SUCCESS") {
-          const result = await applyMpesaSuccess(existing, verified.receiptNumber || reference);
-          logger.info({ reference, claimed: result.claimed }, "[PAYSTACK] webhook applied SUCCESS");
+          if (verified.amount !== undefined && Math.round(verified.amount) !== Math.round(existing.amount * 100)) {
+            logger.warn({ reference, charged: verified.amount, expected: existing.amount * 100 }, "[PAYSTACK] webhook amount mismatch");
+            await serverDb.updateTransaction(reference, { status: "FAILED", failureReason: `Amount mismatch: Paystack charged ${verified.amount} subunits for a KES ${existing.amount} deposit.` });
+          } else {
+            const result = await applyMpesaSuccess(existing, verified.receiptNumber || reference);
+            logger.info({ reference, claimed: result.claimed }, "[PAYSTACK] webhook applied SUCCESS");
+          }
         } else {
           logger.warn({ reference, verified }, "[PAYSTACK] webhook could not confirm SUCCESS — left PENDING");
         }
