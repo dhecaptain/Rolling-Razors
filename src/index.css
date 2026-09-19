@@ -1,13 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  --rr-forest: #073B32;
-  --rr-panel: #0B4035;
-  --rr-deep: #052822;
-  --rr-paper: #F5F1E8;
-  --rr-gold: #D6A62E;
+  --rr-forest: #342A22;
+  --rr-panel: #4A382A;
+  --rr-deep: #261E19;
+  --rr-paper: #F2EBDD;
+  --rr-gold: #A85F35;
   --rr-whatsapp: #25D366;
-  --rr-ink: #17201E;
+  --rr-ink: #342A22;
+  --rr-on-dark-primary: #F5F1E8;
+  --rr-on-dark-secondary: #D7D2C6;
+  --rr-on-dark-tertiary: #AFA99C;
+  --rr-on-light-primary: #342A22;
+  --rr-on-light-secondary: #624D3D;
+  --rr-on-light-tertiary: #806A58;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-7: 28px; --space-8: 32px;
+  --space-9: 72px; --space-10: 80px; --space-11: 88px; --space-12: 96px;
+  --space-13: 104px; --space-14: 112px; --space-15: 120px; --space-16: 128px;
 
   /* Material 3 tonal aliases, mapped to the Rolling Razors brand palette. */
   --md-background: #073B32;
@@ -28,16 +38,16 @@
 
 @layer base {
   html {
-    scroll-padding-top: 78px;
+    scroll-padding-top: 104px;
     scroll-behavior: smooth;
   }
 
   body {
     margin: 0;
-    background: var(--rr-forest);
-    color: var(--rr-paper);
-    font-family: 'Roboto', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    letter-spacing: .005em;
+    background: var(--rr-paper);
+    color: var(--rr-ink);
+    font-family: 'Inter', system-ui, sans-serif;
+    letter-spacing: -.005em;
   }
 
   button,
@@ -45,6 +55,11 @@
   input,
   select {
     font: inherit;
+  }
+
+  :where(button, a, input, select, textarea):focus-visible {
+    outline: 2px solid var(--rr-gold);
+    outline-offset: 3px;
   }
 }
 
@@ -57,7 +72,8 @@
   .rr-section-panel { background: var(--rr-panel); }
   .rr-label {
     display: block;
-    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
     font-weight: 700;
     letter-spacing: .12em;
     line-height: 1.2;
@@ -65,6 +81,14 @@
   }
   .rr-tabular { font-variant-numeric: tabular-nums; }
   .rr-signature { font-family: 'Caveat', cursive, sans-serif; }
+  .rr-page { background: var(--rr-paper); color: var(--rr-ink); }
+  .rr-app-shell { background: var(--rr-paper) !important; color: var(--rr-ink); }
+  .rr-app-shell > header > div { background: var(--rr-ink) !important; border-color: rgba(242, 235, 221, .16) !important; box-shadow: 0 8px 24px rgb(38 30 25 / .16) !important; }
+  .rr-page h1, .rr-page h2, .rr-page h3 { font-family: 'Fraunces', Georgia, serif; letter-spacing: -.035em; }
+  .rr-page .rr-label, .rr-page button, .rr-page a { font-family: 'JetBrains Mono', monospace; }
+  .rr-page .rr-service-row { font-family: 'Inter', system-ui, sans-serif; }
+  .rr-page .rr-service-row > span:nth-child(2) > span:first-child { font-family: 'Fraunces', Georgia, serif; font-size: 1.12rem; letter-spacing: -.02em; }
+  .rr-page .rr-service-row > span:nth-child(2) > span:last-child { font-family: 'Inter', system-ui, sans-serif; }
   .rr-control {
     appearance: none;
     min-height: 48px;
@@ -76,7 +100,7 @@
     outline-offset: 2px;
     transition: border-color .2s ease, background-color .2s ease, box-shadow .2s ease;
   }
-  .rr-control:focus { border-color: var(--rr-gold); box-shadow: 0 0 0 3px rgba(214, 166, 46, .16); }
+  .rr-control:focus-visible { border-color: var(--rr-gold); }
   .rr-control:hover { border-color: rgba(214, 166, 46, .65); background: var(--md-surface-container); }
   .rr-button-gold {
     display: inline-flex;
@@ -87,7 +111,7 @@
     min-height: 48px;
     border-radius: 999px;
     background: var(--rr-gold);
-    color: var(--rr-forest);
+    color: var(--rr-paper);
     font-weight: 800;
     box-shadow: 0 1px 3px rgba(0, 0, 0, .18);
     transition: background-color .2s ease, color .2s ease, transform .2s ease, box-shadow .2s ease;
@@ -115,6 +139,9 @@
     background: var(--md-surface);
     box-shadow: 0 1px 3px rgba(0, 0, 0, .16);
   }
+  .shadow-e1 { box-shadow: 0 1px 2px rgb(0 0 0 / .18); }
+  .shadow-e2 { box-shadow: 0 8px 24px rgb(0 0 0 / .20); }
+  .shadow-e3 { box-shadow: 0 20px 48px rgb(0 0 0 / .26); }
   .rr-md-card-interactive {
     transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
   }
@@ -128,12 +155,6 @@
   }
   .rr-md-state:hover { background: rgba(214, 166, 46, .1); }
   .rr-md-state:active { transform: scale(.97); }
-  .rr-hero-slide {
-    animation: rr-hero-image-in .8s ease-out both;
-  }
-  .rr-hero-copy {
-    animation: rr-hero-copy-in .65s cubic-bezier(.22, 1, .36, 1) both;
-  }
   .rr-app-shell input,
   .rr-app-shell select,
   .rr-app-shell textarea {
@@ -151,7 +172,7 @@
     position: relative;
     height: 1px;
     margin-top: 2rem;
-    border-top: 1px dashed rgba(7, 59, 50, .42);
+    border-top: 1px dashed rgba(52, 42, 34, .42);
   }
   .rr-stitch-rule::after {
     position: absolute;
@@ -196,22 +217,20 @@
     outline: 2px solid var(--rr-gold);
     outline-offset: 3px;
   }
+  .rr-page .rr-section-forest { background: var(--rr-forest) !important; }
+  .rr-page .rr-section-panel { background: var(--rr-panel) !important; }
+  .rr-page .rr-paper { background: var(--rr-paper) !important; }
+  .rr-page .rr-panel { background: var(--rr-panel) !important; }
+  .rr-page .rr-deep { background: var(--rr-deep) !important; }
+  .rr-page .rr-service-row { border-color: rgba(52, 42, 34, .16); }
+  .rr-page .rr-service-row.is-active { background: var(--rr-ink); }
+  .rr-page .rr-button-gold { background: var(--rr-gold); border-color: var(--rr-gold); }
   .rr-pattern-diamond {
     background-image: repeating-linear-gradient(45deg, transparent 0 7px, rgba(214,166,46,.85) 7px 8px), repeating-linear-gradient(-45deg, transparent 0 7px, rgba(214,166,46,.85) 7px 8px);
   }
   .rr-pattern-double { background: repeating-linear-gradient(0deg, transparent 0 5px, rgba(245,241,232,.5) 5px 6px); }
   .rr-pattern-dots { background-image: radial-gradient(rgba(214,166,46,.85) 1px, transparent 1.4px); background-size: 8px 8px; }
   .rr-pattern-pleats { background: repeating-linear-gradient(90deg, transparent 0 18px, rgba(245,241,232,.5) 18px 19px); }
-}
-
-@keyframes rr-hero-image-in {
-  from { opacity: 0; transform: scale(1.04); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-@keyframes rr-hero-copy-in {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -222,7 +241,7 @@
     animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
-    transition-duration: .01ms !important;
+    transition-duration: 150ms !important;
   }
 
 }
@@ -272,3 +291,15 @@
 }
 
 .animate-pulse-subtle { animation: pulse-subtle 3s ease-in-out infinite; }
+
+.rr-tilt {
+  transform-style: preserve-3d;
+  transform: perspective(900px) rotateX(var(--rr-tilt-x, 0deg)) rotateY(var(--rr-tilt-y, 0deg)) scale(var(--rr-tilt-scale, 1));
+  transition: transform .18s cubic-bezier(.22, 1, .36, 1);
+  will-change: transform;
+}
+
+.rr-tilt:hover { transition: transform .05s linear; }
+@media (pointer: coarse), (prefers-reduced-motion: reduce) {
+  .rr-tilt { transform: none; }
+}

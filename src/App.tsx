@@ -85,14 +85,16 @@ const MainContent: React.FC = () => {
 
   return (
     <div className="rr-app-shell min-h-screen bg-[#073B32] text-[#F5F1E8] flex flex-col font-sans selection:bg-[#D6A62E] selection:text-[#073B32]">
+      <a href="#main-content" className="sr-only z-[100] focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:bg-[#D6A62E] focus:px-4 focus:py-3 focus:text-[#073B32]">Skip to main content</a>
       {/* Top Navigation */}
       <Navbar />
 
       {/* Dynamic Main View */}
-      <main className="flex-1">
+      <main id="main-content" className="flex-1">
         {view === 'website' && <InspectionBayLanding />}
 
-        <Suspense fallback={<div className="min-h-[60vh] flex items-center justify-center text-[#D6A62E]">Loading...</div>}>
+        {view === 'booking' && <button type="button" onClick={() => setView('website')} className="mx-5 mt-24 min-h-11 text-left text-sm font-bold text-[#D6A62E]">← Back to site</button>}
+        <Suspense fallback={<div className="min-h-[60vh] bg-[#073B32] px-5 pt-24"><div className="mx-auto max-w-5xl animate-pulse space-y-6"><div className="h-4 w-32 bg-[#D6A62E]/30" /><div className="h-12 w-2/3 bg-[#0B4035]" /><div className="h-64 w-full bg-[#0B4035]" /><div className="h-2 w-1/3 bg-[#D6A62E]/40" /></div></div>}>
           {view === 'booking' && <BookingWizard />}
           {view === 'customer_dashboard' && <CustomerDashboard />}
           {view === 'admin_dashboard' && !denied && <AdminDashboard />}

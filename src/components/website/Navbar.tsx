@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { motion } from 'motion/react';
 import { ArrowUpRight, Menu, X, UserRound, ShieldAlert, Car, ChevronDown, LogOut, PhoneCall, Home, LayoutDashboard } from 'lucide-react';
 import { useApp, canAccessAdmin } from '../../context/AppContext';
 import { Logo } from '../common/Logo';
@@ -26,6 +27,17 @@ export const Navbar: React.FC = () => {
   } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [authDropdownOpen, setAuthDropdownOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState('');
+
+  useEffect(() => {
+    if (view !== 'website') return;
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (visible) setActiveSection(visible.target.id);
+    }, { rootMargin: '-104px 0px -55% 0px', threshold: [0.15, 0.5] });
+    NAV_ITEMS.forEach(([, id]) => document.getElementById(id) && observer.observe(document.getElementById(id)!));
+    return () => observer.disconnect();
+  }, [view]);
 
   // Close the sidebar with Escape and lock body scroll while it is open.
   useEffect(() => {
@@ -79,15 +91,18 @@ export const Navbar: React.FC = () => {
 
   return (
     <>
-      <header className="fixed inset-x-0 top-3 z-40 px-3 sm:px-5">
-        <div className="mx-auto flex h-16 max-w-[1320px] items-center justify-between gap-4 rounded-full border border-[#F5F1E8]/12 bg-[#052822]/88 px-3 shadow-[0_8px_30px_rgba(0,0,0,.16)] backdrop-blur-xl sm:px-4 lg:gap-6 lg:px-5">
+      <header className="fixed inset-x-0 top-0 z-40 border-b border-[#F5F1E8]/10 bg-[#052822]/95 px-4 backdrop-blur-xl sm:px-8">
+        <div className="mx-auto flex h-[72px] max-w-[1440px] items-center justify-between gap-4 px-1 lg:gap-8">
           <button type="button" onClick={goHome} aria-label="Rolling Razors Customs home" className="rr-header-brand flex min-h-11 shrink-0 items-center rounded-full px-1.5 text-left transition-colors hover:bg-white/5">
             <Logo variant="light" size="sm" showTagline={false} className="rr-header-logo" />
           </button>
 
           <nav aria-label="Primary navigation" className="hidden items-center gap-6 text-[12px] font-semibold text-[#F5F1E8]/75 lg:flex">
             {NAV_ITEMS.map(([label, id]) => (
-              <button key={id} type="button" onClick={() => scrollToSection(id)} className="min-h-11 transition-colors hover:text-[#D6A62E]">{label}</button>
+              <button key={id} type="button" onClick={() => scrollToSection(id)} className={`relative min-h-11 transition-colors hover:text-[#D6A62E] ${activeSection === id ? 'text-[#D6A62E]' : ''}`}>
+                {label}
+                {activeSection === id && <motion.span layoutId="nav-active" className="absolute inset-x-0 bottom-1 h-0.5 bg-[#D6A62E]" transition={{ duration: 0.2 }} />}
+              </button>
             ))}
           </nav>
 

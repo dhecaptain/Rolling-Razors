@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion, useInView, useReducedMotion } from 'motion/react';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ExternalLink,
   MessageCircle,
+  MoveHorizontal,
   Navigation,
   Phone,
   ShieldCheck,
@@ -14,9 +15,14 @@ import {
 import { useApp } from '../../context/AppContext';
 import { BUSINESS_CONFIG } from '../../config/business';
 import { PortfolioItem, Review, Service, VehicleType } from '../../types';
-import { cdnUrl, srcSet } from '../../utils/image';
+import type { LeatherType } from '../three/textures';
 import Reveal from './Reveal';
+import { Tilt } from './Tilt';
 import { Footer } from './Footer';
+import { resolveWebsiteAsset } from '../../config/assets';
+import { DUR, EASE, STAGGER } from '../../lib/motion';
+
+const SeatPreview = lazy(() => import('../three/SeatPreview'));
 
 type LandingLocation = 'workshop' | 'customer_location';
 
@@ -52,6 +58,8 @@ const MATERIALS = [
   { name: 'Alcantara & Leather', shortName: 'Alcantara & Leather', desc: 'Velvety grip / cool touch', image: '/images/upholstery/upholstery-06.jpg' },
 ] as const;
 
+const websiteImage = (source: string | undefined, alt: string, index = 0) => resolveWebsiteAsset(source, alt, index);
+
 const COLORS = [
   { name: 'Saddle Brown & Black', primary: '#8C5E3C', secondary: '#111111' },
   { name: 'Cognac Tan & Jet Black', primary: '#C2844B', secondary: '#171717' },
@@ -64,6 +72,13 @@ const PATTERNS = [
   { name: 'Perforated Motorsport', type: 'perforated' },
   { name: 'Classic Horizontal Pleats', type: 'pleats' },
 ] as const;
+
+const LEATHER_TYPE_BY_NAME: Record<string, LeatherType> = {
+  'Genuine Nappa Leather': 'nappa',
+  'Italian Full Grain': 'full-grain',
+  'Heavy-Duty Vinyl': 'vinyl',
+  'Alcantara & Leather': 'alcantara',
+};
 
 const QUALITY_CHECKS = [
   ['Premium materials', 'Automotive-grade hides, UV-stabilized vinyl, and high-density foam selected for comfort and long-term durability.'],
@@ -265,46 +280,66 @@ const InspectionHero: React.FC<{
     if (isPaused) return;
     const timer = window.setInterval(() => {
       setActiveSlide((current) => (current + 1) % slides.length);
-    }, 6500);
+    }, 7000);
     return () => window.clearInterval(timer);
   }, [isPaused, slides.length]);
+
+  useEffect(() => {
+    const next = slides[(activeSlide + 1) % slides.length];
+    const asset = websiteImage(next.image, next.alt, (activeSlide + 1) % slides.length);
+    const preload = new Image();
+    preload.src = asset.src;
+  }, [activeSlide]);
 
   const slide = slides[activeSlide];
 
   return (
-  <section id="hero-section" className="rr-section-forest border-b border-[#D6A62E]/30 lg:min-h-[100svh]">
-    <div className="grid min-h-[calc(100svh-1rem)] grid-cols-1 lg:grid-cols-12">
+  <section id="hero-section" className="rr-section-forest border-b border-[#D6A62E]/30">
+    <div className="relative min-h-[720px] overflow-hidden lg:min-h-[calc(100svh-72px)]">
       <div
-        className="relative min-h-[580px] overflow-hidden border-b border-[#D6A62E]/25 lg:col-span-7 lg:min-h-[100svh] lg:border-b-0 lg:border-r"
+        className="absolute inset-0 min-h-[580px] overflow-hidden"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
         onFocus={() => setIsPaused(true)}
         onBlur={() => setIsPaused(false)}
       >
-        <img
-          key={slide.image}
-          src={cdnUrl(slide.image, { w: 1600, q: 78 })}
-          srcSet={srcSet(slide.image, [800, 1200, 1600, 2000], 92)}
-          sizes="(max-width: 1024px) 100vw, 58vw"
-          alt={slide.alt}
-          fetchPriority={activeSlide === 0 ? 'high' : 'auto'}
-          decoding="async"
-          className="rr-hero-slide absolute inset-0 h-full w-full object-cover object-center [image-rendering:auto]"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#073B32]/95 via-[#073B32]/72 to-[#073B32]/15" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#073B32] via-transparent to-[#073B32]/20" />
-        <div className="relative z-10 flex h-full max-w-[640px] flex-col justify-end px-7 pb-14 pt-28 sm:px-10 lg:px-14 lg:pb-20 lg:pt-36">
+        {slides.map((item, index) => {
+          const asset = websiteImage(item.image, item.alt, index);
+          return <motion.img
+            key={item.image}
+            src={asset.src}
+            sizes="(max-width: 1023px) 100vw, 58vw"
+            alt={asset.alt}
+            width={asset.width}
+            height={asset.height}
+            fetchPriority={index === 0 ? 'high' : 'auto'}
+            loading={index === 0 ? 'eager' : 'lazy'}
+            decoding="async"
+            className="absolute inset-0 h-full w-full object-cover [image-rendering:auto]"
+            style={{ objectPosition: asset.focal, zIndex: index === activeSlide ? 1 : 0 }}
+            initial={false}
+            animate={{ opacity: index === activeSlide ? 1 : 0, scale: index === activeSlide ? 1.055 : 1 }}
+            transition={{ opacity: { duration: DUR.hero, ease: EASE.expressive }, scale: { duration: 7, ease: 'linear' } }}
+          />;
+        })}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#073B32]/95 via-[#073B32]/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#073B32]/95 via-transparent to-[#073B32]/10" />
+        <div className="relative z-10 flex h-full max-w-[760px] flex-col justify-end px-6 pb-20 pt-32 sm:px-12 lg:px-20 lg:pb-24">
           <div key={slide.eyebrow} className="rr-hero-copy">
             <div className="mb-6 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[.18em] text-[#D6A62E]">
               <span className="h-px w-8 bg-[#D6A62E]" />
-              {slide.eyebrow}
+              EST. 2014 · NAIROBI UPHOLSTERY ATELIER
             </div>
-            <h1 className="max-w-[570px] text-[3rem] font-black leading-[.98] tracking-[-.04em] text-[#F5F1E8] sm:text-[4.2rem] lg:text-[4.75rem]">
+            <h1 className="max-w-[760px] text-[3.3rem] font-black leading-[.94] tracking-[-.04em] text-[#F5F1E8] sm:text-[5rem] lg:text-[6.2rem]">
               {slide.title}
             </h1>
-            <p className="mt-7 max-w-[500px] text-[16px] leading-7 text-[#F5F1E8]/84">
+            <p className="mt-7 max-w-[560px] text-[16px] leading-7 text-[#F5F1E8]/84">
               {slide.description}
             </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <button type="button" id="hero-primary-book-btn" onClick={() => document.getElementById('fitting-request')?.scrollIntoView({ behavior: 'smooth' })} className="rr-button-gold h-12 px-6 text-[11px] tracking-[.08em]">BOOK A FITTING <ArrowRight aria-hidden="true" className="h-4 w-4" /></button>
+              <button type="button" onClick={() => document.getElementById('services-section')?.scrollIntoView({ behavior: 'smooth' })} className="rr-button-outline h-12 px-6 text-[11px] tracking-[.08em]">VIEW SERVICES</button>
+            </div>
           </div>
           <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-[#F5F1E8]/78">
             <span className="flex items-center gap-2"><CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5 text-[#D6A62E]" />Made in Nairobi</span>
@@ -321,17 +356,16 @@ const InspectionHero: React.FC<{
                   aria-selected={activeSlide === index}
                   aria-label={`Show ${item.eyebrow}`}
                   onClick={() => setActiveSlide(index)}
-                  className={`h-2 rounded-full transition-all ${activeSlide === index ? 'w-10 bg-[#D6A62E]' : 'w-2 bg-[#F5F1E8]/45 hover:bg-[#F5F1E8]/80'}`}
-                />
+                  className="flex h-11 w-14 items-center justify-center"
+                >
+                  <span className={`relative block h-0.5 overflow-hidden ${activeSlide === index ? 'w-14 bg-[#AFA99C]' : 'w-6 bg-[#AFA99C]'}`}>
+                    {activeSlide === index && <motion.span key={`${activeSlide}-progress`} className="absolute inset-0 origin-left bg-[#D6A62E]" initial={{ scaleX: 0 }} animate={{ scaleX: isPaused ? 0 : 1 }} transition={{ duration: 7, ease: 'linear' }} />}
+                  </span>
+                </button>
               ))}
             </div>
             <span className="text-[11px] text-[#F5F1E8]/55">Explore our craft</span>
           </div>
-        </div>
-      </div>
-      <div className="rr-panel flex items-center px-7 py-12 lg:col-span-5 lg:px-12 lg:py-16">
-        <div className="mx-auto w-full max-w-[520px]">
-          <FittingRequest services={services} onSubmit={onSubmit} />
         </div>
       </div>
     </div>
@@ -350,24 +384,24 @@ const ServiceInspectionBoard: React.FC<{
   if (!selectedService) return null;
 
   return (
-    <section id="services-section" className="rr-paper px-5 py-20 lg:px-12 lg:py-28">
+    <section id="services-section" className="rr-paper px-5 py-24 text-[#073B32] lg:px-12 lg:py-32">
       <div className="mx-auto max-w-[1280px]">
         <Reveal>
           <SectionHeader
             eyebrow="02 / Services"
-            title="Choose the work."
-            description="From a four-hour steering stitch to a full cabin re-trim, every service starts with a clear estimate and workshop time."
+            title="What can we transform?"
+            description="Start with the part of your vehicle that needs attention. Choose a service to see what is included, how long it takes, and the starting investment."
           />
           <StitchRule />
         </Reveal>
 
-        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-9">
-          <div className="lg:col-span-4">
-            <div className="mb-3 flex items-center justify-between">
-              <span className="rr-label text-[#073B32]/55">Service board</span>
-              <span className="rr-tabular text-[11px] text-[#073B32]/55">{services.length} service types</span>
+        <div className="mt-16 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-12">
+          <div className="lg:col-span-5">
+            <div className="mb-4 flex items-end justify-between border-b border-[#073B32]/20 pb-4">
+              <div><span className="rr-label text-[#4A6961]">Choose a starting point</span><p className="mt-2 text-sm text-[#2C4F47]">Tap a service to see the typical scope of work.</p></div>
+              <span className="rr-tabular text-xs font-bold text-[#4A6961]">{services.length} services</span>
             </div>
-            <div className="border-t border-[#073B32]/20">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {services.map((service, index) => (
                 <button
                   key={service.id}
@@ -375,27 +409,36 @@ const ServiceInspectionBoard: React.FC<{
                   aria-label={service.name}
                   aria-pressed={selectedService.id === service.id}
                   onClick={() => { setSelectedId(service.id); setShowDetails(false); }}
-                  className={`rr-service-row flex min-h-[48px] w-full items-center gap-3 px-3 text-left text-[13px] text-[#073B32] transition-colors ${selectedService.id === service.id ? 'is-active text-[#F5F1E8]' : ''}`}
+                  className={`rr-service-row group flex min-h-[112px] w-full items-start gap-4 border p-4 text-left text-[#073B32] transition-colors ${selectedService.id === service.id ? 'is-active border-[#073B32]' : 'border-[#073B32]/15 bg-white hover:border-[#D6A62E] hover:bg-[#F9F6EF]'}`}
                 >
-                  <span className={`rr-tabular text-[11px] ${selectedService.id === service.id ? 'text-[#D6A62E]' : 'text-[#073B32]/50'}`}>{String(index + 1).padStart(2, '0')}</span>
-                  <span className="min-w-0 flex-1 font-semibold">{service.name}</span>
-                  {selectedService.id === service.id && <span className="h-1 w-1 rounded-full bg-[#D6A62E]" />}
+                  <span className={`grid h-9 w-9 shrink-0 place-items-center border text-xs font-black ${selectedService.id === service.id ? 'border-[#D6A62E] bg-[#D6A62E] text-[#073B32]' : 'border-[#073B32]/20 text-[#4A6961]'}`}>{String(index + 1).padStart(2, '0')}</span>
+                  <span className="min-w-0 flex-1"><span className={`block font-bold ${selectedService.id === service.id ? 'text-[#F5F1E8]' : ''}`}>{service.name}</span><span className={`mt-2 block text-xs leading-5 ${selectedService.id === service.id ? 'text-[#D7D2C6]' : 'text-[#4A6961]'}`}>{service.shortDesc}</span></span>
+                  <ArrowRight aria-hidden="true" className={`mt-1 h-4 w-4 shrink-0 transition-transform group-hover:translate-x-1 ${selectedService.id === service.id ? 'text-[#D6A62E]' : 'text-[#4A6961]'}`} />
                 </button>
               ))}
             </div>
           </div>
 
-          <figure className="relative overflow-hidden bg-[#073B32] lg:col-span-5">
+          <figure className="relative min-h-[430px] overflow-hidden bg-[#073B32] lg:col-span-4">
             <img
               id="service-board-image"
-              src={cdnUrl(selectedService.image, { w: 1000 })}
-              srcSet={srcSet(selectedService.image, [600, 900, 1200])}
+              src={websiteImage(selectedService.image, `${selectedService.name} ${selectedService.shortDesc}`).src}
               sizes="(max-width: 1024px) 100vw, 42vw"
               alt={selectedService.name}
-              className="h-[430px] w-full object-cover sm:h-[520px]"
+              width={websiteImage(selectedService.image, `${selectedService.name} ${selectedService.shortDesc}`).width}
+              height={websiteImage(selectedService.image, `${selectedService.name} ${selectedService.shortDesc}`).height}
+              style={{ objectPosition: websiteImage(selectedService.image, `${selectedService.name} ${selectedService.shortDesc}`).focal }}
+              className="absolute inset-0 h-full w-full object-cover opacity-70"
               loading="lazy"
               decoding="async"
             />
+            <div className="absolute inset-0 p-6 text-[#F5F1E8] sm:p-8">
+              <div className="flex items-start justify-between border-b border-[#F5F1E8]/20 pb-5"><span className="rr-label text-[#D6A62E]">Selected service</span><span className="rr-tabular text-4xl font-black text-[#D6A62E]">{String(services.findIndex((service) => service.id === selectedService.id) + 1).padStart(2, '0')}</span></div>
+              <p className="mt-10 max-w-[280px] text-sm leading-6 text-[#D7D2C6]">A clear starting scope for your vehicle, confirmed in person before work begins.</p>
+              <ul className="mt-8 space-y-3 border-t border-[#F5F1E8]/20 pt-5 text-sm text-[#D7D2C6]">
+                {selectedService.includedFeatures.slice(0, 3).map((feature) => <li key={feature} className="flex gap-3"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#D6A62E]" />{feature}</li>)}
+              </ul>
+            </div>
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#073B32] via-[#073B32]/82 to-transparent px-5 pb-5 pt-24 text-[#F5F1E8]">
               <p className="rr-label text-[#D6A62E]">Selected work / {String(services.findIndex((service) => service.id === selectedService.id) + 1).padStart(2, '0')}</p>
               <figcaption id="service-board-title" className="mt-2 text-2xl font-black tracking-[-.025em]">{selectedService.name}</figcaption>
@@ -446,7 +489,29 @@ const BuildSpecification: React.FC<{ onBook: (draft: BuildDraft) => void }> = ({
   const [activePattern, setActivePattern] = useState<string>(PATTERNS[0].name);
   const [focusOnSeats, setFocusOnSeats] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
+  const [previewReady, setPreviewReady] = useState(false);
+  const [hintVisible, setHintVisible] = useState(true);
+  const [webgl, setWebgl] = useState<boolean | null>(null);
   const reduce = useReducedMotion();
+  const previewPanelRef = useRef<HTMLDivElement>(null);
+  const previewInView = useInView(previewPanelRef, { amount: 0.12 });
+
+  useEffect(() => {
+    try {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+      setWebgl(Boolean(gl));
+      if (gl) (gl as WebGLRenderingContext).getExtension('WEBGL_lose_context')?.loseContext();
+    } catch {
+      setWebgl(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!previewReady) return;
+    const timer = window.setTimeout(() => setHintVisible(false), 8000);
+    return () => window.clearTimeout(timer);
+  }, [previewReady]);
 
   const material = MATERIALS.find((option) => option.name === activeMaterial) || MATERIALS[0];
   const color = COLORS.find((option) => option.name === activeColor) || COLORS[0];
@@ -499,62 +564,80 @@ const BuildSpecification: React.FC<{ onBook: (draft: BuildDraft) => void }> = ({
     }
   };
 
+  // Keep the real vehicle image visible as the reliable baseline; the configurator
+  // should never leave a blank canvas while WebGL is loading or unavailable.
+  const showPreview = false;
+
   return (
     <section id="spec-section" className="rr-section-forest relative overflow-hidden px-5 py-24 text-[#F5F1E8] lg:px-12 lg:py-32">
-      <motion.div
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-24 top-28 h-72 w-72 rounded-full border border-[#D6A62E]/20"
-        animate={reduce ? {} : { rotate: 360, scale: [1, 1.08, 1] }}
-        transition={reduce ? {} : { rotate: { duration: 28, repeat: Infinity, ease: 'linear' }, scale: { duration: 8, repeat: Infinity, ease: 'easeInOut' } }}
-      />
-      <motion.div
-        aria-hidden="true"
-        className="pointer-events-none absolute -left-28 bottom-12 h-64 w-64 rounded-full bg-[#D6A62E]/[.045] blur-3xl"
-        animate={reduce ? {} : { x: [0, 40, 0], y: [0, -24, 0] }}
-        transition={reduce ? {} : { duration: 12, repeat: Infinity, ease: 'easeInOut' }}
-      />
       <div className="mx-auto max-w-[1280px]">
         <Reveal>
-          <SectionHeader light eyebrow="03 / Build specification" title="Choose the finish." description="Specify a direction for your interior. Final materials are confirmed at the workshop." />
+          <SectionHeader light eyebrow="03 / Interior direction" title="Make it yours." description="Choose the leather, colour, and stitch pattern you want to explore." />
           <StitchRule light />
         </Reveal>
 
         <div className="relative mt-12 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
           <motion.div
-            className="relative overflow-hidden rounded-[2rem] border border-[#D6A62E]/30 bg-[#052822] shadow-[0_24px_80px_rgba(0,0,0,.24)] lg:col-span-7"
+            ref={previewPanelRef}
+            className="relative overflow-hidden border border-[#D6A62E]/30 bg-[#052822] shadow-e3 lg:col-span-7"
             initial={reduce ? { opacity: 1 } : { opacity: 0, y: 36, rotateX: 5 }}
             whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
             viewport={{ once: true, amount: 0.2 }}
             transition={reduce ? {} : { duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
             style={{ perspective: 1200 }}
           >
-            <div className="relative h-[470px] overflow-hidden sm:h-[620px]">
-              <AnimatePresence mode="sync">
-                <motion.img
-                  key={material.image}
-                  id="spec-image"
-                  src={cdnUrl(material.image, { w: 1600, q: 92 })}
-                  srcSet={srcSet(material.image, [800, 1200, 1600], 92)}
-                  sizes="(max-width: 1024px) 100vw, 58vw"
-                  alt={`${activeMaterial} interior preview`}
-                  initial={reduce ? { opacity: 1 } : { opacity: 0, scale: 1.12, filter: 'saturate(.7) blur(6px)' }}
-                  animate={{ opacity: 1, scale: focusOnSeats ? 1.12 : 1, filter: 'saturate(1) blur(0px)' }}
-                  exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96, filter: 'blur(4px)' }}
-                  transition={reduce ? { duration: 0 } : { duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-                  className="absolute inset-0 h-full w-full object-cover object-center"
-                  loading="lazy"
-                  decoding="async"
-                />
-              </AnimatePresence>
+            <div className="relative h-[420px] overflow-hidden sm:h-[520px]">
+              {!previewReady && (
+                <AnimatePresence mode="wait">
+                  <motion.img
+                    key={material.image}
+                    id="spec-image"
+                    src={websiteImage(material.image, `${activeMaterial} interior preview`).src}
+                    sizes="(max-width: 1024px) 100vw, 58vw"
+                    alt={`${activeMaterial} interior preview`}
+                    width={websiteImage(material.image, `${activeMaterial} interior preview`).width}
+                    height={websiteImage(material.image, `${activeMaterial} interior preview`).height}
+                    style={{ objectPosition: websiteImage(material.image, `${activeMaterial} interior preview`).focal }}
+                    initial={reduce ? { opacity: 1 } : { opacity: 0 }}
+                    animate={{ opacity: 1, scale: focusOnSeats ? 1.12 : 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={reduce ? { duration: 0 } : { duration: DUR.medium, ease: EASE.standard }}
+                    className="absolute inset-0 h-full w-full object-cover object-center"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </AnimatePresence>
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-[#073B32] via-transparent to-black/10" />
-              <span className="absolute left-5 top-5 rounded-full border border-[#F5F1E8]/20 bg-[#073B32]/60 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.16em] text-[#F5F1E8]/75 backdrop-blur-md">Material study / RR-01</span>
-              <motion.button type="button" aria-pressed={focusOnSeats} onClick={() => setFocusOnSeats((focused) => !focused)} whileHover={reduce ? {} : { y: -2 }} whileTap={reduce ? {} : { scale: .96 }} className="absolute right-5 top-5 min-h-11 rounded-full border border-[#F5F1E8]/30 bg-[#073B32]/75 px-4 py-2 text-[11px] font-bold text-[#F5F1E8] backdrop-blur-md transition-colors hover:border-[#D6A62E]">
-                {focusOnSeats ? 'RETURN TO FULL VIEW' : 'FOCUS ON SEATS'} <ArrowUpRight aria-hidden="true" className="ml-1 inline h-3 w-3" />
+              <span className="absolute left-5 top-5 rounded-full border border-[#F5F1E8]/20 bg-[#073B32]/60 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.16em] text-[#F5F1E8]/75 backdrop-blur-md">Vehicle interior / direction</span>
+              <motion.button type="button" aria-pressed={focusOnSeats} onClick={() => setFocusOnSeats((focused) => !focused)} whileHover={reduce ? {} : { y: -2 }} whileTap={reduce ? {} : { scale: .96 }} className="absolute right-5 top-5 z-20 min-h-11 rounded-full border border-[#F5F1E8]/30 bg-[#073B32]/75 px-4 py-2 text-[11px] font-bold text-[#F5F1E8] backdrop-blur-md transition-colors hover:border-[#D6A62E]">
+                {focusOnSeats ? 'ZOOM OUT' : 'ZOOM IN'} <ArrowUpRight aria-hidden="true" className="ml-1 inline h-3 w-3" />
               </motion.button>
-              <div className="absolute inset-x-4 bottom-4 border-t border-dashed border-[#D6A62E]/65 pt-3 text-[13px] font-semibold text-[#F5F1E8]" aria-live="polite">
+              <div className="absolute inset-x-4 bottom-4 z-20 border-t border-dashed border-[#D6A62E]/65 pt-3 text-[13px] font-semibold text-[#F5F1E8]" aria-live="polite">
                 <span id="spec-summary">{activeMaterial} <b className="px-1 text-[#D6A62E]">·</b> {activeColor} <b className="px-1 text-[#D6A62E]">·</b> {activePattern}</span>
-                <span className="mt-1 block text-[11px] font-normal text-[#F5F1E8]/62">Preview shows the selected direction; final materials are confirmed at the workshop.</span>
+                <span className="mt-1 block text-[11px] font-normal text-[#F5F1E8]/62">A visual starting point for your fitting.</span>
               </div>
+              {showPreview && (
+                <Suspense fallback={null}>
+                  <motion.div className="absolute inset-0 z-10" initial={{ opacity: 0 }} animate={{ opacity: previewReady ? 1 : 0 }} transition={reduce ? { duration: 0 } : { duration: 0.55, ease: 'easeOut' }}>
+                    <SeatPreview
+                      primary={color.primary}
+                      secondary={color.secondary}
+                      pattern={pattern.type}
+                      leatherType={LEATHER_TYPE_BY_NAME[material.name] ?? 'nappa'}
+                      focusOnSeats={focusOnSeats}
+                      reduce={reduce}
+                      onReady={() => setPreviewReady(true)}
+                      onInteract={() => setHintVisible(false)}
+                    />
+                  </motion.div>
+                </Suspense>
+              )}
+              {showPreview && previewReady && hintVisible && (
+                <motion.div className="pointer-events-none absolute bottom-16 left-1/2 z-20 -translate-x-1/2 rounded-full border border-[#F5F1E8]/25 bg-[#073B32]/80 px-4 py-2 text-[11px] font-bold uppercase tracking-[.14em] text-[#F5F1E8] backdrop-blur-md" initial={reduce ? { opacity: 1 } : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, duration: 0.4 }} aria-hidden="true">
+                  Drag to rotate · Swipe on touch
+                </motion.div>
+              )}
             </div>
           </motion.div>
 
@@ -567,14 +650,14 @@ const BuildSpecification: React.FC<{ onBook: (draft: BuildDraft) => void }> = ({
           >
             <fieldset className="border-t border-[#F5F1E8]/20 pt-5">
               <legend className="flex w-full items-center justify-between rr-label text-[#D6A62E]"><span>M01 / Material</span><span className="text-[#F5F1E8]/45">Choose one</span></legend>
-              <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {MATERIALS.map((option, index) => (
                   <motion.button key={option.name} type="button" aria-pressed={activeMaterial === option.name} onClick={() => setActiveMaterial(option.name)} whileHover={reduce ? {} : { y: -5, rotate: index % 2 ? 1 : -1 }} whileTap={reduce ? {} : { scale: .97 }} className={`group relative min-h-[116px] overflow-hidden rounded-2xl border p-3 text-left transition-colors ${activeMaterial === option.name ? 'border-[#D6A62E] bg-[#D6A62E]/[.12] shadow-[0_10px_30px_rgba(214,166,46,.12)]' : 'border-[#F5F1E8]/18 bg-[#052822]/35 hover:border-[#D6A62E]/65'}`}>
-                    <img src={cdnUrl(option.image, { w: 320, q: 88 })} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover opacity-25 transition duration-500 group-hover:scale-110 group-hover:opacity-40" />
+                    <img src={websiteImage(option.image, `${option.name} material`).src} alt="" aria-hidden="true" width={1200} height={750} className="absolute inset-0 h-full w-full object-cover opacity-25 transition duration-500 group-hover:opacity-40" />
                     <span className="absolute inset-0 bg-gradient-to-t from-[#052822] via-[#052822]/75 to-transparent" />
                     <span className="relative block text-[12px] font-bold">{option.shortName}</span>
                     <span className="relative mt-1 block text-[11px] text-[#F5F1E8]/65">{option.desc}</span>
-                    {activeMaterial === option.name && <motion.span layoutId="active-material-mark" className="absolute right-3 top-3 h-2 w-2 rounded-full bg-[#D6A62E] shadow-[0_0_14px_#D6A62E]" />}
+                    {activeMaterial === option.name && <motion.span layoutId="mat-ring" className="absolute right-3 top-3 h-2 w-2 rounded-full bg-[#D6A62E]" />}
                   </motion.button>
                 ))}
               </div>
@@ -587,7 +670,7 @@ const BuildSpecification: React.FC<{ onBook: (draft: BuildDraft) => void }> = ({
                   <motion.button key={option.name} type="button" aria-pressed={activeColor === option.name} onClick={() => setActiveColor(option.name)} whileHover={reduce ? {} : { x: 6 }} className={`flex min-h-[54px] w-full items-center gap-3 rounded-xl border px-3 text-left text-[12px] font-semibold transition-colors ${activeColor === option.name ? 'border-[#D6A62E] bg-[#D6A62E]/[.08]' : 'border-[#F5F1E8]/18 hover:border-[#D6A62E]/65'}`}>
                     <span className="flex h-8 w-10 shrink-0 overflow-hidden rounded-md border border-white/10"><span className="w-1/2" style={{ backgroundColor: option.primary }} /><span className="w-1/2" style={{ backgroundColor: option.secondary }} /></span>
                     {option.name}
-                    {activeColor === option.name && <motion.span layoutId="active-color-mark" className="ml-auto h-2 w-2 rounded-full bg-[#D6A62E]" />}
+                    {activeColor === option.name && <motion.span layoutId="col-ring" className="ml-auto h-2 w-2 rounded-full bg-[#D6A62E]" />}
                   </motion.button>
                 ))}
               </div>
@@ -595,11 +678,12 @@ const BuildSpecification: React.FC<{ onBook: (draft: BuildDraft) => void }> = ({
 
             <fieldset className="mt-7 border-t border-[#F5F1E8]/20 pt-4">
               <legend className="flex w-full items-center justify-between rr-label text-[#D6A62E]"><span>P01 / Stitch pattern</span><span className="text-[#F5F1E8]/45">Choose one</span></legend>
-              <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {PATTERNS.map((option) => (
                   <motion.button key={option.name} type="button" aria-pressed={activePattern === option.name} onClick={() => setActivePattern(option.name)} whileHover={reduce ? {} : { y: -3 }} className={`min-h-[70px] rounded-xl border p-3 text-left text-[12px] font-semibold transition-colors ${activePattern === option.name ? 'border-[#D6A62E] bg-[#D6A62E]/[.08] text-[#F5F1E8]' : 'border-[#F5F1E8]/20 text-[#F5F1E8]/76 hover:border-[#D6A62E]/70'}`}>
                     <span className={`mb-3 block h-4 w-full rounded-sm ${option.type === 'diamond' ? 'rr-pattern-diamond' : option.type === 'perforated' ? 'rr-pattern-dots' : option.type === 'pleats' ? 'rr-pattern-pleats' : 'rr-pattern-double'}`} aria-hidden="true" />
                     {option.name}
+                    {activePattern === option.name && <motion.span layoutId="pat-ring" className="absolute right-3 top-3 h-2 w-2 rounded-full bg-[#D6A62E]" />}
                   </motion.button>
                 ))}
               </div>
@@ -648,12 +732,14 @@ const BookingRoute: React.FC<{ onStart: () => void }> = ({ onStart }) => {
               </div>
             ))}
           </div>
-          <aside className="self-end border-l-2 border-[#D6A62E] bg-[#052822] p-7 lg:col-span-4">
-            <p className="rr-label text-[#D6A62E]">Step 04 / Appointment</p>
-            <h3 className="mt-4 text-[21px] font-black">Choose a fitting time.</h3>
-            <p className="mt-2 text-[12px] leading-5 text-[#F5F1E8]/68">Free cancellation up to 24 hours before your appointment. M-Pesa deposit instructions appear before confirmation.</p>
-            <button type="button" onClick={onStart} className="rr-button-gold mt-7 h-12 w-full text-[12px] tracking-[.08em]">START BOOKING <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" /></button>
-          </aside>
+          <Tilt className="self-end lg:col-span-4">
+            <aside className="border-l-2 border-[#D6A62E] bg-[#052822] p-7">
+              <p className="rr-label text-[#D6A62E]">Step 04 / Appointment</p>
+              <h3 className="mt-4 text-[21px] font-black">Choose a fitting time.</h3>
+              <p className="mt-2 text-[12px] leading-5 text-[#F5F1E8]/68">Free cancellation up to 24 hours before your appointment. M-Pesa deposit instructions appear before confirmation.</p>
+              <button type="button" onClick={onStart} className="rr-button-gold mt-7 h-12 w-full text-[12px] tracking-[.08em]">START BOOKING <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" /></button>
+            </aside>
+          </Tilt>
         </div>
       </div>
     </section>
@@ -663,8 +749,8 @@ const BookingRoute: React.FC<{ onStart: () => void }> = ({ onStart }) => {
 const EvidenceGallery: React.FC<{ portfolio: PortfolioItem[] }> = ({ portfolio }) => {
   const [activeFilter, setActiveFilter] = useState<PortfolioItem['category']>('All');
   const [sliderPosition, setSliderPosition] = useState(46);
-  const featured = portfolio.find((item) => item.beforeImage && item.afterImage) || portfolio[0];
   const filteredItems = useMemo(() => portfolio.filter((item) => activeFilter === 'All' || item.category === activeFilter), [activeFilter, portfolio]);
+  const featured = filteredItems.find((item) => item.beforeImage && item.afterImage) || filteredItems[0];
   const supportingItems = filteredItems.filter((item) => item.id !== featured?.id).slice(0, 4);
 
   const updateSlider = (clientX: number, rect: DOMRect) => {
@@ -695,7 +781,7 @@ const EvidenceGallery: React.FC<{ portfolio: PortfolioItem[] }> = ({ portfolio }
 
         <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-end">
           <div
-            className="rr-comparison relative h-[360px] cursor-ew-resize select-none overflow-hidden bg-[#0B4035] sm:h-[520px] lg:col-span-9"
+            className="rr-comparison relative h-[360px] select-none overflow-hidden bg-[#0B4035] [touch-action:pan-y] sm:h-[520px] lg:col-span-9"
             role="slider"
             tabIndex={0}
             aria-label="Before and after comparison slider"
@@ -704,20 +790,25 @@ const EvidenceGallery: React.FC<{ portfolio: PortfolioItem[] }> = ({ portfolio }
             aria-valuenow={Math.round(sliderPosition)}
             aria-valuetext={`${Math.round(sliderPosition)}% before, ${100 - Math.round(sliderPosition)}% after`}
             onKeyDown={handleSliderKeyDown}
-            onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); updateSlider(event.clientX, event.currentTarget.getBoundingClientRect()); }}
-            onPointerMove={(event) => { if (event.buttons === 1) updateSlider(event.clientX, event.currentTarget.getBoundingClientRect()); }}
           >
-            <img src={cdnUrl(featured.afterImage || featured.image, { w: 1400 })} alt={`${featured.title} after handcrafted work`} className="absolute inset-0 h-full w-full object-cover" loading="lazy" decoding="async" />
+            <img src={websiteImage(featured.afterImage || featured.image, `${featured.service} ${featured.title} after handcrafted work`, 1).src} alt={`${featured.title} after handcrafted work`} width={1600} height={1067} className="absolute inset-0 h-full w-full object-cover" loading="lazy" decoding="async" />
             <span className="absolute right-4 top-4 z-10 bg-[#D6A62E] px-3 py-2 text-[11px] font-black text-[#073B32]">AFTER / HANDCRAFTED</span>
             <div className="absolute inset-y-0 left-0 overflow-hidden" style={{ width: `${sliderPosition}%` }}>
-              <img src={cdnUrl(featured.beforeImage || featured.image, { w: 1400 })} alt={`${featured.title} before restoration`} className="absolute left-0 top-0 h-full max-w-none object-cover" style={{ width: `${10000 / Math.max(sliderPosition, 1)}%` }} loading="lazy" decoding="async" />
+              <img src={websiteImage(featured.beforeImage || featured.image, `${featured.service} ${featured.title} before restoration`, 2).src} alt={`${featured.title} before restoration`} width={1600} height={1067} className="absolute left-0 top-0 h-full max-w-none object-cover" style={{ width: `${10000 / Math.max(sliderPosition, 1)}%` }} loading="lazy" decoding="async" />
               <span className="absolute left-4 top-4 z-10 bg-[#073B32] px-3 py-2 text-[11px] font-black text-[#F5F1E8]">BEFORE / ORIGINAL</span>
             </div>
-            <div className="pointer-events-none absolute inset-y-0 z-20 w-24 -translate-x-1/2" style={{ left: `${sliderPosition}%` }}>
+            <div className="pointer-events-none absolute inset-y-0 left-1/2 z-20 w-14 -translate-x-1/2" style={{ transform: `translateX(${sliderPosition - 50}%)` }}>
               <span className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-[#D6A62E]" />
-              <span className="absolute left-1/2 top-1/2 grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center border-2 border-[#073B32] bg-[#D6A62E] text-sm font-black text-[#073B32]">↔</span>
+              <button
+                type="button"
+                aria-label="Drag comparison handle"
+                className="pointer-events-auto absolute left-1/2 top-1/2 grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 border-[#073B32] bg-[#D6A62E] text-sm font-black text-[#073B32]"
+                onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); updateSlider(event.clientX, event.currentTarget.closest('.rr-comparison')?.getBoundingClientRect() || new DOMRect()); }}
+                onPointerMove={(event) => { if (event.buttons === 1) { const rect = event.currentTarget.closest('.rr-comparison')?.getBoundingClientRect(); if (rect) updateSlider(event.clientX, rect); } }}
+              ><MoveHorizontal aria-hidden="true" className="h-5 w-5" /></button>
               <span className="absolute left-1/2 top-[calc(50%+38px)] -translate-x-1/2 whitespace-nowrap bg-[#073B32] px-3 py-1.5 text-[11px] font-semibold text-[#F5F1E8]">Drag to compare</span>
             </div>
+            <div className="pointer-events-none absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 gap-3 bg-[#073B32]/80 px-2 py-1 text-[11px] text-[#F5F1E8]" aria-hidden="true"><span>←</span><span>→</span></div>
           </div>
           <aside className="lg:col-span-3">
             <p className="rr-label text-[#073B32]/55">Featured file / P-01</p>
@@ -730,15 +821,17 @@ const EvidenceGallery: React.FC<{ portfolio: PortfolioItem[] }> = ({ portfolio }
           </aside>
         </div>
 
-        <div className="mt-10 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {supportingItems.map((item, index) => (
-            <figure key={item.id} className={`${index === 1 ? 'lg:mt-8' : index === 3 ? 'lg:mt-4' : ''}`}>
-              <img src={cdnUrl(item.image, { w: 700 })} srcSet={srcSet(item.image, [400, 700, 1000])} sizes="(max-width: 640px) 100vw, 25vw" alt={item.title} className={`w-full object-cover ${index === 1 ? 'h-[270px]' : 'h-[220px]'}`} loading="lazy" decoding="async" />
-              <figcaption className="rr-photo-caption mt-3 pt-3">
-                <strong className="block text-[13px] leading-5">{item.title}</strong>
-                <span className="mt-1 block text-[11px] text-[#073B32]/62">{item.service} · {item.location}</span>
-              </figcaption>
-            </figure>
+            <Tilt key={item.id}>
+              <figure>
+                <img src={websiteImage(item.image, `${item.service} ${item.title}`, index).src} sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 25vw" alt={item.title} width={1600} height={1067} className="aspect-[3/2] w-full object-cover" loading="lazy" decoding="async" />
+                <figcaption className="rr-photo-caption mt-3 pt-3">
+                  <strong className="block text-[13px] leading-5">{item.title}</strong>
+                  <span className="mt-1 block text-[11px] text-[#073B32]/62">{item.service} · {item.location}</span>
+                </figcaption>
+              </figure>
+            </Tilt>
           ))}
         </div>
       </div>
@@ -747,7 +840,7 @@ const EvidenceGallery: React.FC<{ portfolio: PortfolioItem[] }> = ({ portfolio }
 };
 
 const QualityLedger: React.FC<{ reviews: Review[] }> = ({ reviews }) => {
-  const review = reviews.find((item) => item.customerName === 'Kiprono Cheruiyot') || reviews[0];
+  const review = reviews.find((item) => item.rating === 5 && item.comment.length > 80) || reviews[0];
 
   return (
     <section id="quality-section" className="rr-section-forest px-5 py-24 text-[#F5F1E8] lg:px-12 lg:py-28">
@@ -764,7 +857,8 @@ const QualityLedger: React.FC<{ reviews: Review[] }> = ({ reviews }) => {
             ))}
           </div>
           {review && (
-            <aside className="rr-paper self-start p-7 text-[#073B32] lg:col-span-5 lg:p-8">
+            <Tilt className="self-start lg:col-span-5">
+              <aside className="rr-paper p-7 text-[#073B32] lg:p-8">
               <p className="rr-label text-[#073B32]/55">Driver note / verified</p>
               <div className="rr-signature mt-6 text-[39px] leading-none text-[#0B4035]">“Worth every shilling.”</div>
               <blockquote className="mt-5 text-[16px] font-semibold leading-7">“{review.comment}”</blockquote>
@@ -777,7 +871,8 @@ const QualityLedger: React.FC<{ reviews: Review[] }> = ({ reviews }) => {
                 <span className="text-[12px] font-black text-[#D6A62E]">{'★'.repeat(review.rating)}</span>
               </div>
               <div className="mt-5 flex items-center gap-1 text-[11px] font-bold text-[#0B4035]"><ShieldCheck aria-hidden="true" className="h-3.5 w-3.5" />Verified booking</div>
-            </aside>
+              </aside>
+            </Tilt>
           )}
         </div>
       </div>
@@ -788,6 +883,7 @@ const QualityLedger: React.FC<{ reviews: Review[] }> = ({ reviews }) => {
 const ArrivalBoard: React.FC = () => {
   const { location, hours, phone, whatsapp } = BUSINESS_CONFIG;
   const whatsappHref = `${whatsapp.link}?text=${encodeURIComponent(whatsapp.defaultMessage)}`;
+  const [mapLoaded, setMapLoaded] = useState(false);
 
   return (
     <section id="arrival-section" className="rr-section-panel px-5 py-24 text-[#F5F1E8] lg:px-12 lg:py-28">
@@ -795,7 +891,11 @@ const ArrivalBoard: React.FC = () => {
         <Reveal><SectionHeader light eyebrow="07 / Arrival board" title="Find the workshop." description="Bring your vehicle for a material inspection, a leather swatch review, or a sit-down ergonomics consultation." /></Reveal>
         <div className="mt-10 grid grid-cols-1 border border-[#D6A62E]/40 lg:grid-cols-12">
           <div className="rr-map relative min-h-[420px] overflow-hidden lg:col-span-7">
-            <iframe title={`${BUSINESS_CONFIG.name} workshop map`} src={location.mapsEmbedUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="absolute inset-0 h-full w-full border-0 opacity-70 grayscale-[.25]" />
+            {mapLoaded ? <iframe title={`${BUSINESS_CONFIG.name} workshop map`} src={location.mapsEmbedUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="absolute inset-0 h-full w-full border-0 opacity-70 grayscale-[.25]" /> : (
+              <div className="absolute inset-0 flex items-center justify-center bg-[#052822]/80 p-6 text-center">
+                <button type="button" onClick={() => setMapLoaded(true)} className="rr-button-gold h-12 px-5 text-[11px]">LOAD INTERACTIVE MAP</button>
+              </div>
+            )}
             <div className="pointer-events-none absolute left-5 top-5 z-10 border-l-2 border-[#D6A62E] bg-[#073B32]/92 px-4 py-3">
               <span className="rr-label text-[#D6A62E]">Workshop coordinates</span>
               <strong className="mt-1 block text-[12px]">{location.area} · {location.city}</strong>
@@ -853,6 +953,16 @@ export const InspectionBayLanding: React.FC = () => {
         services={services}
         onSubmit={(serviceId, draft) => startBooking(serviceId, draft)}
       />
+      <section id="fitting-request" className="rr-section-forest px-5 py-20 text-[#F5F1E8] lg:px-12 lg:py-24">
+        <div className="mx-auto grid max-w-[1280px] gap-12 lg:grid-cols-12 lg:items-start">
+          <div className="lg:col-span-5 lg:pt-8">
+            <p className="rr-label text-[#D6A62E]">01 / Start a project</p>
+            <h2 className="mt-5 max-w-[480px] text-4xl font-black leading-none sm:text-5xl">Tell us what your vehicle needs.</h2>
+            <p className="mt-6 max-w-[420px] text-sm leading-6 text-[#D7D2C6]">Choose a service, tell us where you are, and we’ll help you plan the next step.</p>
+          </div>
+          <div className="lg:col-span-7 lg:border-l lg:border-[#F5F1E8]/15 lg:pl-12"><FittingRequest services={services} onSubmit={(serviceId, draft) => startBooking(serviceId, draft)} /></div>
+        </div>
+      </section>
       <ServiceInspectionBoard services={services} onBook={(serviceId) => startBooking(serviceId)} />
       <BuildSpecification onBook={(draft) => {
         startBooking('srv-1', draft);
