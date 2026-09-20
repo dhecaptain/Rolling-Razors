@@ -54,12 +54,25 @@ const sourceToSlot: Record<string, ImageSlot> = {
 
 const fallbackSlots = ['services/service-01.jpg', 'portfolio/project-01-after.jpg', 'portfolio/project-01-before.jpg'];
 
+const servicePhoto = (url: string, alt: string, aspect: string, width: number, height: number) => ({
+  ...makeSlot(`remote/${url}`, aspect, alt, width, height),
+  src: url,
+});
+
 export function resolveWebsiteAsset(source: string | undefined, alt: string, index = 0): ImageSlot {
   const subject = alt.toLowerCase();
   if (subject.includes('paint') || subject.includes('body work')) return { ...makeSlot('services/paint-booth.jpg', '4:3', alt, 1024, 768), src: '/images/services/paint-booth.jpg' };
   if (subject.includes('stitch') || subject.includes('steering')) return { ...makeSlot('services/stitching.jpg', '3:2', alt, 1012, 675), src: '/images/services/stitching.jpg' };
-  if (subject.includes('cushion') || subject.includes('canvas') || subject.includes('shade') || subject.includes('tent')) return { ...makeSlot('services/stitching.jpg', '3:2', alt, 1012, 675), src: '/images/services/stitching.jpg' };
-  if (subject.includes('seat') || subject.includes('upholstery') || subject.includes('leather') || subject.includes('interior')) return { ...makeSlot('services/leather-seats.jpg', '3:2', alt, 966, 641), src: '/images/services/leather-seats.jpg' };
+  if (subject.includes('cushion') || subject.includes('canvas') || subject.includes('shade') || subject.includes('tent')) {
+    return servicePhoto(index % 2 === 0
+      ? 'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?auto=format&fit=crop&w=1200&q=82'
+      : 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1200&q=82', alt, '3:2', 1200, 800);
+  }
+  if (subject.includes('seat') || subject.includes('upholstery') || subject.includes('leather') || subject.includes('interior')) {
+    return servicePhoto(index % 2 === 0
+      ? 'https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&w=1200&q=82'
+      : 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=82', alt, '3:2', 1200, 800);
+  }
   if (source && sourceToSlot[source]) return { ...sourceToSlot[source], alt };
   const slot = fallbackSlots[index % fallbackSlots.length];
   return makeSlot(slot, slot.includes('portfolio') ? '3:2' : '4:3', alt, slot.includes('portfolio') ? 1600 : 1600, slot.includes('portfolio') ? 1067 : 1200);
