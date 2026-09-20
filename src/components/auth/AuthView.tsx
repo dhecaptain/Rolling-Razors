@@ -1,222 +1,47 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { Logo } from '../common/Logo';
 import { clerkEnabled } from '../../auth/clerkConfig';
 import { ClerkAuthPanel } from './ClerkAuthPanel';
-import {
-  User,
-  Lock,
-  Phone,
-  Mail,
-  ArrowRight,
-  ArrowLeft,
-  Loader2,
-  AlertCircle
-} from 'lucide-react';
+import { ArrowLeft, ArrowRight, AlertCircle, Loader2, Mail, Lock, Phone, UserRound } from 'lucide-react';
 
 export const AuthView: React.FC = () => {
   if (clerkEnabled) return <ClerkAuthPanel />;
-  const {
-    setView,
-    authInitialMode,
-    authReturnView,
-    loginCustomer,
-    registerCustomer,
-  } = useApp();
+  const { setView, authInitialMode, authReturnView, loginCustomer, registerCustomer } = useApp();
+  const [isRegister, setIsRegister] = useState(authInitialMode === 'register');
+  const [name, setName] = useState(''); const [email, setEmail] = useState(''); const [phone, setPhone] = useState(''); const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false); const [errorMessage, setErrorMessage] = useState<string | null>(null); const reduce = useReducedMotion();
+  useEffect(() => setIsRegister(authInitialMode === 'register'), [authInitialMode]);
 
-  const [isRegister, setIsRegister] = useState(false);
-  
-  // Customer inputs
-  const [phone, setPhone] = useState('');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [customerPassword, setCustomerPassword] = useState('');
-
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const reduce = useReducedMotion();
-
-  useEffect(() => {
-    if (authInitialMode === 'register') {
-      setIsRegister(true);
-    } else {
-      setIsRegister(false);
-    }
-  }, [authInitialMode]);
-
-  const handleCustomerSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setErrorMessage(null);
-
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault(); setIsLoading(true); setErrorMessage(null);
     try {
-      if (isRegister) {
-        const res = await registerCustomer({
-          name,
-          phone,
-          email,
-          password: customerPassword
-        });
-        if (!res.success) {
-          setErrorMessage(res.error || 'Registration failed');
-        }
-      } else {
-        const res = await loginCustomer(phone, customerPassword);
-        if (!res.success) {
-          setErrorMessage(res.error || 'Authentication failed');
-        }
-      }
-    } catch {
-      setErrorMessage('An unexpected error occurred during authentication.');
-    } finally {
-      setIsLoading(false);
-    }
+      const result = isRegister ? await registerCustomer({ name, email, phone, password }) : await loginCustomer(email, password);
+      if (!result.success) setErrorMessage(result.error || 'Please check your details and try again.');
+    } catch { setErrorMessage('We could not reach the workshop. Please try again.'); } finally { setIsLoading(false); }
   };
 
-  return (
-    <motion.div id="auth-portal-page" initial={reduce ? { opacity: 1 } : { opacity: 0 }} animate={{ opacity: 1 }} className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#073B32] px-4 pb-16 pt-24 text-[#F5F1E8]">
-      <div className="pointer-events-none absolute inset-0 bg-leather-texture opacity-10" />
-      <motion.div aria-hidden="true" className="pointer-events-none absolute -left-20 top-24 h-64 w-64 rounded-full bg-[#D6A62E]/10 blur-3xl" animate={reduce ? {} : { x: [0, 28, 0], y: [0, -18, 0] }} transition={reduce ? {} : { duration: 9, repeat: Infinity, ease: 'easeInOut' }} />
-      <div className="relative z-10 grid w-full max-w-5xl items-center gap-12 lg:grid-cols-[.85fr_1fr]">
-        <motion.div initial={reduce ? { opacity: 1 } : { opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={reduce ? {} : { duration: .7 }} className="hidden lg:block">
-          <p className="rr-label text-[#D6A62E]">Driver access</p>
-          <h1 className="mt-5 max-w-md text-5xl font-black leading-[.98] tracking-[-.05em] text-[#F5F1E8]">Your next interior starts here.</h1>
-          <p className="mt-6 max-w-sm text-sm leading-7 text-[#F5F1E8]/65">Sign in to keep your vehicle details, follow workshop progress, and manage every Rolling Razors booking from one calm dashboard.</p>
-          <div className="mt-8 flex gap-2 text-[11px] font-bold text-[#F5F1E8]/70">
-            <span className="rounded-full border border-[#D6A62E]/30 bg-[#0B4035]/60 px-3 py-2">Secure account</span>
-            <span className="rounded-full border border-[#F5F1E8]/15 bg-[#0B4035]/60 px-3 py-2">M-Pesa ready</span>
-          </div>
-        </motion.div>
-        <motion.div initial={reduce ? { opacity: 1 } : { opacity: 0, y: 24, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={reduce ? {} : { duration: .7, ease: [0.22, 1, .36, 1] }} className="rr-md-card w-full max-w-md justify-self-center border border-[#D6A62E]/35 bg-[#0B4035]/90 p-6 shadow-[0_24px_80px_rgba(0,0,0,.3)] backdrop-blur-xl sm:p-8">
-        <div className="flex items-center justify-between">
-          <button onClick={() => setView(authReturnView)} className="inline-flex items-center gap-1.5 text-xs font-bold text-[#D6A62E] hover:underline cursor-pointer">
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to {authReturnView === 'booking' ? 'Booking' : 'Website'}
-          </button>
-          <span className="text-[11px] text-white/50 font-mono flex items-center gap-1">
-            <Lock className="w-3 h-3 text-[#25D366]" /> SSL Secured
-          </span>
-        </div>
-        <div className="text-center space-y-2">
-          <div className="flex justify-center">
-            <Logo variant="light" size="md" showTagline={false} />
-          </div>
-          <h2 className="text-2xl font-black font-display text-white mt-2">
-            {isRegister ? 'Create Driver Account' : 'Driver Portal Sign In'}
-          </h2>
-          <p className="text-xs text-white/70">
-            {isRegister ? 'Join Kenyan vehicle owners managing custom leather & upholstery jobs.' : 'Track job stitching status, view invoices, and settle M-Pesa deposits.'}
-          </p>
-          <p className="text-[11px] text-white/40">Workshop staff? <button onClick={()=>setView('admin_auth' as any)} className="text-[#D6A62E] underline">Sign in to Workshop Hub →</button></p>
-        </div>
-
-        {errorMessage && (
-          <motion.div initial={reduce ? { opacity: 1 } : { opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="bg-rose-500/15 border border-rose-500/40 rounded-xl p-3 flex items-start gap-2.5 text-xs text-rose-300">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
-            <span className="leading-relaxed">{errorMessage}</span>
-          </motion.div>
-        )}
-
-        <motion.form initial={reduce ? { opacity: 1 } : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={reduce ? {} : { duration: .35 }} onSubmit={handleCustomerSubmit} className="space-y-4 text-xs">
-            {isRegister && (
-              <div>
-                <label className="block text-white/80 font-bold mb-1">Full Name</label>
-                <input
-                  id="customer-register-name-input"
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Brian Mwangi"
-                  className="rr-control w-full px-3.5 text-white font-bold placeholder-white/30"
-                />
-              </div>
-            )}
-
-            <div>
-              <label className="block text-white/80 font-bold mb-1">
-                Kenyan Phone Number (M-Pesa registered)
-              </label>
-              <div className="relative">
-                <input
-                  id="customer-login-phone-input"
-                  type="tel"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="0712 901 234"
-                  className="rr-control w-full px-3.5 text-white font-bold placeholder-white/30 font-mono"
-                />
-              </div>
-            </div>
-
-            {isRegister && (
-              <div>
-                <label className="block text-white/80 font-bold mb-1">Email Address</label>
-                <input
-                  id="customer-register-email-input"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="brian.mwangi@gmail.com"
-                  className="rr-control w-full px-3.5 text-white font-bold placeholder-white/30"
-                />
-              </div>
-            )}
-
-            <div>
-              <label className="block text-white/80 font-bold mb-1">Password / PIN</label>
-              <input
-                id="customer-login-password-input"
-                type="password"
-                required
-                value={customerPassword}
-                onChange={(e) => setCustomerPassword(e.target.value)}
-                placeholder="••••••••"
-                className="rr-control w-full px-3.5 text-white font-bold placeholder-white/30"
-              />
-            </div>
-
-            <motion.button
-              id="customer-submit-auth-btn"
-              type="submit"
-              disabled={isLoading}
-              whileHover={isLoading || reduce ? {} : { y: -2, boxShadow: '0 12px 26px rgba(214,166,46,.2)' }}
-              whileTap={isLoading || reduce ? {} : { scale: .98 }}
-              className="rr-button-gold w-full py-3.5 text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Verifying Credentials...</span>
-                </>
-              ) : (
-                <>
-                  <span>{isRegister ? 'Register & Enter Portal' : 'Authenticate & Sign In'}</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </motion.button>
-
-            {/* Toggle Register / Login */}
-            <div className="text-center pt-2 border-t border-white/10">
-              <motion.button
-                type="button"
-                onClick={() => {
-                  setIsRegister(!isRegister);
-                  setErrorMessage(null);
-                }}
-                whileHover={reduce ? {} : { y: -1 }}
-                className="text-xs text-white/80 hover:text-[#D6A62E] font-semibold cursor-pointer"
-              >
-                {isRegister 
-                  ? 'Already have a driver account? Sign in here' 
-                  : "New customer? Create your vehicle garage profile"}
-              </motion.button>
-            </div>
-        </motion.form>
-      </motion.div>
-      </div>
-    </motion.div>
-  );
+  return <motion.main id="auth-portal-page" initial={reduce ? { opacity: 1 } : { opacity: 0 }} animate={{ opacity: 1 }} className="rr-auth-page min-h-screen bg-[#F2EBDD] px-4 py-8 text-[#342A22] sm:px-6 lg:py-14">
+    <div className="mx-auto grid min-h-[680px] w-full max-w-6xl overflow-hidden rounded-[2rem] border border-[#342A22]/15 bg-[#F7F0E4] shadow-[0_28px_90px_rgba(52,42,34,.18)] lg:grid-cols-[1.08fr_.92fr]">
+      <motion.section initial={reduce ? { opacity: 1 } : { opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="relative hidden min-h-[680px] overflow-hidden bg-[#342A22] lg:block">
+        <motion.img src="/images/services/leather-seats.jpg" alt="Crafted leather vehicle interior ready for the road" className="absolute inset-0 h-full w-full object-cover" animate={reduce ? {} : { scale: [1.04, 1.1, 1.04], x: [0, -10, 0] }} transition={reduce ? {} : { duration: 18, repeat: Infinity, ease: 'easeInOut' }} />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#241B16]/95 via-[#342A22]/35 to-[#342A22]/10" />
+        <div className="relative z-10 flex h-full flex-col justify-between p-9 text-[#F2EBDD] xl:p-12"><div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[.22em] text-[#D28A50]"><span className="h-px w-8 bg-[#D28A50]" /> Rolling Razors / Driver garage</div><div><p className="mb-4 font-mono text-[10px] uppercase tracking-[.2em] text-[#F2EBDD]/65">Made for the miles ahead</p><h1 className="max-w-lg font-display text-5xl font-black leading-[.94] tracking-[-.06em] xl:text-7xl">Keep your drive moving.</h1><p className="mt-6 max-w-sm text-sm leading-7 text-[#F2EBDD]/75">Save your vehicle details, follow workshop progress, and manage every fitting from one simple garage profile.</p><div className="mt-8 flex gap-2 font-mono text-[10px] uppercase tracking-wider text-[#F2EBDD]/70"><span className="rounded-full border border-[#F2EBDD]/25 px-3 py-2">Private account</span><span className="rounded-full border border-[#D28A50]/50 px-3 py-2">M-Pesa ready</span></div></div></div>
+      </motion.section>
+      <motion.section initial={reduce ? { opacity: 1 } : { opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="rr-auth-form flex flex-col justify-center p-6 sm:p-10 lg:p-12">
+        <div className="flex items-center justify-between"><button onClick={() => setView(authReturnView)} className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-bold text-[#A85F35] hover:underline"><ArrowLeft className="h-3.5 w-3.5" /> Back to {authReturnView === 'booking' ? 'booking' : 'website'}</button><span className="font-mono text-[10px] uppercase tracking-wider text-[#342A22]/50">Secure access</span></div>
+        <div className="mt-10"><Logo variant="dark" size="sm" showTagline={false} /><p className="rr-label mt-10 text-[#A85F35]">{isRegister ? 'Create your garage profile' : 'Welcome back'}</p><h2 className="mt-3 font-display text-4xl font-black leading-none tracking-[-.05em] text-[#342A22]">{isRegister ? 'Start with your details.' : 'Sign in to your garage.'}</h2><p className="mt-4 max-w-sm text-sm leading-6 text-[#342A22]/65">{isRegister ? 'Your phone number helps us coordinate payment and workshop updates.' : 'Use the email and password linked to your account.'}</p></div>
+        {errorMessage && <div className="mt-6 flex items-start gap-2 rounded-xl border border-rose-700/20 bg-rose-50 p-3 text-xs text-rose-800"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /><span>{errorMessage}</span></div>}
+        <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+          {isRegister && <label className="block"><span className="rr-auth-label"><UserRound /> Full name</span><input id="customer-register-name-input" required value={name} onChange={e => setName(e.target.value)} placeholder="Brian Mwangi" className="rr-control w-full" /></label>}
+          <label className="block"><span className="rr-auth-label"><Mail /> Email address</span><input id={isRegister ? 'customer-register-email-input' : 'customer-login-phone-input'} type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" className="rr-control w-full" /></label>
+          {isRegister && <label className="block"><span className="rr-auth-label"><Phone /> Phone number for payments</span><input id="customer-register-phone-input" type="tel" required value={phone} onChange={e => setPhone(e.target.value)} placeholder="0712 901 234" className="rr-control w-full" /></label>}
+          <label className="block"><span className="rr-auth-label"><Lock /> Password</span><input id="customer-login-password-input" type="password" required minLength={isRegister ? 8 : undefined} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" className="rr-control w-full" /></label>
+          <motion.button id="customer-submit-auth-btn" type="submit" disabled={isLoading} whileTap={reduce ? {} : { scale: .98 }} className="rr-button-gold flex w-full cursor-pointer items-center justify-center gap-2 py-3.5 text-xs uppercase tracking-wider disabled:opacity-50">{isLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Please wait</> : <>{isRegister ? 'Create account' : 'Sign in'} <ArrowRight className="h-4 w-4" /></>}</motion.button>
+        </form>
+        <div className="mt-7 border-t border-[#342A22]/12 pt-5 text-center text-xs text-[#342A22]/65"><button type="button" onClick={() => { setIsRegister(!isRegister); setErrorMessage(null); }} className="cursor-pointer font-bold text-[#A85F35] hover:underline">{isRegister ? 'Already have an account? Sign in' : 'New customer? Create an account'}</button></div>
+      </motion.section>
+    </div>
+  </motion.main>;
 };

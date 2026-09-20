@@ -16,16 +16,16 @@ interface ClerkAuthPanelProps {
  */
 const clerkAppearance = {
   variables: {
-    colorPrimary: '#D6A62E',
-    colorPrimaryForeground: '#073B32',
+    colorPrimary: '#A85F35',
+    colorPrimaryForeground: '#F2EBDD',
     colorBackground: 'transparent',
-    colorForeground: '#F5F1E8',
-    colorMuted: '#0B4035',
-    colorMutedForeground: 'rgba(245,241,232,0.65)',
-    colorInput: '#073B32',
-    colorInputForeground: '#F5F1E8',
-    colorBorder: 'rgba(214,166,46,0.35)',
-    colorRing: '#D6A62E',
+    colorForeground: '#342A22',
+    colorMuted: '#F7F0E4',
+    colorMutedForeground: 'rgba(52,42,34,0.65)',
+    colorInput: '#fffaf1',
+    colorInputForeground: '#342A22',
+    colorBorder: 'rgba(52,42,34,0.2)',
+    colorRing: '#A85F35',
     colorDanger: '#fb7185',
     colorSuccess: '#25D366',
     colorWarning: '#fbbf24',
@@ -51,24 +51,24 @@ const clerkAppearance = {
     // Social buttons — explicit colors for reliable contrast on the dark panel.
     socialButtonsRoot: 'gap-2',
     socialButtonsBlockButton: {
-      backgroundColor: '#073B32',
-      borderColor: 'rgba(255,255,255,0.12)',
-      color: '#F5F1E8',
+      backgroundColor: '#fffaf1',
+      borderColor: 'rgba(52,42,34,0.16)',
+      color: '#342A22',
     },
-    socialButtonsBlockButtonText: { color: '#F5F1E8', fontWeight: '600' },
+    socialButtonsBlockButtonText: { color: '#342A22', fontWeight: '600' },
     socialButtonsProviderIcon: { opacity: '0.9' },
     // Divider
     dividerLine: 'bg-white/10',
     dividerText: 'text-white/40 text-[11px] uppercase tracking-wider',
     // Fields
-    formFieldLabel: 'text-[#D6A62E] font-bold text-[11px] uppercase tracking-wider',
+    formFieldLabel: 'text-[#A85F35] font-bold text-[11px] uppercase tracking-wider',
     formFieldInput:
-      'bg-[#073B32] border border-[#D6A62E]/40 text-[#F5F1E8] placeholder-white/30 focus:border-[#D6A62E]',
+      'bg-[#fffaf1] border border-[#342A22]/20 text-[#342A22] placeholder-black/30 focus:border-[#A85F35]',
     formFieldInputShowPasswordButton: 'text-white/50 hover:text-[#D6A62E]',
     formFieldAction: 'text-[#D6A62E] hover:text-[#F5F1E8] text-xs font-semibold',
     // Primary button
     formButtonPrimary:
-      'bg-[#D6A62E] hover:bg-[#c39626] text-[#073B32] font-black text-xs uppercase tracking-wider shadow-lg normal-case',
+      'bg-[#A85F35] hover:bg-[#8f4f2e] text-[#F2EBDD] font-black text-xs uppercase tracking-wider shadow-lg normal-case',
     formButtonReset: 'text-[#D6A62E]',
     // Identity / OTP
     identityPreview: 'bg-[#073B32] border border-white/10',
@@ -101,7 +101,7 @@ export const ClerkAuthPanel: React.FC<ClerkAuthPanelProps> = ({ admin = false })
     return (
       <div
         id="admin-auth-page"
-        className="min-h-screen pt-24 pb-16 flex items-center justify-center bg-[#073B32] text-[#F5F1E8] px-4 relative"
+        className="rr-auth-page min-h-screen pt-24 pb-16 flex items-center justify-center bg-[#F2EBDD] text-[#342A22] px-4 relative"
       >
         <div className="absolute inset-0 bg-leather-texture opacity-10 pointer-events-none" />
         <div className="w-full max-w-md bg-[#0B4035] border-2 border-rose-500/40 rounded-3xl p-8 text-center shadow-2xl space-y-4 relative z-10">
@@ -128,7 +128,7 @@ export const ClerkAuthPanel: React.FC<ClerkAuthPanelProps> = ({ admin = false })
       id={admin ? 'admin-auth-page' : 'auth-portal-page'}
       initial={reduce ? { opacity: 1 } : { opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#073B32] px-4 pb-16 pt-24 text-[#F5F1E8]"
+      className="rr-auth-page relative flex min-h-screen items-center justify-center overflow-hidden bg-[#F2EBDD] px-4 pb-16 pt-24 text-[#342A22]"
     >
       <div className="pointer-events-none absolute inset-0 bg-leather-texture opacity-10" />
       <motion.div aria-hidden="true" className="pointer-events-none absolute -left-28 top-24 h-72 w-72 rounded-full bg-[#D6A62E]/10 blur-3xl" animate={reduce ? {} : { x: [0, 35, 0], y: [0, -20, 0] }} transition={reduce ? {} : { duration: 10, repeat: Infinity, ease: 'easeInOut' }} />

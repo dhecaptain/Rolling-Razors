@@ -323,15 +323,17 @@ app.post("/api/auth/admin/login", legacyAuthOnly, adminAuthLimiter, checkAdminIp
 
 app.post("/api/auth/customer/login", legacyAuthOnly, customerAuthLimiter, async (req,res)=>{
   const v=validate(customerLoginSchema, req.body); if(!v.success) return res.status(400).json({ success:false, error:v.error });
-  const { phone, password }=v.data as any;
-  if(!isValidKePhone(String(phone))) return res.status(400).json({ success:false, error:"Invalid Kenyan phone number." });
-  const creds=await serverDb.findUserWithHash(String(phone));
+  const { identifier, phone, password }=v.data as any;
+  const loginIdentifier = String(identifier || phone || '').trim();
+  if(!loginIdentifier) return res.status(400).json({ success:false, error:"Email or phone is required." });
+  if(!identifier && !isValidKePhone(loginIdentifier)) return res.status(400).json({ success:false, error:"Invalid Kenyan phone number." });
+  const creds=await serverDb.findUserWithHash(loginIdentifier);
   let customer=creds?.user;
   if(!customer){
-    const custs=await serverDb.getCustomers(); const custRecord=custs.find(c=>phonesMatch(c.phone, String(phone)));
+    const custs=await serverDb.getCustomers(); const custRecord=custs.find(c=> identifier ? String(c.email || '').toLowerCase() === loginIdentifier.toLowerCase() : phonesMatch(c.phone, loginIdentifier));
     if(custRecord){ customer={ id:custRecord.id, name:custRecord.name, phone:custRecord.phone, email:custRecord.email, role:"customer", avatar:custRecord.avatar||"", location:custRecord.address }; }
   }
-  if(!customer) return res.status(404).json({ success:false, error:"No driver account found with this phone number. Please register first." });
+  if(!customer) return res.status(404).json({ success:false, error:"No driver account found with this email. Please register first." });
   if(!creds?.passwordHash || !(await comparePassword(String(password), creds.passwordHash)))
     return res.status(401).json({ success:false, error:"Incorrect password. If you registered before passwords were enabled, contact the workshop to reset your password." });
   const token=generateToken(customer, 24*7);

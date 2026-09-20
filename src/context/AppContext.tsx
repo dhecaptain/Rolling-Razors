@@ -88,7 +88,7 @@ interface AppContextType {
   authReturnView: AppView;
   setAuthInitialMode: (mode: 'customer' | 'admin' | 'register') => void;
   openAuth: (mode?: 'customer' | 'admin' | 'register', returnTo?: AppView) => void;
-  loginCustomer: (phone: string, password?: string) => Promise<{ success: boolean; error?: string }>;
+  loginCustomer: (emailOrPhone: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   loginAdmin: (identifier: string, password: string) => Promise<{ success: boolean; error?: string }>;
   registerCustomer: (data: { name: string; phone: string; email?: string; password?: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
@@ -530,12 +530,12 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
     addToast('success', `Karibu, ${user.name}!`, message);
   };
 
-  const loginCustomer = async (phone: string, password?: string): Promise<{ success: boolean; error?: string }> => {
+  const loginCustomer = async (emailOrPhone: string, password?: string): Promise<{ success: boolean; error?: string }> => {
     if (clerkMode && clerk) { clerk.openSignIn(); return { success: true }; }
-    const cleanPhone = phone.trim().replace(/\s+/g, '');
-    if (!cleanPhone || cleanPhone.length < 9) {
-      addToast('error', 'Invalid Phone Number', 'Please enter a valid Kenyan phone number (e.g. 0712 901 234).');
-      return { success: false, error: 'Invalid phone number format' };
+    const identifier = emailOrPhone.trim();
+    if (!identifier || identifier.length < 3) {
+      addToast('error', 'Invalid Email', 'Please enter the email linked to your account.');
+      return { success: false, error: 'Invalid email format' };
     }
 
     try {
@@ -544,7 +544,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ phone: cleanPhone, password })
+        body: JSON.stringify({ identifier, password })
       });
 
       const data = await response.json();

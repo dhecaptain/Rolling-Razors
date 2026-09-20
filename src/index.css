@@ -303,3 +303,26 @@
 @media (pointer: coarse), (prefers-reduced-motion: reduce) {
   .rr-tilt { transform: none; }
 }
+
+/* Shared application surfaces: keep dashboards, booking, dialogs and auth on
+   the same parchment / ink / cognac system as the landing page. */
+.rr-app-shell [class*="bg-[#073B32]"],
+.rr-app-shell [class*="bg-[#0B4035]"],
+.rr-app-shell [class*="bg-[#052822]"],
+.rr-app-shell [class*="bg-[#0f4b3e]"] { background-color: var(--rr-ink) !important; }
+.rr-app-shell [class*="text-[#073B32]"],
+.rr-app-shell [class*="text-[#0B4035]"] { color: var(--rr-ink) !important; }
+.rr-app-shell [class*="text-[#F5F1E8]"] { color: var(--rr-paper) !important; }
+.rr-app-shell [class*="bg-[#D6A62E]"],
+.rr-app-shell [class*="bg-[#c39626]"] { background-color: var(--rr-gold) !important; }
+.rr-app-shell [class*="text-[#D6A62E]"],
+.rr-app-shell [class*="border-[#D6A62E]"] { color: var(--rr-gold) !important; border-color: color-mix(in srgb, var(--rr-gold) 55%, transparent) !important; }
+.rr-app-shell .rr-control,
+.rr-auth-form .rr-control { background: #fffaf1; border-color: rgba(52, 42, 34, .2); color: var(--rr-ink); }
+.rr-app-shell .rr-control:hover,
+.rr-auth-form .rr-control:hover { background: #fffdf8; border-color: var(--rr-gold); }
+.rr-auth-form .rr-control { margin-top: .45rem; padding: 0 .9rem; }
+.rr-auth-label { display: flex; align-items: center; gap: .45rem; color: rgba(52, 42, 34, .72); font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.rr-auth-label svg { width: 13px; height: 13px; color: var(--rr-gold); }
+.rr-auth-form input::placeholder { color: rgba(52, 42, 34, .35); }
+.rr-auth-form .rr-button-gold { color: #fffaf1; }

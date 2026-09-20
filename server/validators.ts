@@ -68,9 +68,10 @@ export const adminLoginSchema = z.object({
 });
 
 export const customerLoginSchema = z.object({
-  phone: phoneSchema,
+  identifier: z.string().min(3).optional(),
+  phone: phoneSchema.optional(),
   password: z.string().min(1).max(200),
-});
+}).refine(value => Boolean(value.identifier || value.phone), { message: "Email or phone is required" });
 
 export const customerRegisterSchema = z.object({
   name: z.string().min(2).max(100),
