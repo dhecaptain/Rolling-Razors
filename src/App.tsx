@@ -22,7 +22,7 @@ const AccessDenied: React.FC = () => {
   const target = currentUser ? 'customer_dashboard' : 'website';
   return (
     <div className="min-h-[60vh] flex items-center justify-center px-4">
-      <div className="max-w-md w-full bg-[#0B4035] border-2 border-rose-500/40 rounded-3xl p-8 text-center space-y-4 shadow-2xl">
+      <div className="max-w-md w-full bg-panel border-2 border-rose-500/40 rounded-3xl p-8 text-center space-y-4 shadow-2xl">
         <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500 text-rose-400 flex items-center justify-center mx-auto">
           <ShieldAlert className="w-7 h-7" />
         </div>
@@ -32,7 +32,7 @@ const AccessDenied: React.FC = () => {
         </p>
         <button
           onClick={() => setView(target as any)}
-          className="w-full py-3 rounded-xl bg-[#D6A62E] text-[#073B32] font-black text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+          className="w-full py-3 rounded-xl bg-gold text-ink font-black text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 cursor-pointer"
         >
           <span>Return to {currentUser ? 'Driver Portal' : 'Website'}</span>
           <ArrowRight className="w-4 h-4" />
@@ -74,18 +74,18 @@ const MainContent: React.FC = () => {
   // While auth is resolving, show a minimal loading screen instead of any dashboard.
   if (authVerifying) {
     return (
-      <div className="min-h-screen bg-[#073B32] flex items-center justify-center">
+      <div className="min-h-screen bg-ink flex items-center justify-center">
         <div className="text-center space-y-3">
-          <div className="w-10 h-10 border-2 border-[#D6A62E] border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs text-[#D6A62E] font-bold uppercase tracking-wider">Verifying session...</p>
+          <div className="w-10 h-10 border-2 border-gold border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs text-gold font-bold uppercase tracking-wider">Verifying session...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="rr-app-shell min-h-screen bg-[#073B32] text-[#F5F1E8] flex flex-col font-sans selection:bg-[#D6A62E] selection:text-[#073B32]">
-      <a href="#main-content" className="sr-only z-[100] focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:bg-[#D6A62E] focus:px-4 focus:py-3 focus:text-[#073B32]">Skip to main content</a>
+    <div className="min-h-screen bg-ink text-cream flex flex-col font-sans selection:bg-gold selection:text-ink">
+      <a href="#main-content" className="sr-only z-[100] focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:bg-gold focus:px-4 focus:py-3 focus:text-ink">Skip to main content</a>
       {/* Top Navigation */}
       <Navbar />
 
@@ -93,8 +93,8 @@ const MainContent: React.FC = () => {
       <main id="main-content" className="flex-1">
         {view === 'website' && <InspectionBayLanding />}
 
-        {view === 'booking' && <button type="button" onClick={() => setView('website')} className="mx-5 mt-24 min-h-11 text-left text-sm font-bold text-[#D6A62E]">← Back to site</button>}
-        <Suspense fallback={<div className="min-h-[60vh] bg-[#073B32] px-5 pt-24"><div className="mx-auto max-w-5xl animate-pulse space-y-6"><div className="h-4 w-32 bg-[#D6A62E]/30" /><div className="h-12 w-2/3 bg-[#0B4035]" /><div className="h-64 w-full bg-[#0B4035]" /><div className="h-2 w-1/3 bg-[#D6A62E]/40" /></div></div>}>
+        {view === 'booking' && <button type="button" onClick={() => setView('website')} className="mx-5 mt-24 min-h-11 text-left text-sm font-bold text-gold">← Back to site</button>}
+        <Suspense fallback={<div className="min-h-[60vh] bg-ink px-5 pt-24"><div className="mx-auto max-w-5xl animate-pulse space-y-6"><div className="h-4 w-32 bg-gold" /><div className="h-12 w-2/3 bg-panel" /><div className="h-64 w-full bg-panel" /><div className="h-2 w-1/3 bg-gold" /></div></div>}>
           {view === 'booking' && <BookingWizard />}
           {view === 'customer_dashboard' && <CustomerDashboard />}
           {view === 'admin_dashboard' && !denied && <AdminDashboard />}

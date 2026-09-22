@@ -40,25 +40,25 @@ export const PortfolioGallery: React.FC = () => {
   };
 
   return (
-    <section id="portfolio-section" className="py-20 lg:py-28 bg-[#073B32] text-[#F5F1E8] relative">
+    <section id="portfolio-section" className="py-20 lg:py-28 bg-ink text-cream relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
           <div className="space-y-3">
-            <span className="text-xs font-bold text-[#D6A62E] uppercase tracking-widest bg-[#0B4035] px-3.5 py-1.5 rounded-full border border-[#D6A62E]/30 inline-flex items-center gap-1.5">
+            <span className="text-xs font-bold text-gold uppercase tracking-widest bg-panel px-3.5 py-1.5 rounded-full border border-gold inline-flex items-center gap-1.5">
               <Scissors className="w-3.5 h-3.5" /> PROVEN KENYAN CRAFTSMANSHIP
             </span>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black font-display tracking-tight text-[#F5F1E8]">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black font-display tracking-tight text-cream">
               Our Work & Masterpieces
             </h2>
-            <p className="text-sm sm:text-base text-[#F5F1E8]/75 max-w-xl">
+            <p className="text-sm sm:text-base text-cream max-w-xl">
               Inspect real transformations completed in our workshop. From worn-out taxi interiors to executive luxury cruisers.
             </p>
           </div>
 
           {/* Category Filter Tabs */}
-          <div className="flex items-center flex-wrap gap-1.5 p-1.5 bg-[#0B4035] rounded-xl border border-white/10">
+          <div className="flex items-center flex-wrap gap-1.5 p-1.5 bg-panel rounded-xl border border-white/10">
             {categories.map((cat) => (
               <button
                 key={cat}
@@ -66,8 +66,8 @@ export const PortfolioGallery: React.FC = () => {
                 onClick={() => setActiveCategory(cat)}
                 className={`py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   activeCategory === cat
-                    ? 'bg-[#D6A62E] text-[#073B32] shadow-sm'
-                    : 'text-[#F5F1E8]/70 hover:text-white hover:bg-white/5'
+                    ? 'bg-gold text-ink shadow-sm'
+                    : 'text-cream hover:text-white hover:bg-white/5'
                 }`}
               >
                 {cat}
@@ -78,13 +78,13 @@ export const PortfolioGallery: React.FC = () => {
 
         {/* Interactive Before & After Interactive Showcase */}
         {featuredBeforeAfter && featuredBeforeAfter.beforeImage && (
-          <div className="mb-14 bg-[#0B4035] border-2 border-[#D6A62E]/40 rounded-2xl overflow-hidden shadow-2xl p-6 lg:p-8">
+          <div className="mb-14 bg-panel border-2 border-gold rounded-2xl overflow-hidden shadow-2xl p-6 lg:p-8">
             <div className="flex flex-col lg:flex-row items-center justify-between gap-6 mb-6">
               <div>
-                <span className="text-xs font-bold text-[#D6A62E] uppercase tracking-wider flex items-center gap-1">
+                <span className="text-xs font-bold text-gold uppercase tracking-wider flex items-center gap-1">
                   <SlidersHorizontal className="w-3.5 h-3.5" /> Interactive Before / After Comparison
                 </span>
-                <h3 className="text-2xl font-bold text-[#F5F1E8] font-display mt-1">
+                <h3 className="text-2xl font-bold text-cream font-display mt-1">
                   {featuredBeforeAfter.title}
                 </h3>
                 <p className="text-xs text-white/70 mt-1">
@@ -96,8 +96,8 @@ export const PortfolioGallery: React.FC = () => {
                 <span className="px-3 py-1 rounded-full bg-black/40 text-white/80 border border-white/10 font-bold">
                   BEFORE: Worn Factory Fabric
                 </span>
-                <ChevronRight className="w-4 h-4 text-[#D6A62E]" />
-                <span className="px-3 py-1 rounded-full bg-[#D6A62E] text-[#073B32] font-black">
+                <ChevronRight className="w-4 h-4 text-gold" />
+                <span className="px-3 py-1 rounded-full bg-gold text-ink font-black">
                   AFTER: Rolling Razors Custom Leather
                 </span>
               </div>
@@ -105,7 +105,7 @@ export const PortfolioGallery: React.FC = () => {
 
             {/* Draggable Slider Container */}
             <div 
-              className="relative w-full h-[360px] sm:h-[460px] rounded-xl overflow-hidden select-none cursor-ew-resize border border-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D6A62E] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B4035]"
+              className="relative w-full h-[360px] sm:h-[460px] rounded-xl overflow-hidden select-none cursor-ew-resize border border-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-goldfocus-visible: focus-visible:ring-offset-2 focus-visible:ring-offset-panel"
               role="slider"
               tabIndex={0}
               aria-label="Before and after comparison slider. Use left and right arrow keys to compare."
@@ -136,7 +136,7 @@ export const PortfolioGallery: React.FC = () => {
                 decoding="async"
                 className="absolute inset-0 w-full h-full object-cover"
               />
-              <div className="absolute top-4 right-4 bg-[#D6A62E] text-[#073B32] text-xs font-black px-3 py-1 rounded-md shadow-lg pointer-events-none">
+              <div className="absolute top-4 right-4 bg-gold text-ink text-xs font-black px-3 py-1 rounded-md shadow-lg pointer-events-none">
                 AFTER (Handcrafted)
               </div>
 
@@ -162,10 +162,10 @@ export const PortfolioGallery: React.FC = () => {
 
               {/* Center Draggable Bar */}
               <div 
-                className="absolute top-0 bottom-0 w-1 bg-[#D6A62E] shadow-2xl z-20 pointer-events-none flex items-center justify-center"
+                className="absolute top-0 bottom-0 w-1 bg-gold shadow-2xl z-20 pointer-events-none flex items-center justify-center"
                 style={{ left: `${sliderPosition}%` }}
               >
-                <div className="w-9 h-9 rounded-full bg-[#D6A62E] text-[#073B32] flex items-center justify-center shadow-2xl border-2 border-[#073B32] font-black text-xs">
+                <div className="w-9 h-9 rounded-full bg-gold text-ink flex items-center justify-center shadow-2xl border-2 border-ink font-black text-xs">
                   ↔
                 </div>
               </div>
@@ -178,7 +178,7 @@ export const PortfolioGallery: React.FC = () => {
           {filteredItems.map((item) => (
             <div
               key={item.id}
-              className="bg-[#0B4035] rounded-2xl overflow-hidden border border-[#D6A62E]/20 hover:border-[#D6A62E] transition-all duration-300 shadow-xl group flex flex-col justify-between"
+              className="bg-panel rounded-2xl overflow-hidden border border-gold hover:border-goldhover: transition-all duration-300 shadow-xl group flex flex-col justify-between"
             >
               <div className="relative h-60 overflow-hidden">
                 <img
@@ -192,27 +192,27 @@ export const PortfolioGallery: React.FC = () => {
                   height={400}
                   className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0B4035] via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-panel via-transparent to-transparent" />
                 
                 {/* Category Pill */}
-                <div className="absolute top-3 left-3 bg-[#073B32]/90 border border-[#D6A62E]/40 text-[#D6A62E] text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md backdrop-blur-sm">
+                <div className="absolute top-3 left-3 bg-ink border border-gold text-gold text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md backdrop-blur-sm">
                   {item.category}
                 </div>
               </div>
 
               <div className="p-6 space-y-3 flex-1 flex flex-col justify-between">
                 <div className="space-y-1.5">
-                  <h4 className="text-lg font-bold text-[#F5F1E8] font-display group-hover:text-[#D6A62E] transition-colors">
+                  <h4 className="text-lg font-bold text-cream font-display group-hover:text-gold transition-colors">
                     {item.title}
                   </h4>
                   
                   <div className="flex items-center gap-3 text-xs text-white/70">
                     <span className="flex items-center gap-1">
-                      <Car className="w-3.5 h-3.5 text-[#D6A62E]" /> {item.service}
+                      <Car className="w-3.5 h-3.5 text-gold" /> {item.service}
                     </span>
                     <span>•</span>
                     <span className="flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-[#D6A62E]" /> {item.location}
+                      <MapPin className="w-3.5 h-3.5 text-gold" /> {item.location}
                     </span>
                   </div>
 
@@ -224,7 +224,7 @@ export const PortfolioGallery: React.FC = () => {
                 {/* Tags */}
                 <div className="pt-3 border-t border-white/10 flex flex-wrap gap-1">
                   {item.tags.map((tag, idx) => (
-                    <span key={idx} className="text-[10px] px-2 py-0.5 rounded bg-[#073B32] text-white/60">
+                    <span key={idx} className="text-[10px] px-2 py-0.5 rounded bg-ink text-white/60">
                       #{tag}
                     </span>
                   ))}

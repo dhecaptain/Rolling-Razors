@@ -142,7 +142,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
             {title && <h4 className="text-xs font-bold text-white uppercase tracking-wider">{title}</h4>}
             {subtitle && <p className="text-[11px] text-white/60">{subtitle}</p>}
           </div>
-          <span className="text-[11px] font-mono text-[#D6A62E]">
+          <span className="text-[11px] font-mono text-gold">
             {photos.length} / {maxPhotos}
           </span>
         </div>
@@ -154,7 +154,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
         {photos.map((photoUrl, idx) => (
           <div
             key={`${photoUrl}-${idx}`}
-            className="group relative aspect-video rounded-xl overflow-hidden bg-[#073B32] border border-[#D6A62E]/30 shadow-md transition-all hover:border-[#D6A62E]"
+            className="group relative aspect-video rounded-xl overflow-hidden bg-ink border border-gold shadow-md transition-all hover:border-goldhover:"
           >
             <img
               src={photoUrl}
@@ -164,7 +164,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
               onError={(e) => {
                 const target = e.currentTarget;
                 target.onerror = null;
-                target.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%23D6A62E' stroke-width='1.5'><rect width='18' height='18' x='3' y='3' rx='2'/><circle cx='9' cy='9' r='2'/><path d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/></svg>";
+                target.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%23A85F35' stroke-width='1.5'><rect width='18' height='18' x='3' y='3' rx='2'/><circle cx='9' cy='9' r='2'/><path d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/></svg>";
               }}
             />
             {/* Overlay actions */}
@@ -172,7 +172,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
               <button
                 type="button"
                 onClick={() => setActivePreview(photoUrl)}
-                className="p-1.5 rounded-lg bg-black/60 text-white hover:text-[#D6A62E] transition-colors"
+                className="p-1.5 rounded-lg bg-black/60 text-white hover:text-goldhover: transition-colors"
                 title="View Full Size"
               >
                 <Eye className="w-4 h-4" />
@@ -188,7 +188,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
                 </button>
               )}
             </div>
-            <div className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/70 text-[9px] font-mono text-[#D6A62E]">
+            <div className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/70 text-[9px] font-mono text-gold">
               #{idx + 1}
             </div>
           </div>
@@ -198,7 +198,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
         {queue.map((item) => (
           <div
             key={item.id}
-            className="relative aspect-video rounded-xl overflow-hidden bg-[#073B32] border border-white/20 p-3 flex flex-col justify-between"
+            className="relative aspect-video rounded-xl overflow-hidden bg-ink border border-white/20 p-3 flex flex-col justify-between"
           >
             <div className="flex items-start justify-between">
               <span className="text-[10px] font-medium text-white/80 truncate max-w-[80%]">
@@ -215,7 +215,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
 
             {item.status === 'uploading' && (
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-[10px] text-[#D6A62E]">
+                <div className="flex items-center justify-between text-[10px] text-gold">
                   <span className="flex items-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin" /> Uploading...
                   </span>
@@ -223,7 +223,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
                 </div>
                 <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
                   <div
-                    className="h-full bg-[#D6A62E] transition-all duration-200"
+                    className="h-full bg-gold transition-all duration-200"
                     style={{ width: `${item.progress}%` }}
                   />
                 </div>
@@ -264,8 +264,8 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
             onClick={() => fileInputRef.current?.click()}
             className={`aspect-video rounded-xl border-2 border-dashed transition-all flex flex-col items-center justify-center p-3 text-center cursor-pointer ${
               dragOver
-                ? 'border-[#D6A62E] bg-[#D6A62E]/10'
-                : 'border-white/20 hover:border-[#D6A62E]/60 bg-[#073B32]/40 hover:bg-[#073B32]'
+                ? 'border-gold bg-gold'
+                : 'border-white/20 hover:border-goldhover: bg-ink hover:bg-inkhover:'
             }`}
           >
             <input
@@ -276,7 +276,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
               className="hidden"
               onChange={(e) => handleFilesSelected(e.target.files)}
             />
-            <div className="w-8 h-8 rounded-full bg-[#D6A62E]/10 text-[#D6A62E] flex items-center justify-center mb-1.5">
+            <div className="w-8 h-8 rounded-full bg-gold text-gold flex items-center justify-center mb-1.5">
               <Camera className="w-4 h-4" />
             </div>
             <span className="text-[11px] font-bold text-white">Add Photo</span>
@@ -292,12 +292,12 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
           onClick={() => setActivePreview(null)}
         >
           <div
-            className="relative max-w-4xl max-h-[85vh] bg-[#073B32] border border-[#D6A62E]/40 rounded-2xl overflow-hidden shadow-2xl"
+            className="relative max-w-4xl max-h-[85vh] bg-ink border border-gold rounded-2xl overflow-hidden shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between p-3 border-b border-white/10 bg-[#0B4035]">
+            <div className="flex items-center justify-between p-3 border-b border-white/10 bg-panel">
               <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                <ImageIcon className="w-3.5 h-3.5 text-[#D6A62E]" /> Image Inspection
+                <ImageIcon className="w-3.5 h-3.5 text-gold" /> Image Inspection
               </span>
               <button
                 onClick={() => setActivePreview(null)}
@@ -314,7 +314,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
                 onError={(e) => {
                   const target = e.currentTarget;
                   target.onerror = null;
-                  target.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 24 24' fill='none' stroke='%23D6A62E' stroke-width='1.5'><rect width='18' height='18' x='3' y='3' rx='2'/><circle cx='9' cy='9' r='2'/><path d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/></svg>";
+                  target.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 24 24' fill='none' stroke='%23A85F35' stroke-width='1.5'><rect width='18' height='18' x='3' y='3' rx='2'/><circle cx='9' cy='9' r='2'/><path d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/></svg>";
                 }}
               />
             </div>

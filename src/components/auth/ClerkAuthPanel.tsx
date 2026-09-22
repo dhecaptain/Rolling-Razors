@@ -61,29 +61,29 @@ const clerkAppearance = {
     dividerLine: 'bg-white/10',
     dividerText: 'text-white/40 text-[11px] uppercase tracking-wider',
     // Fields
-    formFieldLabel: 'text-[#A85F35] font-bold text-[11px] uppercase tracking-wider',
+    formFieldLabel: 'text-gold font-bold text-[11px] uppercase tracking-wider',
     formFieldInput:
-      'bg-[#fffaf1] border border-[#342A22]/20 text-[#342A22] placeholder-black/30 focus:border-[#A85F35]',
-    formFieldInputShowPasswordButton: 'text-white/50 hover:text-[#D6A62E]',
-    formFieldAction: 'text-[#D6A62E] hover:text-[#F5F1E8] text-xs font-semibold',
+      'bg-paper-high border border-ink text-ink placeholder-black/30 focus:border-goldfocus:',
+    formFieldInputShowPasswordButton: 'text-white/50 hover:text-goldhover:',
+    formFieldAction: 'text-gold hover:text-creamhover: text-xs font-semibold',
     // Primary button
     formButtonPrimary:
-      'bg-[#A85F35] hover:bg-[#8f4f2e] text-[#F2EBDD] font-black text-xs uppercase tracking-wider shadow-lg normal-case',
-    formButtonReset: 'text-[#D6A62E]',
+      'bg-gold hover:bg-gold-hoverhover: text-paper font-black text-xs uppercase tracking-wider shadow-lg normal-case',
+    formButtonReset: 'text-gold',
     // Identity / OTP
-    identityPreview: 'bg-[#073B32] border border-white/10',
-    identityPreviewText: 'text-[#F5F1E8] font-medium',
-    identityPreviewEditButton: 'text-[#D6A62E] hover:text-[#F5F1E8]',
-    otpCodeFieldInput: 'bg-[#073B32] border-[#D6A62E]/40 text-[#F5F1E8]',
+    identityPreview: 'bg-ink border border-white/10',
+    identityPreviewText: 'text-cream font-medium',
+    identityPreviewEditButton: 'text-gold hover:text-creamhover:',
+    otpCodeFieldInput: 'bg-ink border-gold text-cream',
     // Feedback
     alert: 'bg-rose-500/15 border border-rose-500/40',
     alertText: 'text-rose-300',
     // Footer / links
     footer: 'bg-transparent',
     footerActionText: 'text-white/60',
-    footerActionLink: 'text-[#D6A62E] hover:text-[#F5F1E8] font-bold',
-    footerPagesLink: 'text-white/50 hover:text-[#D6A62E]',
-    backLink: 'text-[#D6A62E] hover:text-[#F5F1E8] text-xs font-semibold',
+    footerActionLink: 'text-gold hover:text-creamhover: font-bold',
+    footerPagesLink: 'text-white/50 hover:text-goldhover:',
+    backLink: 'text-gold hover:text-creamhover: text-xs font-semibold',
   },
 } as const;
 
@@ -101,10 +101,10 @@ export const ClerkAuthPanel: React.FC<ClerkAuthPanelProps> = ({ admin = false })
     return (
       <div
         id="admin-auth-page"
-        className="rr-auth-page min-h-screen pt-24 pb-16 flex items-center justify-center bg-[#F2EBDD] text-[#342A22] px-4 relative"
+        className="rr-auth-page min-h-screen pt-24 pb-16 flex items-center justify-center bg-paper text-ink px-4 relative"
       >
         <div className="absolute inset-0 bg-leather-texture opacity-10 pointer-events-none" />
-        <div className="w-full max-w-md bg-[#0B4035] border-2 border-rose-500/40 rounded-3xl p-8 text-center shadow-2xl space-y-4 relative z-10">
+        <div className="w-full max-w-md bg-panel border-2 border-rose-500/40 rounded-3xl p-8 text-center shadow-2xl space-y-4 relative z-10">
           <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500 text-rose-400 flex items-center justify-center mx-auto">
             <ShieldAlert className="w-7 h-7" />
           </div>
@@ -114,7 +114,7 @@ export const ClerkAuthPanel: React.FC<ClerkAuthPanelProps> = ({ admin = false })
           </p>
           <button
             onClick={() => setView('customer_dashboard')}
-            className="w-full py-3 rounded-xl bg-[#D6A62E] text-[#073B32] font-black text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-3 rounded-xl bg-gold text-ink font-black text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 cursor-pointer"
           >
             <span>Return to Driver Portal</span>
           </button>
@@ -128,35 +128,35 @@ export const ClerkAuthPanel: React.FC<ClerkAuthPanelProps> = ({ admin = false })
       id={admin ? 'admin-auth-page' : 'auth-portal-page'}
       initial={reduce ? { opacity: 1 } : { opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="rr-auth-page relative flex min-h-screen items-center justify-center overflow-hidden bg-[#F2EBDD] px-4 pb-16 pt-24 text-[#342A22]"
+      className="rr-auth-page relative flex min-h-screen items-center justify-center overflow-hidden bg-paper px-4 pb-16 pt-24 text-ink"
     >
       <div className="pointer-events-none absolute inset-0 bg-leather-texture opacity-10" />
-      <motion.div aria-hidden="true" className="pointer-events-none absolute -left-28 top-24 h-72 w-72 rounded-full bg-[#D6A62E]/10 blur-3xl" animate={reduce ? {} : { x: [0, 35, 0], y: [0, -20, 0] }} transition={reduce ? {} : { duration: 10, repeat: Infinity, ease: 'easeInOut' }} />
-      <motion.div aria-hidden="true" className="pointer-events-none absolute -bottom-32 -right-20 h-96 w-96 rounded-full border border-[#D6A62E]/15" animate={reduce ? {} : { rotate: 360 }} transition={reduce ? {} : { duration: 32, repeat: Infinity, ease: 'linear' }} />
+      <motion.div aria-hidden="true" className="pointer-events-none absolute -left-28 top-24 h-72 w-72 rounded-full bg-gold blur-3xl" animate={reduce ? {} : { x: [0, 35, 0], y: [0, -20, 0] }} transition={reduce ? {} : { duration: 10, repeat: Infinity, ease: 'easeInOut' }} />
+      <motion.div aria-hidden="true" className="pointer-events-none absolute -bottom-32 -right-20 h-96 w-96 rounded-full border border-gold" animate={reduce ? {} : { rotate: 360 }} transition={reduce ? {} : { duration: 32, repeat: Infinity, ease: 'linear' }} />
       <div className="relative z-10 grid w-full max-w-5xl items-center gap-12 lg:grid-cols-[.85fr_1fr]">
         <motion.div initial={reduce ? { opacity: 1 } : { opacity: 0, x: -28 }} animate={{ opacity: 1, x: 0 }} transition={reduce ? {} : { duration: .7, ease: [0.22, 1, .36, 1] }} className="hidden lg:block">
-          <p className="rr-label text-[#D6A62E]">{admin ? 'Workshop access' : 'Your vehicle, your account'}</p>
-          <h1 className="mt-5 max-w-md text-5xl font-black leading-[.98] tracking-[-.05em] text-[#F5F1E8]">
+          <p className="rr-label text-gold">{admin ? 'Workshop access' : 'Your vehicle, your account'}</p>
+          <h1 className="mt-5 max-w-md text-5xl font-black leading-[.98] tracking-[-.05em] text-cream">
             {admin ? 'Keep the workshop moving.' : 'Your next interior starts here.'}
           </h1>
-          <p className="mt-6 max-w-sm text-sm leading-7 text-[#F5F1E8]/65">
+          <p className="mt-6 max-w-sm text-sm leading-7 text-cream">
             {admin ? 'A secure workspace for managing appointments, work orders, materials, and customer handoffs.' : 'Sign in once to save your build direction, follow workshop progress, and keep every booking in one place.'}
           </p>
-          <div className="mt-8 flex flex-wrap gap-2 text-[11px] font-bold text-[#F5F1E8]/70">
-            <span className="rounded-full border border-[#D6A62E]/30 bg-[#0B4035]/60 px-3 py-2">Encrypted session</span>
-            <span className="rounded-full border border-[#F5F1E8]/15 bg-[#0B4035]/60 px-3 py-2">{admin ? 'Staff only' : 'Booking continuity'}</span>
+          <div className="mt-8 flex flex-wrap gap-2 text-[11px] font-bold text-cream">
+            <span className="rounded-full border border-gold bg-panel px-3 py-2">Encrypted session</span>
+            <span className="rounded-full border border-cream bg-panel px-3 py-2">{admin ? 'Staff only' : 'Booking continuity'}</span>
           </div>
         </motion.div>
         <div className="w-full max-w-md justify-self-center lg:max-w-lg">
         <div className="flex items-center justify-between">
           <button
             onClick={() => setView(authReturnView)}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#D6A62E] hover:underline cursor-pointer"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-gold hover:underline cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Back to {authReturnView === 'booking' ? 'Booking' : 'Website'}
           </button>
           <span className="text-[11px] text-white/50 font-mono flex items-center gap-1">
-            {admin ? <><Lock className="w-3 h-3 text-[#25D366]" /> Workshop Isolated</> : <><Lock className="w-3 h-3 text-[#25D366]" /> Secured by Clerk</>}
+            {admin ? <><Lock className="w-3 h-3 text-whatsapp" /> Workshop Isolated</> : <><Lock className="w-3 h-3 text-whatsapp" /> Secured by Clerk</>}
           </span>
         </div>
 
@@ -184,7 +184,7 @@ export const ClerkAuthPanel: React.FC<ClerkAuthPanelProps> = ({ admin = false })
         )}
 
         {!admin && (
-          <div className="mx-auto mt-5 flex w-full max-w-xs rounded-2xl border border-white/10 bg-[#073B32]/80 p-1.5" role="tablist" aria-label="Authentication mode">
+          <div className="mx-auto mt-5 flex w-full max-w-xs rounded-2xl border border-white/10 bg-ink p-1.5" role="tablist" aria-label="Authentication mode">
             {(['signIn', 'signUp'] as const).map((option) => (
               <motion.button
                 key={option}
@@ -193,10 +193,10 @@ export const ClerkAuthPanel: React.FC<ClerkAuthPanelProps> = ({ admin = false })
                 aria-selected={mode === option}
                 onClick={() => setMode(option)}
                 whileTap={reduce ? {} : { scale: 0.98 }}
-                className={`relative flex-1 rounded-xl px-3 py-2 text-[11px] font-black uppercase tracking-wider transition-colors ${mode === option ? 'text-[#073B32]' : 'text-white/55 hover:text-white'}`}
+                className={`relative flex-1 rounded-xl px-3 py-2 text-[11px] font-black uppercase tracking-wider transition-colors ${mode === option ? 'text-ink' : 'text-white/55 hover:text-white'}`}
               >
                 {mode === option && (
-                  <motion.span layoutId="auth-mode-pill" className="absolute inset-0 rounded-xl bg-[#D6A62E]" transition={{ type: 'spring', stiffness: 420, damping: 30 }} />
+                  <motion.span layoutId="auth-mode-pill" className="absolute inset-0 rounded-xl bg-gold" transition={{ type: 'spring', stiffness: 420, damping: 30 }} />
                 )}
                 <span className="relative z-10">{option === 'signIn' ? 'Sign in' : 'Create account'}</span>
               </motion.button>
@@ -204,7 +204,7 @@ export const ClerkAuthPanel: React.FC<ClerkAuthPanelProps> = ({ admin = false })
           </div>
         )}
 
-        <div className="relative overflow-hidden rounded-[28px] border border-[#D6A62E]/30 bg-[#0B4035]/90 p-5 shadow-[0_24px_80px_rgba(0,0,0,.3)] backdrop-blur-xl sm:p-7">
+        <div className="relative overflow-hidden rounded-[28px] border border-gold bg-panel p-5 shadow-[0_24px_80px_rgba(0,0,0,.3)] backdrop-blur-xl sm:p-7">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div key={mode} initial={reduce ? { opacity: 1 } : { opacity: 0, x: mode === 'signIn' ? -16 : 16 }} animate={{ opacity: 1, x: 0 }} exit={reduce ? { opacity: 0 } : { opacity: 0, x: mode === 'signIn' ? 16 : -16 }} transition={reduce ? { duration: 0 } : { duration: .28, ease: [0.22, 1, .36, 1] }}>
               {mode === 'signIn' ? <SignIn routing="hash" appearance={clerkAppearance} /> : <SignUp routing="hash" appearance={clerkAppearance} />}

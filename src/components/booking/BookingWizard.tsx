@@ -50,15 +50,15 @@ export const BookingWizard: React.FC = () => {
   const [selectedServiceId, setSelectedServiceId] = useState<string>(
     bookingWizardInitialServiceId || services[0]?.id || 'srv-1'
   );
-  const [vehicleMake, setVehicleMake] = useState<string>('Toyota');
-  const [vehicleModel, setVehicleModel] = useState<string>('Land Cruiser Prado TX');
-  const [vehicleYear, setVehicleYear] = useState<number>(2021);
-  const [vehicleReg, setVehicleReg] = useState<string>('KDF 892J');
+  const [vehicleMake, setVehicleMake] = useState<string>('');
+  const [vehicleModel, setVehicleModel] = useState<string>('');
+  const [vehicleYear, setVehicleYear] = useState<number>(new Date().getFullYear());
+  const [vehicleReg, setVehicleReg] = useState<string>('');
   const [vehicleType, setVehicleType] = useState<VehicleType>('SUV');
   const [material, setMaterial] = useState<string>('Genuine Nappa Leather');
   const [color, setColor] = useState<string>('Saddle Brown & Black');
   const [pattern, setPattern] = useState<string>('Diamond Quilted');
-  const [notes, setNotes] = useState<string>('Please reinforce the driver seat lumbar bolster with heavy-duty orthopedic foam.');
+  const [notes, setNotes] = useState<string>('');
   const [referencePhotos, setReferencePhotos] = useState<string[]>([]);
 
   // Date and Time
@@ -67,7 +67,7 @@ export const BookingWizard: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>(tomorrow.toISOString().split('T')[0]);
   const [selectedTime, setSelectedTime] = useState<string>('10:00 AM - 12:00 PM');
   const [locationType, setLocationType] = useState<'workshop' | 'customer_location'>('workshop');
-  const [customerLocationAddress, setCustomerLocationAddress] = useState<string>('Kilimani, Nairobi');
+  const [customerLocationAddress, setCustomerLocationAddress] = useState<string>('');
 
   // Customer Details
   const [customerName, setCustomerName] = useState<string>(currentUser?.name || '');
@@ -247,7 +247,7 @@ export const BookingWizard: React.FC = () => {
             particleCount: 100,
             spread: 80,
             origin: { y: 0.5 },
-            colors: ['#073B32', '#D6A62E', '#2563EB', '#F5F1E8']
+            colors: ['#A85F35', '#342A22', '#D28A50', '#F2EBDD']
           });
         } catch {}
       }
@@ -322,7 +322,7 @@ export const BookingWizard: React.FC = () => {
   };
 
   return (
-    <div id="booking-wizard-page" className="min-h-screen pt-28 pb-20 bg-[#073B32] text-[#F5F1E8] relative">
+    <div id="booking-wizard-page" className="min-h-screen pt-28 pb-20 bg-ink text-cream relative">
       {/* Background Texture */}
       <div className="absolute inset-0 bg-leather-texture opacity-5 pointer-events-none" />
 
@@ -333,24 +333,24 @@ export const BookingWizard: React.FC = () => {
           <button
             id="wizard-back-to-home-btn"
             onClick={() => setView('website')}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#D6A62E] hover:underline mb-2"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-gold hover:underline mb-2"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Back to Rolling Razors Home
           </button>
           
-          <h1 className="text-3xl sm:text-4xl font-black font-display tracking-tight text-[#F5F1E8]">
+          <h1 className="text-3xl sm:text-4xl font-black font-display tracking-tight text-cream">
             {currentStep === 5 ? 'Booking Confirmed!' : 'Book Your Custom Craftsmanship'}
           </h1>
-          <p className="text-xs sm:text-sm text-[#F5F1E8]/75">
+          <p className="text-xs sm:text-sm text-cream">
             Fast, transparent, premium scheduling with Kenyan master upholsterers.
           </p>
         </div>
 
         {!currentUser && (
-          <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-[#D6A62E]/35 bg-[#0B4035]/80 p-4 text-left shadow-lg sm:flex-row sm:items-center sm:justify-between">
+          <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-gold bg-panel p-4 text-left shadow-lg sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-xs font-black uppercase tracking-[.12em] text-[#D6A62E]">Your booking is not submitted yet</p>
-              <p className="mt-1 text-xs leading-5 text-[#F5F1E8]/70">Complete your vehicle details first, then sign in securely before we save the appointment to your account.</p>
+              <p className="text-xs font-black uppercase tracking-[.12em] text-gold">Your booking is not submitted yet</p>
+              <p className="mt-1 text-xs leading-5 text-cream">Complete your vehicle details first, then sign in securely before we save the appointment to your account.</p>
             </div>
             <button type="button" onClick={() => openAuth('customer', 'booking')} className="rr-button-outline h-11 shrink-0 px-4 text-[11px]">
               SIGN IN NOW <ArrowRight className="h-3.5 w-3.5" />
@@ -360,31 +360,31 @@ export const BookingWizard: React.FC = () => {
 
         {/* Progress Bar (Steps 1 to 4) */}
         {currentStep < 5 && (
-          <div className="rr-md-card mb-10 p-4 border-[#D6A62E]/30 shadow-lg">
+          <div className="rr-md-card mb-10 p-4 border-gold shadow-lg">
             <div className="grid grid-cols-4 gap-2 text-center text-xs">
-              <div className={`space-y-1 ${currentStep >= 1 ? 'text-[#D6A62E] font-bold' : 'text-white/40'}`}>
-                <div className={`w-8 h-8 rounded-full mx-auto flex items-center justify-center font-black ${currentStep >= 1 ? 'bg-[#D6A62E] text-[#073B32]' : 'bg-white/10 text-white'}`}>
+              <div className={`space-y-1 ${currentStep >= 1 ? 'text-gold font-bold' : 'text-white/40'}`} aria-current={currentStep === 1 ? 'step' : undefined}>
+                <div className={`w-8 h-8 rounded-full mx-auto flex items-center justify-center font-black ${currentStep >= 1 ? 'bg-gold text-ink' : 'bg-white/10 text-white'}`}>
                   1
                 </div>
                 <span className="hidden sm:block text-[11px]">Choose Service</span>
               </div>
 
-              <div className={`space-y-1 ${currentStep >= 2 ? 'text-[#D6A62E] font-bold' : 'text-white/40'}`}>
-                <div className={`w-8 h-8 rounded-full mx-auto flex items-center justify-center font-black ${currentStep >= 2 ? 'bg-[#D6A62E] text-[#073B32]' : 'bg-white/10 text-white'}`}>
+              <div className={`space-y-1 ${currentStep >= 2 ? 'text-gold font-bold' : 'text-white/40'}`} aria-current={currentStep === 2 ? 'step' : undefined}>
+                <div className={`w-8 h-8 rounded-full mx-auto flex items-center justify-center font-black ${currentStep >= 2 ? 'bg-gold text-ink' : 'bg-white/10 text-white'}`}>
                   2
                 </div>
                 <span className="hidden sm:block text-[11px]">Vehicle & Style</span>
               </div>
 
-              <div className={`space-y-1 ${currentStep >= 3 ? 'text-[#D6A62E] font-bold' : 'text-white/40'}`}>
-                <div className={`w-8 h-8 rounded-full mx-auto flex items-center justify-center font-black ${currentStep >= 3 ? 'bg-[#D6A62E] text-[#073B32]' : 'bg-white/10 text-white'}`}>
+              <div className={`space-y-1 ${currentStep >= 3 ? 'text-gold font-bold' : 'text-white/40'}`} aria-current={currentStep === 3 ? 'step' : undefined}>
+                <div className={`w-8 h-8 rounded-full mx-auto flex items-center justify-center font-black ${currentStep >= 3 ? 'bg-gold text-ink' : 'bg-white/10 text-white'}`}>
                   3
                 </div>
                 <span className="hidden sm:block text-[11px]">Date & Contact</span>
               </div>
 
-              <div className={`space-y-1 ${currentStep >= 4 ? 'text-[#D6A62E] font-bold' : 'text-white/40'}`}>
-                <div className={`w-8 h-8 rounded-full mx-auto flex items-center justify-center font-black ${currentStep >= 4 ? 'bg-[#D6A62E] text-[#073B32]' : 'bg-white/10 text-white'}`}>
+              <div className={`space-y-1 ${currentStep >= 4 ? 'text-gold font-bold' : 'text-white/40'}`} aria-current={currentStep === 4 ? 'step' : undefined}>
+                <div className={`w-8 h-8 rounded-full mx-auto flex items-center justify-center font-black ${currentStep >= 4 ? 'bg-gold text-ink' : 'bg-white/10 text-white'}`}>
                   4
                 </div>
                 <span className="hidden sm:block text-[11px]">Deposit & Pay</span>
@@ -394,17 +394,17 @@ export const BookingWizard: React.FC = () => {
         )}
 
         {/* Wizard Main Card Container */}
-        <div className="rr-md-card border-2 border-[#D6A62E]/30 p-6 sm:p-8 shadow-2xl">
+        <div className="rr-md-card border-2 border-gold p-6 sm:p-8 shadow-2xl">
           
           {/* ================= STEP 1: SELECT SERVICE ================= */}
           {currentStep === 1 && (
             <div className="space-y-6 animate-in fade-in">
               <div className="border-b border-white/10 pb-4">
-                <h3 className="text-xl font-bold text-[#F5F1E8] font-display">Select Your Service</h3>
+                <h3 className="text-xl font-bold text-cream font-display">Select Your Service</h3>
                 <p className="text-xs text-white/70">Pick the specialization that matches your vehicle or custom canvas project.</p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[520px] overflow-y-auto pr-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {services.map(srv => {
                   const isSelected = selectedServiceId === srv.id;
                   return (
@@ -414,8 +414,8 @@ export const BookingWizard: React.FC = () => {
                       onClick={() => setSelectedServiceId(srv.id)}
                       className={`p-4 rounded-2xl border transition-all cursor-pointer flex gap-3.5 ${
                         isSelected
-                          ? 'bg-[#073B32] border-[#D6A62E] ring-2 ring-[#D6A62E] shadow-xl'
-                          : 'bg-[#073B32]/60 border-white/10 hover:border-[#D6A62E]/50'
+                          ? 'bg-ink border-gold ring-2 ring-gold shadow-xl'
+                          : 'bg-ink border-white/10 hover:border-gold'
                       }`}
                     >
                       <img
@@ -426,15 +426,15 @@ export const BookingWizard: React.FC = () => {
                       <div className="flex-1 flex flex-col justify-between">
                         <div>
                           <div className="flex items-center justify-between">
-                            <h4 className="font-bold text-sm text-[#F5F1E8]">{srv.name}</h4>
-                            {isSelected && <CheckCircle2 className="w-4 h-4 text-[#D6A62E]" />}
+                            <h4 className="font-bold text-sm text-cream">{srv.name}</h4>
+                            {isSelected && <CheckCircle2 className="w-4 h-4 text-gold" />}
                           </div>
                           <p className="text-[11px] text-white/70 line-clamp-2 mt-1 leading-snug">
                             {srv.shortDesc}
                           </p>
                         </div>
                         <div className="flex items-center justify-between pt-2 text-xs">
-                          <span className="text-[#D6A62E] font-bold">KES {srv.startingPrice.toLocaleString()}</span>
+                          <span className="text-gold font-bold">KES {srv.startingPrice.toLocaleString()}</span>
                           <span className="text-[10px] text-white/50">{srv.estimatedDuration}</span>
                         </div>
                       </div>
@@ -447,7 +447,7 @@ export const BookingWizard: React.FC = () => {
                 <button
                   id="wizard-step-1-next-btn"
                   onClick={handleNext}
-                  className="py-3 px-6 rounded-xl bg-[#D6A62E] hover:bg-[#c39626] text-[#073B32] font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg cursor-pointer"
+                  className="py-3 px-6 rounded-xl bg-gold hover:bg-gold-hover text-ink font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg cursor-pointer"
                 >
                   <span>Continue to Vehicle Details</span>
                   <ArrowRight className="w-4 h-4" />
@@ -460,15 +460,15 @@ export const BookingWizard: React.FC = () => {
           {currentStep === 2 && (
             <div className="space-y-6 animate-in fade-in">
               <div className="border-b border-white/10 pb-4">
-                <h3 className="text-xl font-bold text-[#F5F1E8] font-display">Vehicle & Customization Specs</h3>
+                <h3 className="text-xl font-bold text-cream font-display">Vehicle & Customization Specs</h3>
                 <p className="text-xs text-white/70">Tell us what you drive and how you want your upholstery styled.</p>
               </div>
 
               {/* Saved Vehicles Quick-Fill for Returning Customers */}
               {currentUser && vehicles && vehicles.filter(v => v.customerId === currentUser.id).length > 0 && (
-                <div className="p-3.5 rounded-xl bg-[#073B32]/80 border border-[#D6A62E]/30 space-y-2">
+                <div className="p-3.5 rounded-xl bg-ink border border-gold space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#D6A62E] flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-gold flex items-center gap-1.5">
                       <Car className="w-3.5 h-3.5" /> Your Registered Vehicles
                     </span>
                     <span className="text-[10px] text-white/60">Click to autofill</span>
@@ -488,8 +488,8 @@ export const BookingWizard: React.FC = () => {
                         }}
                         className={`px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-all ${
                           vehicleReg === v.registrationNo
-                            ? 'bg-[#D6A62E] text-[#073B32] border-[#D6A62E] font-bold shadow-sm'
-                            : 'bg-black/30 hover:bg-[#D6A62E]/20 border-white/10 hover:border-[#D6A62E] text-white'
+                            ? 'bg-gold text-ink border-gold font-bold shadow-sm'
+                            : 'bg-black/30 hover:bg-gold-hover border-white/10 hover:border-gold text-white'
                         }`}
                       >
                         <span className="font-bold">{v.registrationNo}</span>
@@ -502,7 +502,7 @@ export const BookingWizard: React.FC = () => {
 
               {/* Vehicle Type Selection */}
               <div>
-                <label className="block text-xs font-bold text-[#D6A62E] uppercase mb-1.5">Vehicle Category</label>
+                <label className="block text-xs font-bold text-gold uppercase mb-1.5">Vehicle Category</label>
                 <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                   {vehicleTypes.map(vt => (
                     <button
@@ -511,8 +511,8 @@ export const BookingWizard: React.FC = () => {
                       onClick={() => setVehicleType(vt)}
                       className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all ${
                         vehicleType === vt
-                          ? 'bg-[#D6A62E] text-[#073B32] border-[#D6A62E]'
-                          : 'bg-[#073B32] text-white/80 border-white/10 hover:border-white/30'
+                          ? 'bg-gold text-ink border-gold'
+                          : 'bg-ink text-white/80 border-white/10 hover:border-white/30'
                       }`}
                     >
                       {vt}
@@ -524,47 +524,47 @@ export const BookingWizard: React.FC = () => {
               {/* Make, Model, Year, Plate */}
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-[#D6A62E] uppercase mb-1.5">Vehicle Make</label>
+                  <label className="block text-xs font-bold text-gold uppercase mb-1.5">Vehicle Make</label>
                   <input
                     id="wizard-vehicle-make"
                     type="text"
                     value={vehicleMake}
                     onChange={(e) => setVehicleMake(e.target.value)}
                     placeholder="e.g. Toyota, Nissan"
-                    className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-[#F5F1E8] text-xs font-semibold focus:outline-none focus:border-[#D6A62E]"
+                    className="w-full py-2.5 px-3.5 rounded-xl bg-ink border border-gold text-cream text-xs font-semibold focus:outline-none focus:border-goldfocus:"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-[#D6A62E] uppercase mb-1.5">Vehicle Model</label>
+                  <label className="block text-xs font-bold text-gold uppercase mb-1.5">Vehicle Model</label>
                   <input
                     id="wizard-vehicle-model"
                     type="text"
                     value={vehicleModel}
                     onChange={(e) => setVehicleModel(e.target.value)}
                     placeholder="e.g. Prado TX, Axio"
-                    className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-[#F5F1E8] text-xs font-semibold focus:outline-none focus:border-[#D6A62E]"
+                    className="w-full py-2.5 px-3.5 rounded-xl bg-ink border border-gold text-cream text-xs font-semibold focus:outline-none focus:border-goldfocus:"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-[#D6A62E] uppercase mb-1.5">Model Year</label>
+                  <label className="block text-xs font-bold text-gold uppercase mb-1.5">Model Year</label>
                   <input
                     id="wizard-vehicle-year"
                     type="number"
                     value={vehicleYear}
                     onChange={(e) => setVehicleYear(Number(e.target.value))}
                     placeholder="e.g. 2021"
-                    className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-[#F5F1E8] text-xs font-semibold focus:outline-none focus:border-[#D6A62E]"
+                    className="w-full py-2.5 px-3.5 rounded-xl bg-ink border border-gold text-cream text-xs font-semibold focus:outline-none focus:border-goldfocus:"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-[#D6A62E] uppercase mb-1.5">Kenyan Number Plate</label>
+                  <label className="block text-xs font-bold text-gold uppercase mb-1.5">Kenyan Number Plate</label>
                   <input
                     id="wizard-vehicle-reg"
                     type="text"
                     value={vehicleReg}
                     onChange={(e) => setVehicleReg(e.target.value.toUpperCase())}
                     placeholder="e.g. KDF 782G"
-                    className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-[#F5F1E8] text-xs font-mono font-bold focus:outline-none focus:border-[#D6A62E]"
+                    className="w-full py-2.5 px-3.5 rounded-xl bg-ink border border-gold text-cream text-xs font-mono font-bold focus:outline-none focus:border-goldfocus:"
                   />
                 </div>
               </div>
@@ -572,43 +572,43 @@ export const BookingWizard: React.FC = () => {
               {/* Material, Color & Stitch Pattern */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
                 <div>
-                  <label className="block text-xs font-bold text-[#D6A62E] uppercase mb-1.5">Material Choice</label>
+                  <label className="block text-xs font-bold text-gold uppercase mb-1.5">Material Choice</label>
                   <select
                     id="wizard-material-select"
                     value={material}
                     onChange={(e) => setMaterial(e.target.value)}
-                    className="w-full py-2.5 px-3 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-[#F5F1E8] text-xs font-semibold focus:outline-none"
+                    className="w-full py-2.5 px-3 rounded-xl bg-ink border border-gold text-cream text-xs font-semibold focus:outline-none"
                   >
                     {materials.map(m => (
-                      <option key={m} value={m} className="bg-[#073B32] text-white">{m}</option>
+                      <option key={m} value={m} className="bg-ink text-white">{m}</option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#D6A62E] uppercase mb-1.5">Color Preference</label>
+                  <label className="block text-xs font-bold text-gold uppercase mb-1.5">Color Preference</label>
                   <select
                     id="wizard-color-select"
                     value={color}
                     onChange={(e) => setColor(e.target.value)}
-                    className="w-full py-2.5 px-3 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-[#F5F1E8] text-xs font-semibold focus:outline-none"
+                    className="w-full py-2.5 px-3 rounded-xl bg-ink border border-gold text-cream text-xs font-semibold focus:outline-none"
                   >
                     {colors.map(c => (
-                      <option key={c} value={c} className="bg-[#073B32] text-white">{c}</option>
+                      <option key={c} value={c} className="bg-ink text-white">{c}</option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#D6A62E] uppercase mb-1.5">Stitch Pattern</label>
+                  <label className="block text-xs font-bold text-gold uppercase mb-1.5">Stitch Pattern</label>
                   <select
                     id="wizard-pattern-select"
                     value={pattern}
                     onChange={(e) => setPattern(e.target.value)}
-                    className="w-full py-2.5 px-3 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-[#F5F1E8] text-xs font-semibold focus:outline-none"
+                    className="w-full py-2.5 px-3 rounded-xl bg-ink border border-gold text-cream text-xs font-semibold focus:outline-none"
                   >
                     {patterns.map(p => (
-                      <option key={p} value={p} className="bg-[#073B32] text-white">{p}</option>
+                      <option key={p} value={p} className="bg-ink text-white">{p}</option>
                     ))}
                   </select>
                 </div>
@@ -616,14 +616,14 @@ export const BookingWizard: React.FC = () => {
 
               {/* Special Instructions */}
               <div>
-                <label className="block text-xs font-bold text-[#D6A62E] uppercase mb-1.5">Special Instructions / Custom Notes</label>
+                <label className="block text-xs font-bold text-gold uppercase mb-1.5">Special Instructions / Custom Notes</label>
                 <textarea
                   id="wizard-notes"
                   rows={2}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="e.g. Please bolster driver thigh support, repair sagging roof headliner, match door cards."
-                  className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-[#F5F1E8] text-xs focus:outline-none focus:border-[#D6A62E]"
+                  className="w-full py-2.5 px-3.5 rounded-xl bg-ink border border-gold text-cream text-xs focus:outline-none focus:border-goldfocus:"
                 />
               </div>
 
@@ -650,7 +650,7 @@ export const BookingWizard: React.FC = () => {
                 <button
                   id="wizard-step-2-next-btn"
                   onClick={handleNext}
-                  className="py-3 px-6 rounded-xl bg-[#D6A62E] hover:bg-[#c39626] text-[#073B32] font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg cursor-pointer"
+                  className="py-3 px-6 rounded-xl bg-gold hover:bg-gold-hover text-ink font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg cursor-pointer"
                 >
                   <span>Select Date & Time</span>
                   <ArrowRight className="w-4 h-4" />
@@ -663,21 +663,21 @@ export const BookingWizard: React.FC = () => {
           {currentStep === 3 && (
             <div className="space-y-6 animate-in fade-in">
               <div className="border-b border-white/10 pb-4">
-                <h3 className="text-xl font-bold text-[#F5F1E8] font-display">Schedule & Contact Information</h3>
+                <h3 className="text-xl font-bold text-cream font-display">Schedule & Contact Information</h3>
                 <p className="text-xs text-white/70">Choose your appointment slot and enter contact details. Status updates are available in the Driver Portal and by email.</p>
               </div>
 
               {/* Location Preference */}
               <div>
-                <label className="block text-xs font-bold text-[#D6A62E] uppercase mb-1.5">Service Location</label>
+                <label className="block text-xs font-bold text-gold uppercase mb-1.5">Service Location</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => setLocationType('workshop')}
                     className={`p-3.5 rounded-xl text-left border transition-all ${
                       locationType === 'workshop'
-                        ? 'bg-[#073B32] border-[#D6A62E] text-white ring-1 ring-[#D6A62E]'
-                        : 'bg-[#073B32]/50 border-white/10 text-white/70'
+                        ? 'bg-ink border-gold text-white ring-1 ring-gold'
+                        : 'bg-ink border-white/10 text-white/70'
                     }`}
                   >
                     <div className="font-bold text-xs">Rolling Razors Workshop</div>
@@ -689,8 +689,8 @@ export const BookingWizard: React.FC = () => {
                     onClick={() => setLocationType('customer_location')}
                     className={`p-3.5 rounded-xl text-left border transition-all ${
                       locationType === 'customer_location'
-                        ? 'bg-[#073B32] border-[#D6A62E] text-white ring-1 ring-[#D6A62E]'
-                        : 'bg-[#073B32]/50 border-white/10 text-white/70'
+                        ? 'bg-ink border-gold text-white ring-1 ring-gold'
+                        : 'bg-ink border-white/10 text-white/70'
                     }`}
                   >
                     <div className="font-bold text-xs">Mobile Customer Location</div>
@@ -705,7 +705,7 @@ export const BookingWizard: React.FC = () => {
                       value={customerLocationAddress}
                       onChange={(e) => setCustomerLocationAddress(e.target.value)}
                       placeholder="Enter your exact estate/location in Nairobi (e.g. Westlands, Kilimani, Karen)"
-                      className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-[#F5F1E8] text-xs"
+                      className="w-full py-2.5 px-3.5 rounded-xl bg-ink border border-gold text-cream text-xs"
                     />
                   </div>
                 )}
@@ -714,7 +714,7 @@ export const BookingWizard: React.FC = () => {
               {/* Date & Time Slot Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-[#D6A62E] uppercase mb-1.5 flex items-center gap-1">
+                  <label className="block text-xs font-bold text-gold uppercase mb-1.5 flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5" /> Appointment Date
                   </label>
                   <input
@@ -723,22 +723,22 @@ export const BookingWizard: React.FC = () => {
                     min={new Date().toISOString().split('T')[0]}
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-[#F5F1E8] text-xs font-semibold focus:outline-none"
+                    className="w-full py-2.5 px-3.5 rounded-xl bg-ink border border-gold text-cream text-xs font-semibold focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#D6A62E] uppercase mb-1.5 flex items-center gap-1">
+                  <label className="block text-xs font-bold text-gold uppercase mb-1.5 flex items-center gap-1">
                     <Clock className="w-3.5 h-3.5" /> Time Slot
                   </label>
                   <select
                     id="wizard-time-select"
                     value={selectedTime}
                     onChange={(e) => setSelectedTime(e.target.value)}
-                    className="w-full py-2.5 px-3.5 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-[#F5F1E8] text-xs font-semibold focus:outline-none"
+                    className="w-full py-2.5 px-3.5 rounded-xl bg-ink border border-gold text-cream text-xs font-semibold focus:outline-none"
                   >
                     {timeSlots.map(t => (
-                      <option key={t} value={t} className="bg-[#073B32] text-white">{t}</option>
+                      <option key={t} value={t} className="bg-ink text-white">{t}</option>
                     ))}
                   </select>
                 </div>
@@ -746,7 +746,7 @@ export const BookingWizard: React.FC = () => {
 
               {/* Contact Information */}
               <div className="space-y-3 pt-2">
-                <label className="block text-xs font-bold text-[#D6A62E] uppercase">Your Contact Information</label>
+                <label className="block text-xs font-bold text-gold uppercase">Your Contact Information</label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-[11px] text-white/70 mb-1">Full Name</label>
@@ -756,7 +756,7 @@ export const BookingWizard: React.FC = () => {
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
                       placeholder="e.g. Brian Mwangi"
-                      className="w-full py-2.5 px-3 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-[#F5F1E8] text-xs font-semibold"
+                      className="w-full py-2.5 px-3 rounded-xl bg-ink border border-gold text-cream text-xs font-semibold"
                     />
                   </div>
 
@@ -768,7 +768,7 @@ export const BookingWizard: React.FC = () => {
                       value={customerPhone}
                       onChange={(e) => setCustomerPhone(e.target.value)}
                       placeholder="0712 345 678"
-                      className="w-full py-2.5 px-3 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-[#F5F1E8] text-xs font-semibold"
+                      className="w-full py-2.5 px-3 rounded-xl bg-ink border border-gold text-cream text-xs font-semibold"
                     />
                   </div>
 
@@ -780,7 +780,7 @@ export const BookingWizard: React.FC = () => {
                       value={customerEmail}
                       onChange={(e) => setCustomerEmail(e.target.value)}
                       placeholder="brian@gmail.com"
-                      className="w-full py-2.5 px-3 rounded-xl bg-[#073B32] border border-[#D6A62E]/40 text-[#F5F1E8] text-xs"
+                      className="w-full py-2.5 px-3 rounded-xl bg-ink border border-gold text-cream text-xs"
                     />
                   </div>
                 </div>
@@ -797,7 +797,7 @@ export const BookingWizard: React.FC = () => {
                 <button
                   id="wizard-step-3-next-btn"
                   onClick={handleNext}
-                  className="py-3 px-6 rounded-xl bg-[#D6A62E] hover:bg-[#c39626] text-[#073B32] font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg cursor-pointer"
+                  className="py-3 px-6 rounded-xl bg-gold hover:bg-gold-hover text-ink font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg cursor-pointer"
                 >
                   <span>Review & Pay Deposit</span>
                   <ArrowRight className="w-4 h-4" />
@@ -810,7 +810,7 @@ export const BookingWizard: React.FC = () => {
           {currentStep === 4 && (
             <div className="space-y-6 animate-in fade-in">
               <div className="border-b border-white/10 pb-4">
-                <h3 className="text-xl font-bold text-[#F5F1E8] font-display">Booking Summary & Deposit</h3>
+                <h3 className="text-xl font-bold text-cream font-display">Booking Summary & Deposit</h3>
                 <p className="text-xs text-white/70">Review your customized vehicle work order and authorize deposit via M-Pesa.</p>
               </div>
 
@@ -818,8 +818,8 @@ export const BookingWizard: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
                 {/* Left: Job Specs */}
-                <div className="bg-[#073B32] p-5 rounded-2xl border border-white/10 space-y-3">
-                  <h4 className="font-bold text-xs text-[#D6A62E] uppercase tracking-wider flex items-center gap-1.5">
+                <div className="bg-ink p-5 rounded-2xl border border-white/10 space-y-3">
+                  <h4 className="font-bold text-xs text-gold uppercase tracking-wider flex items-center gap-1.5">
                     <Car className="w-3.5 h-3.5" /> Vehicle & Service Details
                   </h4>
                   
@@ -834,7 +834,7 @@ export const BookingWizard: React.FC = () => {
                     </div>
                     <div className="flex justify-between pt-2">
                       <span className="text-white/60">Number Plate:</span>
-                      <span className="font-mono font-bold text-[#D6A62E]">{vehicleReg}</span>
+                      <span className="font-mono font-bold text-gold">{vehicleReg}</span>
                     </div>
                     <div className="flex justify-between pt-2">
                       <span className="text-white/60">Material:</span>
@@ -856,9 +856,9 @@ export const BookingWizard: React.FC = () => {
                 </div>
 
                 {/* Right: Kenyan Financial Quotation & Deposit */}
-                <div className="bg-[#052822] p-5 rounded-2xl border border-[#D6A62E]/40 space-y-4 flex flex-col justify-between">
+                <div className="bg-ink-deep p-5 rounded-2xl border border-gold space-y-4 flex flex-col justify-between">
                   <div>
-                    <h4 className="font-bold text-xs text-[#D6A62E] uppercase tracking-wider flex items-center gap-1.5 mb-3">
+                    <h4 className="font-bold text-xs text-gold uppercase tracking-wider flex items-center gap-1.5 mb-3">
                       <FileText className="w-3.5 h-3.5" /> Price Breakdown (KES)
                     </h4>
 
@@ -869,9 +869,9 @@ export const BookingWizard: React.FC = () => {
                       </div>
                       <div className="flex justify-between text-white/80">
                         <span>Workshop Booking Fee</span>
-                        <span className="text-[#25D366] font-semibold">FREE (Included)</span>
+                        <span className="text-whatsapp font-semibold">FREE (Included)</span>
                       </div>
-                      <div className="flex justify-between text-base font-black text-[#D6A62E] border-t border-b border-white/10 py-2.5">
+                      <div className="flex justify-between text-base font-black text-gold border-t border-b border-white/10 py-2.5">
                         <span>Deposit Required (35%)</span>
                         <span>KES {depositAmount.toLocaleString()}</span>
                       </div>
@@ -883,8 +883,8 @@ export const BookingWizard: React.FC = () => {
                   </div>
 
                   {/* Paystack Checkout Notice */}
-                  <div className="p-3 bg-[#073B32] rounded-xl border border-white/5 text-[11px] text-white/70 space-y-1">
-                    <div className="flex items-center gap-1.5 text-[#2563EB] font-bold">
+                  <div className="p-3 bg-ink rounded-xl border border-white/5 text-[11px] text-white/70 space-y-1">
+                    <div className="flex items-center gap-1.5 text-paystack font-bold">
                       <CreditCard className="w-3.5 h-3.5" /> Instant Paystack Secure Checkout
                     </div>
                     <p>Card • Bank Transfer • M-Pesa • Automatic payment confirmation</p>
@@ -894,15 +894,15 @@ export const BookingWizard: React.FC = () => {
               </div>
 
               {/* Action Buttons */}
-              <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-[#073B32]/70 p-4 text-xs text-white/75">
+              <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-ink p-4 text-xs text-white/75">
                 <input
                   type="checkbox"
                   checked={policyConsent}
                   onChange={(event) => setPolicyConsent(event.target.checked)}
-                  className="mt-0.5 h-4 w-4 accent-[#D6A62E]"
+                  className="mt-0.5 h-4 w-4 accent-gold"
                 />
                 <span>
-                  I agree to the <button type="button" onClick={() => openLegalModal('terms')} className="font-bold text-[#D6A62E] underline">Terms of Service</button> and acknowledge the <button type="button" onClick={() => openLegalModal('privacy')} className="font-bold text-[#D6A62E] underline">Privacy Policy</button>. My details will be used to schedule and manage this booking.
+                  I agree to the <button type="button" onClick={() => openLegalModal('terms')} className="font-bold text-gold underline">Terms of Service</button> and acknowledge the <button type="button" onClick={() => openLegalModal('privacy')} className="font-bold text-gold underline">Privacy Policy</button>. My details will be used to schedule and manage this booking.
                 </span>
               </label>
               <div className="pt-4 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -927,7 +927,7 @@ export const BookingWizard: React.FC = () => {
                     id="wizard-pay-deposit-btn"
                     type="button"
                     onClick={handleCompleteBookingWithMpesa}
-                    className="py-3.5 px-6 rounded-xl bg-[#D6A62E] hover:bg-[#c39626] text-[#073B32] font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl cursor-pointer"
+                    className="py-3.5 px-6 rounded-xl bg-gold hover:bg-gold-hover text-ink font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl cursor-pointer"
                   >
                     <CreditCard className="w-4 h-4" />
                     <span>Pay Deposit Now (KES {depositAmount.toLocaleString()})</span>
@@ -946,7 +946,7 @@ export const BookingWizard: React.FC = () => {
               </div>
 
               <div className="space-y-2 max-w-md mx-auto">
-                <span className="text-xs font-bold text-[#D6A62E] uppercase tracking-widest">
+                <span className="text-xs font-bold text-gold uppercase tracking-widest">
                   APPOINTMENT CONFIRMED
                 </span>
                 <h3 className="text-3xl font-black text-white font-display">
@@ -958,11 +958,11 @@ export const BookingWizard: React.FC = () => {
               </div>
 
               {/* Confirmation Card */}
-              <div className="max-w-md mx-auto bg-[#073B32] border-2 border-[#D6A62E]/40 rounded-2xl p-6 text-left space-y-3 shadow-xl">
+              <div className="max-w-md mx-auto bg-ink border-2 border-gold rounded-2xl p-6 text-left space-y-3 shadow-xl">
                 <div className="flex items-center justify-between border-b border-white/10 pb-3">
                   <div>
                     <span className="text-[10px] text-white/50 uppercase">Booking Reference</span>
-                    <h4 className="font-mono font-black text-lg text-[#D6A62E]">{confirmedBookingId}</h4>
+                    <h4 className="font-mono font-black text-lg text-gold">{confirmedBookingId}</h4>
                   </div>
                   <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/40">
                     Confirmed
@@ -980,7 +980,7 @@ export const BookingWizard: React.FC = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-white/50">Scheduled:</span>
-                    <span className="font-bold text-[#D6A62E]">{selectedDate} @ {selectedTime}</span>
+                    <span className="font-bold text-gold">{selectedDate} @ {selectedTime}</span>
                   </div>
                 </div>
               </div>
@@ -990,7 +990,7 @@ export const BookingWizard: React.FC = () => {
                 <button
                   id="wizard-share-whatsapp-btn"
                   onClick={handleShareWhatsApp}
-                  className="w-full sm:w-auto py-3 px-5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg"
+                  className="w-full sm:w-auto py-3 px-5 rounded-xl bg-whatsapp hover:bg-whatsapp-darkhover: text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg"
                 >
                   <MessageCircle className="w-4 h-4" /> Share on WhatsApp
                 </button>
@@ -1001,7 +1001,7 @@ export const BookingWizard: React.FC = () => {
                     setCustomerTab('bookings');
                     setView('customer_dashboard');
                   }}
-                  className="w-full sm:w-auto py-3 px-5 rounded-xl bg-[#D6A62E] hover:bg-[#c39626] text-[#073B32] font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg"
+                  className="w-full sm:w-auto py-3 px-5 rounded-xl bg-gold hover:bg-gold-hover text-ink font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg"
                 >
                   <Car className="w-4 h-4" /> View in Driver Portal
                 </button>

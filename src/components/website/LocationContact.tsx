@@ -22,18 +22,18 @@ export const LocationContact: React.FC = () => {
   };
 
   return (
-    <section id="contact-location-section" className="py-20 lg:py-28 bg-[#0B4035] text-[#F5F1E8] relative">
+    <section id="contact-location-section" className="py-20 lg:py-28 bg-panel text-cream relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
-          <span className="text-xs font-bold text-[#D6A62E] uppercase tracking-widest bg-[#073B32] px-3.5 py-1.5 rounded-full border border-[#D6A62E]/30">
+          <span className="text-xs font-bold text-gold uppercase tracking-widest bg-ink px-3.5 py-1.5 rounded-full border border-gold">
             VISIT OUR WORKSHOP
           </span>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black font-display tracking-tight text-[#F5F1E8]">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black font-display tracking-tight text-cream">
             Find Us in {BUSINESS_CONFIG.location.city}, {BUSINESS_CONFIG.location.country}
           </h2>
-          <p className="text-sm sm:text-base text-[#F5F1E8]/75">
+          <p className="text-sm sm:text-base text-cream">
             Drive in for a physical material inspection, leather swatch feeling, or sit-down ergonomics consultation.
           </p>
         </div>
@@ -45,14 +45,14 @@ export const LocationContact: React.FC = () => {
           <div className="lg:col-span-5 space-y-5 flex flex-col justify-between">
             
             {/* Workshop Address Card */}
-            <div className="p-6 rounded-2xl bg-[#073B32] border border-[#D6A62E]/30 shadow-xl space-y-3">
+            <div className="p-6 rounded-2xl bg-ink border border-gold shadow-xl space-y-3">
               <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-[#0B4035] text-[#D6A62E] border border-[#D6A62E]/30">
+                <div className="p-3 rounded-xl bg-panel text-gold border border-gold">
                   <MapPin className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg text-[#F5F1E8] font-display">{BUSINESS_CONFIG.name} Workshop</h3>
-                  <p className="text-xs text-[#D6A62E]">{BUSINESS_CONFIG.shortTagline}</p>
+                  <h3 className="font-bold text-lg text-cream font-display">{BUSINESS_CONFIG.name} Workshop</h3>
+                  <p className="text-xs text-gold">{BUSINESS_CONFIG.shortTagline}</p>
                 </div>
               </div>
               <p className="text-sm text-white/80 leading-relaxed">
@@ -61,13 +61,13 @@ export const LocationContact: React.FC = () => {
             </div>
 
             {/* Operating Hours Card */}
-            <div className="p-6 rounded-2xl bg-[#073B32] border border-[#D6A62E]/30 shadow-xl space-y-3">
+            <div className="p-6 rounded-2xl bg-ink border border-gold shadow-xl space-y-3">
               <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-[#0B4035] text-[#D6A62E] border border-[#D6A62E]/30">
+                <div className="p-3 rounded-xl bg-panel text-gold border border-gold">
                   <Clock className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base text-[#F5F1E8] font-display">Opening Hours</h3>
+                  <h3 className="font-bold text-base text-cream font-display">Opening Hours</h3>
                   <p className="text-xs text-white/60">Workshop & Customer Fitting</p>
                 </div>
               </div>
@@ -75,11 +75,11 @@ export const LocationContact: React.FC = () => {
               <div className="space-y-2 text-xs divide-y divide-white/10">
                 <div className="flex justify-between pt-1">
                   <span className="text-white/80">Monday – Friday</span>
-                  <span className="font-bold text-[#D6A62E]">{BUSINESS_CONFIG.hours.weekdays}</span>
+                  <span className="font-bold text-gold">{BUSINESS_CONFIG.hours.weekdays}</span>
                 </div>
                 <div className="flex justify-between pt-2">
                   <span className="text-white/80">Saturday</span>
-                  <span className="font-bold text-[#D6A62E]">{BUSINESS_CONFIG.hours.saturday}</span>
+                  <span className="font-bold text-gold">{BUSINESS_CONFIG.hours.saturday}</span>
                 </div>
                 <div className="flex justify-between pt-2">
                   <span className="text-white/80">Sunday</span>
@@ -93,16 +93,16 @@ export const LocationContact: React.FC = () => {
               <a
                 href={BUSINESS_CONFIG.phone.telLink}
                 id="contact-call-btn"
-                className="py-3.5 px-4 rounded-xl bg-[#073B32] hover:bg-[#0e4e41] border border-[#D6A62E]/50 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md"
+                className="py-3.5 px-4 rounded-xl bg-ink hover:bg-panel border border-gold text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md"
               >
-                <Phone className="w-4 h-4 text-[#D6A62E]" />
+                <Phone className="w-4 h-4 text-gold" />
                 <span>Call {BUSINESS_CONFIG.phone.formatted}</span>
               </a>
 
               <button
                 id="contact-whatsapp-btn"
                 onClick={handleWhatsApp}
-                className="py-3.5 px-4 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer"
+                className="py-3.5 px-4 rounded-xl bg-whatsapp hover:bg-whatsapp-darkhover: text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer"
               >
                 <MessageCircle className="w-4 h-4" />
                 <span>Chat on WhatsApp</span>
@@ -112,8 +112,8 @@ export const LocationContact: React.FC = () => {
           </div>
 
           {/* Right Column: Real Google Maps Embed — exact to shop */}
-          <div className="lg:col-span-7 bg-[#073B32] border border-[#D6A62E]/40 rounded-2xl overflow-hidden shadow-2xl flex flex-col justify-between">
-            <div className="relative h-80 sm:h-96 w-full bg-[#052822] overflow-hidden">
+          <div className="lg:col-span-7 bg-ink border border-gold rounded-2xl overflow-hidden shadow-2xl flex flex-col justify-between">
+            <div className="relative h-80 sm:h-96 w-full bg-ink-deep overflow-hidden">
               <iframe
                 title={`${BUSINESS_CONFIG.name} — ${BUSINESS_CONFIG.location.fullAddress}`}
                 src={BUSINESS_CONFIG.location.mapsEmbedUrl || `https://www.google.com/maps?q=${BUSINESS_CONFIG.location.coordinates.lat},${BUSINESS_CONFIG.location.coordinates.lng}&z=16&hl=en&output=embed`}
@@ -124,16 +124,16 @@ export const LocationContact: React.FC = () => {
                 referrerPolicy="no-referrer-when-downgrade"
                 allowFullScreen
               />
-              <div className="absolute top-4 left-4 bg-[#073B32]/90 border border-white/10 backdrop-blur-md px-3 py-1.5 rounded-lg text-[11px] text-white/90 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-[#D6A62E]" /> {BUSINESS_CONFIG.location.city} Workshop • {BUSINESS_CONFIG.location.coordinates.lat.toFixed(4)}, {BUSINESS_CONFIG.location.coordinates.lng.toFixed(4)}
+              <div className="absolute top-4 left-4 bg-ink border border-white/10 backdrop-blur-md px-3 py-1.5 rounded-lg text-[11px] text-white/90 flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-gold" /> {BUSINESS_CONFIG.location.city} Workshop • {BUSINESS_CONFIG.location.coordinates.lat.toFixed(4)}, {BUSINESS_CONFIG.location.coordinates.lng.toFixed(4)}
               </div>
-              <button onClick={handleDirections} className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-[#D6A62E] text-[#073B32] border-2 border-white px-4 py-1.5 rounded-full text-xs font-black shadow-xl flex items-center gap-1.5 hover:bg-[#c39626] transition-colors">
+              <button onClick={handleDirections} className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-gold text-ink border-2 border-white px-4 py-1.5 rounded-full text-xs font-black shadow-xl flex items-center gap-1.5 hover:bg-gold-hoverhover: transition-colors">
                 <MapPin className="w-3.5 h-3.5" /> Open in Google Maps
               </button>
             </div>
 
             {/* Map Action Bottom Strip */}
-            <div className="p-5 bg-[#052822] border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="p-5 bg-ink-deep border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="text-xs text-white/70 text-center sm:text-left">
                 <span className="font-semibold text-white block">Drive-in consultations welcome!</span>
                 Ample secure parking with dedicated vehicle inspection bay.
@@ -143,7 +143,7 @@ export const LocationContact: React.FC = () => {
                 <button
                   id="get-directions-btn"
                   onClick={handleDirections}
-                  className="flex-1 sm:flex-initial py-2.5 px-5 rounded-xl bg-[#D6A62E] hover:bg-[#c39626] text-[#073B32] font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                  className="flex-1 sm:flex-initial py-2.5 px-5 rounded-xl bg-gold hover:bg-gold-hoverhover: text-ink font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer"
                 >
                   <Navigation className="w-3.5 h-3.5" />
                   <span>Get Directions</span>

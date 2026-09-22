@@ -14,28 +14,28 @@ export const ToastContainer: React.FC = () => {
     >
       {toasts.map(toast => {
         const icons = {
-          success: <CheckCircle2 className="w-5 h-5 text-[#25D366] shrink-0" />,
-          info: <Info className="w-5 h-5 text-[#D6A62E] shrink-0" />,
+          success: <CheckCircle2 className="w-5 h-5 text-whatsapp shrink-0" />,
+          info: <Info className="w-5 h-5 text-gold shrink-0" />,
           warning: <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />,
           error: <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
         }[toast.type];
 
         const borders = {
-          success: 'border-emerald-500/40 bg-[#073B32]',
-          info: 'border-[#D6A62E]/40 bg-[#073B32]',
-          warning: 'border-amber-500/40 bg-[#073B32]',
-          error: 'border-rose-500/40 bg-[#073B32]'
+          success: 'border-emerald-500/40 bg-ink',
+          info: 'border-gold bg-ink',
+          warning: 'border-amber-500/40 bg-ink',
+          error: 'border-rose-500/40 bg-ink'
         }[toast.type];
 
         return (
           <div
             key={toast.id}
-            className={`pointer-events-auto p-4 rounded-2xl border ${borders} shadow-2xl text-[#F5F1E8] flex items-start gap-3 animate-in slide-in-from-right-5 fade-in duration-300 backdrop-blur-md`}
+            className={`pointer-events-auto p-4 rounded-2xl border ${borders} shadow-2xl text-cream flex items-start gap-3 animate-in slide-in-from-right-5 fade-in duration-300 backdrop-blur-md`}
           >
             {icons}
             <div className="flex-1 min-w-0">
-              <h5 className="font-bold text-xs text-[#F5F1E8] leading-tight">{toast.title}</h5>
-              <p className="text-xs text-[#F5F1E8]/80 mt-0.5 leading-snug">{toast.message}</p>
+              <h5 className="font-bold text-xs text-cream leading-tight">{toast.title}</h5>
+              <p className="text-xs text-cream mt-0.5 leading-snug">{toast.message}</p>
             </div>
             <button
               onClick={() => removeToast(toast.id)}

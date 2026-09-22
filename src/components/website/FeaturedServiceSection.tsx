@@ -31,7 +31,7 @@ export const FeaturedServiceSection: React.FC = () => {
     { name: 'Cognac Tan & Jet Black', hex: '#C2844B', secondaryHex: '#171717', border: 'border-[#C2844B]' },
     { name: 'All Jet Black with Red Stitch', hex: '#1C1C1E', secondaryHex: '#1C1C1E', border: 'border-white/40' },
     { name: 'Deep Burgundy Wine', hex: '#58111A', secondaryHex: '#21070B', border: 'border-[#58111A]' },
-    { name: 'Forest Green & Gold Accent', hex: '#0B4035', secondaryHex: '#A98224', border: 'border-[#0B4035]' }
+    { name: 'Forest Green & Gold Accent', hex: '#0B4035', secondaryHex: '#A98224', border: 'border-panel' }
   ];
 
   const patterns = [
@@ -57,7 +57,7 @@ export const FeaturedServiceSection: React.FC = () => {
   };
 
   return (
-    <section id="featured-service-section" className="py-20 lg:py-28 bg-[#073B32] text-[#F5F1E8] relative overflow-hidden border-t border-b border-[#D6A62E]/20">
+    <section id="featured-service-section" className="py-20 lg:py-28 bg-ink text-cream relative overflow-hidden border-t border-b border-gold">
       
       {/* Background Subtle Grain */}
       <div className="absolute inset-0 bg-leather-texture opacity-10 pointer-events-none" />
@@ -66,10 +66,10 @@ export const FeaturedServiceSection: React.FC = () => {
         
         {/* Top Eyebrow */}
         <div className="mb-10 text-center lg:text-left">
-          <span className="text-xs font-bold text-[#D6A62E] uppercase tracking-widest bg-[#0B4035] px-3.5 py-1.5 rounded-full border border-[#D6A62E]/30 inline-flex items-center gap-1.5">
+          <span className="text-xs font-bold text-gold uppercase tracking-widest bg-panel px-3.5 py-1.5 rounded-full border border-gold inline-flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5" /> FEATURED WORKSHOP SHOWCASE
           </span>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black font-display tracking-tight text-[#F5F1E8] mt-3">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black font-display tracking-tight text-cream mt-3">
             CUSTOM CAR INTERIORS
           </h2>
         </div>
@@ -79,7 +79,7 @@ export const FeaturedServiceSection: React.FC = () => {
           
           {/* Left Column: Realistic Seat-Only Visualizer — zoom to seats, tint only seats */}
           <div className="lg:col-span-6 space-y-4">
-            <div className="relative rounded-2xl overflow-hidden border-2 border-[#D6A62E]/40 shadow-2xl group bg-[#052822] h-[400px] sm:h-[480px]">
+            <div className="relative rounded-2xl overflow-hidden border-2 border-gold shadow-2xl group bg-ink-deep h-[400px] sm:h-[480px]">
               <img
                 src={cdnUrl('https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=1200&q=80', { w: 1200 })}
                 alt="Vehicle cabin background"
@@ -87,7 +87,7 @@ export const FeaturedServiceSection: React.FC = () => {
                 loading="lazy"
                 decoding="async"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#073B32] via-transparent to-black/10 pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-t from-ink via-transparent to-black/10 pointer-events-none" />
               <div
                 className="absolute inset-0 overflow-hidden"
                 style={{
@@ -147,7 +147,7 @@ export const FeaturedServiceSection: React.FC = () => {
                 />
                 <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: 'inset 0 0 40px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(214,166,46,0.18)' }} />
               </div>
-              <div className="absolute top-3 left-3 bg-[#073B32]/92 backdrop-blur-md border border-[#D6A62E]/30 px-2.5 py-1 rounded-full text-[10px] font-bold text-[#D6A62E] flex items-center gap-1.5">
+              <div className="absolute top-3 left-3 bg-ink backdrop-blur-md border border-gold px-2.5 py-1 rounded-full text-[10px] font-bold text-gold flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: activeColorData.hex }} />
                 {isSeatsFocused ? 'Seats Close-Up' : 'Full Interior'} • {activeMaterial}
               </div>
@@ -159,23 +159,23 @@ export const FeaturedServiceSection: React.FC = () => {
               </button>
               
               {/* Dynamic Floating Spec Card */}
-              <div className="absolute bottom-4 left-4 right-4 bg-[#0B4035]/95 backdrop-blur-md p-4 rounded-xl border border-[#D6A62E]/40 shadow-xl space-y-2">
+              <div className="absolute bottom-4 left-4 right-4 bg-panel backdrop-blur-md p-4 rounded-xl border border-gold shadow-xl space-y-2">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-white/60">Live Customization Preview</span>
-                  <span className="text-[#D6A62E] font-bold">100% Bespoke Crafting</span>
+                  <span className="text-gold font-bold">100% Bespoke Crafting</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-center text-xs font-semibold">
-                  <div className="bg-[#073B32] p-2 rounded-lg border border-white/5">
+                  <div className="bg-ink p-2 rounded-lg border border-white/5">
                     <span className="text-[10px] text-white/50 block">MATERIAL</span>
-                    <span className="text-[#F5F1E8] truncate block">{activeMaterial}</span>
+                    <span className="text-cream truncate block">{activeMaterial}</span>
                   </div>
-                  <div className="bg-[#073B32] p-2 rounded-lg border border-white/5">
+                  <div className="bg-ink p-2 rounded-lg border border-white/5">
                     <span className="text-[10px] text-white/50 block">COLOR</span>
-                    <span className="text-[#D6A62E] truncate block">{activeColor}</span>
+                    <span className="text-gold truncate block">{activeColor}</span>
                   </div>
-                  <div className="bg-[#073B32] p-2 rounded-lg border border-white/5">
+                  <div className="bg-ink p-2 rounded-lg border border-white/5">
                     <span className="text-[10px] text-white/50 block">PATTERN</span>
-                    <span className="text-[#F5F1E8] truncate block">{activePattern}</span>
+                    <span className="text-cream truncate block">{activePattern}</span>
                   </div>
                 </div>
               </div>
@@ -185,20 +185,20 @@ export const FeaturedServiceSection: React.FC = () => {
           {/* Right Column: Customization Specs & Selection */}
           <div className="lg:col-span-6 space-y-6">
             <div className="space-y-2">
-              <h3 className="text-2xl sm:text-3xl font-bold font-display text-[#F5F1E8]">
+              <h3 className="text-2xl sm:text-3xl font-bold font-display text-cream">
                 "Your Interior. Your Style."
               </h3>
-              <p className="text-sm sm:text-base text-[#F5F1E8]/80 leading-relaxed">
+              <p className="text-sm sm:text-base text-cream leading-relaxed">
                 Whether you drive a daily commuter, an executive SUV, or a commercial fleet vehicle, our master upholsterers tailor every millimeter to your lifestyle.
               </p>
             </div>
 
             {/* Customization Points */}
-            <div className="space-y-5 bg-[#0B4035] p-6 rounded-2xl border border-[#D6A62E]/30 shadow-lg">
+            <div className="space-y-5 bg-panel p-6 rounded-2xl border border-gold shadow-lg">
               
               {/* 1. Seat Material */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-[#D6A62E] uppercase tracking-wider flex items-center gap-1.5">
+                <label className="text-xs font-bold text-gold uppercase tracking-wider flex items-center gap-1.5">
                   <Scissors className="w-3.5 h-3.5" /> 1. Select Seat Material
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -208,11 +208,11 @@ export const FeaturedServiceSection: React.FC = () => {
                       onClick={() => { setActiveMaterial(mat.name); setIsSeatsFocused(true); }}
                       className={`p-2.5 rounded-xl text-left border transition-all ${
                         activeMaterial === mat.name
-                          ? 'bg-[#073B32] border-[#D6A62E] text-white ring-1 ring-[#D6A62E]'
-                          : 'bg-[#073B32]/50 border-white/5 text-white/70 hover:border-white/20'
+                          ? 'bg-ink border-gold text-white ring-1 ring-gold'
+                          : 'bg-ink border-white/5 text-white/70 hover:border-white/20'
                       }`}
                     >
-                      <div className="font-bold text-xs text-[#F5F1E8]">{mat.name}</div>
+                      <div className="font-bold text-xs text-cream">{mat.name}</div>
                       <div className="text-[10px] text-white/50 truncate">{mat.desc}</div>
                     </button>
                   ))}
@@ -221,7 +221,7 @@ export const FeaturedServiceSection: React.FC = () => {
 
               {/* 2. Color Palette */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-[#D6A62E] uppercase tracking-wider flex items-center gap-1.5">
+                <label className="text-xs font-bold text-gold uppercase tracking-wider flex items-center gap-1.5">
                   <Palette className="w-3.5 h-3.5" /> 2. Color Palette & Tone
                 </label>
                 <div className="flex flex-wrap items-center gap-2">
@@ -231,8 +231,8 @@ export const FeaturedServiceSection: React.FC = () => {
                       onClick={() => { setActiveColor(c.name); setIsSeatsFocused(true); }}
                       className={`flex items-center gap-2 py-1.5 px-3 rounded-xl border text-xs font-semibold transition-all ${
                         activeColor === c.name
-                          ? 'bg-[#073B32] border-[#D6A62E] text-white ring-1 ring-[#D6A62E]'
-                          : 'bg-[#073B32]/40 border-white/10 text-white/70 hover:bg-[#073B32]'
+                          ? 'bg-ink border-gold text-white ring-1 ring-gold'
+                          : 'bg-ink border-white/10 text-white/70 hover:bg-inkhover:'
                       }`}
                     >
                       <span className="w-3.5 h-3.5 rounded-full shrink-0 shadow-inner" style={{ backgroundColor: c.hex }} />
@@ -244,7 +244,7 @@ export const FeaturedServiceSection: React.FC = () => {
 
               {/* 3. Stitching & Patterns */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-[#D6A62E] uppercase tracking-wider flex items-center gap-1.5">
+                <label className="text-xs font-bold text-gold uppercase tracking-wider flex items-center gap-1.5">
                   <Layers className="w-3.5 h-3.5" /> 3. Stitching Pattern & Foam Bolstering
                 </label>
                 <div className="flex flex-wrap gap-1.5">
@@ -254,8 +254,8 @@ export const FeaturedServiceSection: React.FC = () => {
                       onClick={() => { setActivePattern(pat.name); setIsSeatsFocused(true); }}
                       className={`py-1 px-2.5 rounded-lg text-xs font-medium border transition-all ${
                         activePattern === pat.name
-                          ? 'bg-[#D6A62E] text-[#073B32] border-[#D6A62E] font-bold'
-                          : 'bg-[#073B32] text-white/80 border-white/10 hover:border-white/30'
+                          ? 'bg-gold text-ink border-gold font-bold'
+                          : 'bg-ink text-white/80 border-white/10 hover:border-white/30'
                       }`}
                     >
                       {pat.name}
@@ -267,19 +267,19 @@ export const FeaturedServiceSection: React.FC = () => {
               {/* Custom features checklist */}
               <div className="pt-2 border-t border-white/10 grid grid-cols-2 gap-2 text-xs text-white/80">
                 <div className="flex items-center gap-1.5">
-                  <Check className="w-3.5 h-3.5 text-[#25D366]" />
+                  <Check className="w-3.5 h-3.5 text-whatsapp" />
                   <span>Custom Cushion Thickness</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Check className="w-3.5 h-3.5 text-[#25D366]" />
+                  <Check className="w-3.5 h-3.5 text-whatsapp" />
                   <span>Door Panels & Console Match</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Check className="w-3.5 h-3.5 text-[#25D366]" />
+                  <Check className="w-3.5 h-3.5 text-whatsapp" />
                   <span>Orthopedic Lumbar Support</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Check className="w-3.5 h-3.5 text-[#25D366]" />
+                  <Check className="w-3.5 h-3.5 text-whatsapp" />
                   <span>1-Year Quality Warranty</span>
                 </div>
               </div>
@@ -290,7 +290,7 @@ export const FeaturedServiceSection: React.FC = () => {
             <button
               id="start-custom-build-btn"
               onClick={handleStartCustomBuild}
-              className="w-full py-4 px-6 rounded-xl bg-[#D6A62E] hover:bg-[#c39626] text-[#073B32] font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-0.5 cursor-pointer"
+              className="w-full py-4 px-6 rounded-xl bg-gold hover:bg-gold-hoverhover: text-ink font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-0.5 cursor-pointer"
             >
               <span>Start Your Custom Build</span>
               <ArrowRight className="w-4 h-4" />

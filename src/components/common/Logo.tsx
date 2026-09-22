@@ -44,28 +44,28 @@ export const Logo: React.FC<LogoProps> = ({
 
   const colors = {
     light: {
-      title: 'text-[#F5F1E8]',
-      subtitle: 'text-[#D6A62E]',
-      tagline: 'text-[#D6A62E]',
-      iconBg: 'bg-[#0B4035] border border-[#D6A62E]/40',
-      iconGold: '#D6A62E',
-      iconWhite: '#F5F1E8'
+      title: 'text-cream',
+      subtitle: 'text-gold',
+      tagline: 'text-gold',
+      iconBg: 'bg-panel border border-gold',
+      iconGold: '#A85F35',
+      iconWhite: '#F2EBDD'
     },
     dark: {
-      title: 'text-[#073B32]',
-      subtitle: 'text-[#D6A62E]',
-      tagline: 'text-[#0B4035]',
-      iconBg: 'bg-[#073B32] border border-[#D6A62E]',
-      iconGold: '#D6A62E',
-      iconWhite: '#F5F1E8'
+      title: 'text-ink',
+      subtitle: 'text-gold',
+      tagline: 'text-panel',
+      iconBg: 'bg-ink border border-gold',
+      iconGold: '#A85F35',
+      iconWhite: '#F2EBDD'
     },
     gold: {
-      title: 'text-[#D6A62E]',
-      subtitle: 'text-[#F5F1E8]',
-      tagline: 'text-[#F5F1E8]/90',
-      iconBg: 'bg-[#D6A62E] border border-[#073B32]',
-      iconGold: '#073B32',
-      iconWhite: '#073B32'
+      title: 'text-gold',
+      subtitle: 'text-cream',
+      tagline: 'text-cream',
+      iconBg: 'bg-gold border border-ink',
+      iconGold: '#342A22',
+      iconWhite: '#342A22'
     }
   }[variant];
 

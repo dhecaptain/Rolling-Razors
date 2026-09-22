@@ -35,19 +35,19 @@ export const LegalModal: React.FC<LegalModalProps> = ({
         aria-modal="true"
         aria-label="Rolling Razors legal policies"
         tabIndex={-1}
-        className="bg-[#073B32] border-2 border-[#D6A62E]/40 rounded-3xl max-w-3xl w-full max-h-[85vh] flex flex-col text-[#F5F1E8] shadow-2xl overflow-hidden focus:outline-none"
+        className="bg-ink border-2 border-gold rounded-3xl max-w-3xl w-full max-h-[85vh] flex flex-col text-cream shadow-2xl overflow-hidden focus:outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="p-6 bg-[#0B4035] border-b border-[#D6A62E]/30 flex items-center justify-between">
+        <div className="p-6 bg-panel border-b border-gold flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-[#073B32] text-[#D6A62E] border border-[#D6A62E]/40">
+            <div className="p-2.5 rounded-xl bg-ink text-gold border border-gold">
               {type === 'privacy' && <Lock className="w-5 h-5" />}
               {type === 'terms' && <FileText className="w-5 h-5" />}
               {type === 'refund' && <RefreshCw className="w-5 h-5" />}
             </div>
             <div>
-              <span className="text-[10px] text-[#D6A62E] uppercase font-bold tracking-wider">
+              <span className="text-[10px] text-gold uppercase font-bold tracking-wider">
                 {BUSINESS_CONFIG.name} Legal Policies
               </span>
               <h3 className="text-xl font-black text-white font-display">
@@ -69,12 +69,12 @@ export const LegalModal: React.FC<LegalModalProps> = ({
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex items-center gap-2 px-6 pt-4 pb-2 bg-[#073B32] border-b border-white/10 overflow-x-auto">
+        <div className="flex items-center gap-2 px-6 pt-4 pb-2 bg-ink border-b border-white/10 overflow-x-auto">
           <button
             onClick={() => onSwitchType('privacy')}
             className={`py-2 px-4 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               type === 'privacy'
-                ? 'bg-[#D6A62E] text-[#073B32] shadow-sm'
+                ? 'bg-gold text-ink shadow-sm'
                 : 'text-white/70 hover:text-white hover:bg-white/5'
             }`}
           >
@@ -84,7 +84,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
             onClick={() => onSwitchType('terms')}
             className={`py-2 px-4 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               type === 'terms'
-                ? 'bg-[#D6A62E] text-[#073B32] shadow-sm'
+                ? 'bg-gold text-ink shadow-sm'
                 : 'text-white/70 hover:text-white hover:bg-white/5'
             }`}
           >
@@ -94,7 +94,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
             onClick={() => onSwitchType('refund')}
             className={`py-2 px-4 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               type === 'refund'
-                ? 'bg-[#D6A62E] text-[#073B32] shadow-sm'
+                ? 'bg-gold text-ink shadow-sm'
                 : 'text-white/70 hover:text-white hover:bg-white/5'
             }`}
           >
@@ -108,8 +108,8 @@ export const LegalModal: React.FC<LegalModalProps> = ({
           {/* PRIVACY POLICY */}
           {type === 'privacy' && (
             <div className="space-y-4">
-              <div className="p-4 rounded-xl bg-[#0B4035] border border-emerald-800/40 text-xs">
-                <span className="font-bold text-[#D6A62E] block mb-1">Kenya Data Protection Act (2019) Compliance</span>
+              <div className="p-4 rounded-xl bg-panel border border-emerald-800/40 text-xs">
+                <span className="font-bold text-gold block mb-1">Kenya Data Protection Act (2019) Compliance</span>
                 Rolling Razors Customs respects the privacy rights of all vehicle owners, fleet operators, and clients. We collect only necessary vehicle details, contact phone numbers, and appointment records to schedule and execute your custom tailoring services.
               </div>
 
@@ -147,7 +147,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
                   Account, booking, vehicle, payment-reference, and workshop records are stored in our protected application database and retained only as long as reasonably necessary to provide services, meet accounting obligations, resolve disputes, and maintain warranty history. Authentication is handled by Clerk when enabled, or by the legacy server authentication service during migration.
                 </p>
                 <p>
-                  You may request access, correction, portability, or deletion of personal information, subject to records we must retain by law or for an active booking, payment, warranty, or dispute. Send requests to <a href={`mailto:${BUSINESS_CONFIG.email.billing}`} className="text-[#D6A62E] underline">{BUSINESS_CONFIG.email.billing}</a>.
+                  You may request access, correction, portability, or deletion of personal information, subject to records we must retain by law or for an active booking, payment, warranty, or dispute. Send requests to <a href={`mailto:${BUSINESS_CONFIG.email.billing}`} className="text-gold underline">{BUSINESS_CONFIG.email.billing}</a>.
                 </p>
               </section>
 
@@ -163,8 +163,8 @@ export const LegalModal: React.FC<LegalModalProps> = ({
           {/* TERMS OF SERVICE */}
           {type === 'terms' && (
             <div className="space-y-4">
-              <div className="p-4 rounded-xl bg-[#0B4035] border border-emerald-800/40 text-xs flex items-start gap-3">
-                <ShieldCheck className="w-6 h-6 text-[#25D366] shrink-0 mt-0.5" />
+              <div className="p-4 rounded-xl bg-panel border border-emerald-800/40 text-xs flex items-start gap-3">
+                <ShieldCheck className="w-6 h-6 text-whatsapp shrink-0 mt-0.5" />
                 <div>
                   <span className="font-bold text-white block mb-0.5">1-Year Master Craftsmanship Guarantee</span>
                   <p className="text-white/75">
@@ -218,7 +218,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
               <section className="space-y-2">
                 <h4 className="font-bold text-base text-white font-display">3. Contacting Billing & Support</h4>
                 <p>
-                  For any cancellation, receipt verification, or warranty claim inquiries, contact our billing desk at <a href={`mailto:${BUSINESS_CONFIG.email.billing}`} className="text-[#D6A62E] underline">{BUSINESS_CONFIG.email.billing}</a> or call <a href={BUSINESS_CONFIG.phone.telLink} className="text-[#D6A62E] underline">{BUSINESS_CONFIG.phone.formatted}</a>.
+                  For any cancellation, receipt verification, or warranty claim inquiries, contact our billing desk at <a href={`mailto:${BUSINESS_CONFIG.email.billing}`} className="text-gold underline">{BUSINESS_CONFIG.email.billing}</a> or call <a href={BUSINESS_CONFIG.phone.telLink} className="text-gold underline">{BUSINESS_CONFIG.phone.formatted}</a>.
                 </p>
               </section>
             </div>
@@ -227,13 +227,13 @@ export const LegalModal: React.FC<LegalModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="p-5 bg-[#052822] border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="p-5 bg-ink-deep border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-xs text-white/60 text-center sm:text-left">
             <span>{BUSINESS_CONFIG.legalName} • Nairobi, Kenya</span>
           </div>
           <button
             onClick={onClose}
-            className="py-2.5 px-6 rounded-xl bg-[#D6A62E] hover:bg-[#c39626] text-[#073B32] font-black text-xs uppercase tracking-wider shadow cursor-pointer"
+            className="py-2.5 px-6 rounded-xl bg-gold hover:bg-gold-hoverhover: text-ink font-black text-xs uppercase tracking-wider shadow cursor-pointer"
           >
             I Understand & Close
           </button>

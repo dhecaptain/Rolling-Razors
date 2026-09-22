@@ -39,7 +39,7 @@ export const Footer: React.FC = () => {
   };
 
   return (
-    <footer id="main-footer" className="bg-[#052822] text-[#F5F1E8] border-t border-[#D6A62E]/30 relative">
+    <footer id="main-footer" className="bg-ink-deep text-cream border-t border-gold relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12">
         
         {/* Main Footer Grid */}
@@ -49,29 +49,29 @@ export const Footer: React.FC = () => {
           <div className="lg:col-span-2 space-y-4">
             <Logo variant="light" size="lg" showTagline={true} onClick={scrollToTop} />
             
-            <p className="text-xs sm:text-sm text-[#F5F1E8]/75 leading-relaxed max-w-sm">
+            <p className="text-xs sm:text-sm text-cream leading-relaxed max-w-sm">
               Kenya’s premier automotive upholstery, custom seat tailoring, leather work, cushions, roofing, and bespoke vehicle interior transformation workshop.
             </p>
 
             <div className="space-y-2 text-xs text-white/80 pt-2">
               <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-[#D6A62E] shrink-0" />
+                <MapPin className="w-4 h-4 text-gold shrink-0" />
                 <span>{BUSINESS_CONFIG.location.fullAddress}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Phone className="w-4 h-4 text-[#D6A62E] shrink-0" />
-                <a href={BUSINESS_CONFIG.phone.telLink} className="hover:text-[#D6A62E] transition-colors">
+                <Phone className="w-4 h-4 text-gold shrink-0" />
+                <a href={BUSINESS_CONFIG.phone.telLink} className="hover:text-goldhover: transition-colors">
                   {BUSINESS_CONFIG.phone.formatted}
                 </a>
               </div>
               <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-[#D6A62E] shrink-0" />
-                <a href={`mailto:${BUSINESS_CONFIG.email.primary}`} className="hover:text-[#D6A62E] transition-colors">
+                <Mail className="w-4 h-4 text-gold shrink-0" />
+                <a href={`mailto:${BUSINESS_CONFIG.email.primary}`} className="hover:text-goldhover: transition-colors">
                   {BUSINESS_CONFIG.email.primary}
                 </a>
               </div>
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-[#D6A62E] shrink-0" />
+                <Clock className="w-4 h-4 text-gold shrink-0" />
                 <span>{BUSINESS_CONFIG.hours.summary}</span>
               </div>
             </div>
@@ -79,37 +79,37 @@ export const Footer: React.FC = () => {
 
           {/* Column 2: Quick Links */}
           <div className="space-y-3">
-            <h4 className="font-bold text-sm text-[#D6A62E] uppercase tracking-wider font-display">
+            <h4 className="font-bold text-sm text-gold uppercase tracking-wider font-display">
               Navigation
             </h4>
-            <ul className="space-y-2 text-xs text-[#F5F1E8]/80">
+            <ul className="space-y-2 text-xs text-cream">
               <li>
-                <button onClick={scrollToTop} className="hover:text-[#D6A62E] transition-colors cursor-pointer">
+                <button onClick={scrollToTop} className="hover:text-goldhover: transition-colors cursor-pointer">
                   Home
                 </button>
               </li>
               <li>
-                <button onClick={() => scrollToSection('services-section')} className="hover:text-[#D6A62E] transition-colors cursor-pointer">
+                <button onClick={() => scrollToSection('services-section')} className="hover:text-goldhover: transition-colors cursor-pointer">
                   Our Services
                 </button>
               </li>
               <li>
-                <button onClick={() => scrollToSection('portfolio-section')} className="hover:text-[#D6A62E] transition-colors cursor-pointer">
+                <button onClick={() => scrollToSection('portfolio-section')} className="hover:text-goldhover: transition-colors cursor-pointer">
                   Our Work & Portfolio
                 </button>
               </li>
               <li>
-                <button onClick={() => scrollToSection('how-it-works-section')} className="hover:text-[#D6A62E] transition-colors cursor-pointer">
+                <button onClick={() => scrollToSection('how-it-works-section')} className="hover:text-goldhover: transition-colors cursor-pointer">
                   How It Works
                 </button>
               </li>
               <li>
-                <button onClick={() => scrollToSection('why-choose-us-section')} className="hover:text-[#D6A62E] transition-colors cursor-pointer">
+                <button onClick={() => scrollToSection('why-choose-us-section')} className="hover:text-goldhover: transition-colors cursor-pointer">
                   About Us
                 </button>
               </li>
               <li>
-                <button onClick={() => scrollToSection('contact-location-section')} className="hover:text-[#D6A62E] transition-colors cursor-pointer">
+                <button onClick={() => scrollToSection('contact-location-section')} className="hover:text-goldhover: transition-colors cursor-pointer">
                   Contact & Map
                 </button>
               </li>
@@ -118,23 +118,23 @@ export const Footer: React.FC = () => {
 
           {/* Column 3: Specializations */}
           <div className="space-y-3">
-            <h4 className="font-bold text-sm text-[#D6A62E] uppercase tracking-wider font-display">
+            <h4 className="font-bold text-sm text-gold uppercase tracking-wider font-display">
               Services
             </h4>
-            <ul className="space-y-2 text-xs text-[#F5F1E8]/80">
-              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-1'); setView('booking'); }} className="hover:text-[#D6A62E] cursor-pointer">Car Interior Upholstery</button></li>
-              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-2'); setView('booking'); }} className="hover:text-[#D6A62E] cursor-pointer">Custom Car Seats</button></li>
-              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-4'); setView('booking'); }} className="hover:text-[#D6A62E] cursor-pointer">Genuine Leather Work</button></li>
-              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-5'); setView('booking'); }} className="hover:text-[#D6A62E] cursor-pointer">Steering Wheel Stitching</button></li>
-              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-3'); setView('booking'); }} className="hover:text-[#D6A62E] cursor-pointer">Cushion Customization</button></li>
-              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-10'); setView('booking'); }} className="hover:text-[#D6A62E] cursor-pointer">Roofing & Headliner Repair</button></li>
-              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-7'); setView('booking'); }} className="hover:text-[#D6A62E] cursor-pointer">Car Shades & Tents</button></li>
+            <ul className="space-y-2 text-xs text-cream">
+              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-1'); setView('booking'); }} className="hover:text-goldhover: cursor-pointer">Car Interior Upholstery</button></li>
+              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-2'); setView('booking'); }} className="hover:text-goldhover: cursor-pointer">Custom Car Seats</button></li>
+              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-4'); setView('booking'); }} className="hover:text-goldhover: cursor-pointer">Genuine Leather Work</button></li>
+              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-5'); setView('booking'); }} className="hover:text-goldhover: cursor-pointer">Steering Wheel Stitching</button></li>
+              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-3'); setView('booking'); }} className="hover:text-goldhover: cursor-pointer">Cushion Customization</button></li>
+              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-10'); setView('booking'); }} className="hover:text-goldhover: cursor-pointer">Roofing & Headliner Repair</button></li>
+              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-7'); setView('booking'); }} className="hover:text-goldhover: cursor-pointer">Car Shades & Tents</button></li>
             </ul>
           </div>
 
           {/* Column 4: Booking & Socials */}
           <div className="space-y-4">
-            <h4 className="font-bold text-sm text-[#D6A62E] uppercase tracking-wider font-display">
+            <h4 className="font-bold text-sm text-gold uppercase tracking-wider font-display">
               Driver Portal
             </h4>
             
@@ -145,7 +145,7 @@ export const Footer: React.FC = () => {
             <button
               id="footer-book-now-btn"
               onClick={startBooking}
-              className="w-full py-2.5 px-4 rounded-xl bg-[#D6A62E] hover:bg-[#c39626] text-[#073B32] font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer"
+              className="w-full py-2.5 px-4 rounded-xl bg-gold hover:bg-gold-hoverhover: text-ink font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer"
             >
               <Calendar className="w-3.5 h-3.5" /> Book a Service
             </button>
@@ -159,7 +159,7 @@ export const Footer: React.FC = () => {
                   href={BUSINESS_CONFIG.socials.facebook} 
                   target="_blank" 
                   rel="noreferrer" 
-                  className="w-8 h-8 rounded-lg bg-[#0B4035] hover:bg-[#D6A62E] hover:text-[#073B32] flex items-center justify-center transition-colors text-xs font-bold"
+                  className="w-8 h-8 rounded-lg bg-panel hover:bg-goldhover: hover:text-inkhover: flex items-center justify-center transition-colors text-xs font-bold"
                   aria-label="Facebook"
                 >
                   FB
@@ -169,7 +169,7 @@ export const Footer: React.FC = () => {
                   href={BUSINESS_CONFIG.socials.instagram} 
                   target="_blank" 
                   rel="noreferrer" 
-                  className="w-8 h-8 rounded-lg bg-[#0B4035] hover:bg-[#D6A62E] hover:text-[#073B32] flex items-center justify-center transition-colors text-xs font-bold"
+                  className="w-8 h-8 rounded-lg bg-panel hover:bg-goldhover: hover:text-inkhover: flex items-center justify-center transition-colors text-xs font-bold"
                   aria-label="Instagram"
                 >
                   IG
@@ -179,7 +179,7 @@ export const Footer: React.FC = () => {
                   href={BUSINESS_CONFIG.whatsapp.link} 
                   target="_blank" 
                   rel="noreferrer" 
-                  className="w-8 h-8 rounded-lg bg-[#25D366] text-white hover:opacity-90 flex items-center justify-center transition-opacity text-xs font-bold"
+                  className="w-8 h-8 rounded-lg bg-whatsapp text-white hover:opacity-90 flex items-center justify-center transition-opacity text-xs font-bold"
                   aria-label="WhatsApp"
                 >
                   WA
@@ -189,7 +189,7 @@ export const Footer: React.FC = () => {
                   href={BUSINESS_CONFIG.socials.tiktok} 
                   target="_blank" 
                   rel="noreferrer" 
-                  className="w-8 h-8 rounded-lg bg-[#0B4035] hover:bg-[#D6A62E] hover:text-[#073B32] flex items-center justify-center transition-colors text-xs font-bold"
+                  className="w-8 h-8 rounded-lg bg-panel hover:bg-goldhover: hover:text-inkhover: flex items-center justify-center transition-colors text-xs font-bold"
                   aria-label="TikTok"
                 >
                   TT
@@ -206,7 +206,7 @@ export const Footer: React.FC = () => {
           <div className="flex flex-wrap items-center gap-4 text-center sm:text-left">
             <span>© {new Date().getFullYear()} {BUSINESS_CONFIG.name}. All rights reserved.</span>
             <span>•</span>
-            <span className="text-[#D6A62E]">{BUSINESS_CONFIG.location.city}, {BUSINESS_CONFIG.location.country}</span>
+            <span className="text-gold">{BUSINESS_CONFIG.location.city}, {BUSINESS_CONFIG.location.country}</span>
           </div>
 
           <div className="flex items-center gap-4 sm:gap-6">
@@ -233,7 +233,7 @@ export const Footer: React.FC = () => {
             </button>
             <button 
               onClick={scrollToTop}
-              className="p-2 rounded-lg bg-[#0B4035] hover:bg-[#D6A62E] hover:text-[#073B32] text-white transition-colors cursor-pointer"
+              className="p-2 rounded-lg bg-panel hover:bg-goldhover: hover:text-inkhover: text-white transition-colors cursor-pointer"
               title="Back to Top"
             >
               <ArrowUp className="w-4 h-4" />

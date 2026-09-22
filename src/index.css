@@ -1,39 +1,64 @@
 @import "tailwindcss";
 
+/*
+ * Rolling Razors design tokens
+ * One brand palette — parchment / ink / cognac — expressed as Tailwind v4
+ * theme colors (bg-ink, text-gold, …) plus a small set of component classes.
+ */
+@theme {
+  --color-ink: #342A22;
+  --color-ink-deep: #261E19;
+  --color-panel: #4A382A;
+  --color-paper: #F2EBDD;
+  --color-paper-high: #FFFAF1;
+  --color-cream: #F5F1E8;
+  --color-cream-muted: #D7D2C6;
+  --color-cream-faint: #AFA99C;
+  --color-gold: #A85F35;
+  --color-gold-hover: #93482A;
+  --color-gold-bright: #D28A50;
+  --color-mpesa: #00A859;
+  --color-mpesa-dark: #00914D;
+  --color-whatsapp: #25D366;
+  --color-whatsapp-dark: #20BA59;
+  --color-paystack: #2563EB;
+  --color-paystack-dark: #1D4ED8;
+}
+
 :root {
   --rr-forest: #342A22;
+  --rr-ink: #342A22;
+  --rr-ink-deep: #261E19;
   --rr-panel: #4A382A;
   --rr-deep: #261E19;
   --rr-paper: #F2EBDD;
+  --rr-paper-high: #FFFAF1;
   --rr-gold: #A85F35;
+  --rr-gold-hover: #93482A;
+  --rr-gold-bright: #D28A50;
+  --rr-cream: #F5F1E8;
+  --rr-cream-muted: #D7D2C6;
+  --rr-cream-faint: #AFA99C;
+  --rr-mpesa: #00A859;
+  --rr-mpesa-dark: #00914D;
   --rr-whatsapp: #25D366;
-  --rr-ink: #342A22;
+  --rr-whatsapp-dark: #20BA59;
+  --rr-paystack: #2563EB;
   --rr-on-dark-primary: #F5F1E8;
   --rr-on-dark-secondary: #D7D2C6;
   --rr-on-dark-tertiary: #AFA99C;
   --rr-on-light-primary: #342A22;
   --rr-on-light-secondary: #624D3D;
   --rr-on-light-tertiary: #806A58;
+  --rr-outline-dark: rgba(245, 241, 232, .22);
+  --rr-radius-sm: 12px;
+  --rr-radius-md: 16px;
+  --rr-radius-lg: 24px;
+  --rr-radius-xl: 32px;
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
   --space-5: 20px; --space-6: 24px; --space-7: 28px; --space-8: 32px;
   --space-9: 72px; --space-10: 80px; --space-11: 88px; --space-12: 96px;
   --space-13: 104px; --space-14: 112px; --space-15: 120px; --space-16: 128px;
-
-  /* Material 3 tonal aliases, mapped to the Rolling Razors brand palette. */
-  --md-background: #073B32;
-  --md-surface: #0B4035;
-  --md-surface-container: #0f4b3e;
-  --md-surface-container-low: #123f37;
-  --md-on-surface: #F5F1E8;
-  --md-on-surface-variant: rgba(245, 241, 232, .72);
-  --md-primary: #D6A62E;
-  --md-on-primary: #073B32;
-  --md-secondary-container: rgba(214, 166, 46, .16);
-  --md-outline: rgba(245, 241, 232, .22);
-  --md-radius-sm: 12px;
-  --md-radius-md: 16px;
-  --md-radius-lg: 24px;
-  --md-radius-xl: 32px;
 }
 
 @layer base {
@@ -48,6 +73,8 @@
     color: var(--rr-ink);
     font-family: 'Inter', system-ui, sans-serif;
     letter-spacing: -.005em;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
   }
 
   button,
@@ -73,7 +100,7 @@
   .rr-label {
     display: block;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: .12em;
     line-height: 1.2;
@@ -82,8 +109,6 @@
   .rr-tabular { font-variant-numeric: tabular-nums; }
   .rr-signature { font-family: 'Caveat', cursive, sans-serif; }
   .rr-page { background: var(--rr-paper); color: var(--rr-ink); }
-  .rr-app-shell { background: var(--rr-paper) !important; color: var(--rr-ink); }
-  .rr-app-shell > header > div { background: var(--rr-ink) !important; border-color: rgba(242, 235, 221, .16) !important; box-shadow: 0 8px 24px rgb(38 30 25 / .16) !important; }
   .rr-page h1, .rr-page h2, .rr-page h3 { font-family: 'Fraunces', Georgia, serif; letter-spacing: -.035em; }
   .rr-page .rr-label, .rr-page button, .rr-page a { font-family: 'JetBrains Mono', monospace; }
   .rr-page .rr-service-row { font-family: 'Inter', system-ui, sans-serif; }
@@ -92,16 +117,18 @@
   .rr-control {
     appearance: none;
     min-height: 48px;
-    border: 1px solid var(--md-outline);
-    border-radius: var(--md-radius-sm);
-    background: var(--md-surface-container-low);
-    color: var(--rr-paper);
+    border: 1px solid rgba(52, 42, 34, .22);
+    border-radius: var(--rr-radius-sm);
+    background: var(--rr-paper-high);
+    color: var(--rr-ink);
+    padding: 0 .9rem;
     outline: 2px solid transparent;
     outline-offset: 2px;
     transition: border-color .2s ease, background-color .2s ease, box-shadow .2s ease;
   }
   .rr-control:focus-visible { border-color: var(--rr-gold); }
-  .rr-control:hover { border-color: rgba(214, 166, 46, .65); background: var(--md-surface-container); }
+  .rr-control:hover { border-color: var(--rr-gold); background: #FFFDF8; }
+  .rr-control::placeholder { color: rgba(52, 42, 34, .42); }
   .rr-button-gold {
     display: inline-flex;
     align-items: center;
@@ -116,7 +143,7 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, .18);
     transition: background-color .2s ease, color .2s ease, transform .2s ease, box-shadow .2s ease;
   }
-  .rr-button-gold:hover { background: #e0b340; box-shadow: 0 4px 12px rgba(0, 0, 0, .22); }
+  .rr-button-gold:hover { background: var(--rr-gold-hover); box-shadow: 0 4px 12px rgba(0, 0, 0, .22); }
   .rr-button-gold:active { transform: scale(.97); }
   .rr-button-outline {
     display: inline-flex;
@@ -131,12 +158,12 @@
     font-weight: 700;
     transition: background-color .2s ease, color .2s ease, border-color .2s ease, transform .2s ease;
   }
-  .rr-button-outline:hover { background: rgba(214, 166, 46, .12); border-color: var(--rr-gold); color: var(--rr-paper); }
+  .rr-button-outline:hover { background: rgba(168, 95, 53, .14); border-color: var(--rr-gold); color: var(--rr-paper); }
   .rr-button-outline:active { transform: scale(.97); }
   .rr-md-card {
-    border: 1px solid var(--md-outline);
-    border-radius: var(--md-radius-lg);
-    background: var(--md-surface);
+    border: 1px solid var(--rr-outline-dark);
+    border-radius: var(--rr-radius-lg);
+    background: var(--rr-panel);
     box-shadow: 0 1px 3px rgba(0, 0, 0, .16);
   }
   .shadow-e1 { box-shadow: 0 1px 2px rgb(0 0 0 / .18); }
@@ -146,28 +173,15 @@
     transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
   }
   .rr-md-card-interactive:hover {
-    border-color: rgba(214, 166, 46, .55);
+    border-color: rgba(168, 95, 53, .55);
     box-shadow: 0 8px 24px rgba(0, 0, 0, .2);
     transform: translateY(-2px);
   }
   .rr-md-pill {
     border-radius: 999px;
   }
-  .rr-md-state:hover { background: rgba(214, 166, 46, .1); }
+  .rr-md-state:hover { background: rgba(168, 95, 53, .1); }
   .rr-md-state:active { transform: scale(.97); }
-  .rr-app-shell input,
-  .rr-app-shell select,
-  .rr-app-shell textarea {
-    border-radius: var(--md-radius-sm);
-  }
-  .rr-app-shell input:focus-visible,
-  .rr-app-shell select:focus-visible,
-  .rr-app-shell textarea:focus-visible,
-  .rr-app-shell button:focus-visible,
-  .rr-app-shell a:focus-visible {
-    outline: 2px solid var(--md-primary);
-    outline-offset: 3px;
-  }
   .rr-stitch-rule {
     position: relative;
     height: 1px;
@@ -184,14 +198,14 @@
     content: '◆';
     font-size: 10px;
   }
-  .rr-stitch-rule-light { border-top-color: rgba(214, 166, 46, .68); }
+  .rr-stitch-rule-light { border-top-color: rgba(168, 95, 53, .68); }
   .rr-stitch-rule-light::after { background: var(--rr-forest); }
-  .rr-service-row { border-bottom: 1px solid rgba(7, 59, 50, .18); }
+  .rr-service-row { border-bottom: 1px solid rgba(52, 42, 34, .18); }
   .rr-service-row.is-active { background: var(--rr-forest); color: var(--rr-paper); }
-  .rr-service-row:not(.is-active):hover { background: rgba(7, 59, 50, .08); }
+  .rr-service-row:not(.is-active):hover { background: rgba(52, 42, 34, .08); }
   .rr-filter {
     border-bottom: 2px solid transparent;
-    color: rgba(7, 59, 50, .68);
+    color: rgba(52, 42, 34, .68);
     min-height: 44px;
     padding: .75rem .15rem .65rem;
     transition: border-color .2s ease, color .2s ease;
@@ -199,14 +213,14 @@
   .rr-filter:hover,
   .rr-filter.is-active { border-bottom-color: var(--rr-gold); color: var(--rr-forest); }
   .rr-quality-row + .rr-quality-row { border-top: 1px solid rgba(245, 241, 232, .18); }
-  .rr-photo-caption { border-top: 1px solid rgba(7, 59, 50, .22); }
+  .rr-photo-caption { border-top: 1px solid rgba(52, 42, 34, .22); }
   .rr-contact-table tr + tr { border-top: 1px solid rgba(245, 241, 232, .16); }
   .rr-map {
     background-color: var(--rr-deep);
     background-image:
       linear-gradient(rgba(245, 241, 232, .06) 1px, transparent 1px),
       linear-gradient(90deg, rgba(245, 241, 232, .06) 1px, transparent 1px),
-      linear-gradient(155deg, transparent 48%, rgba(214, 166, 46, .32) 49%, rgba(214, 166, 46, .32) 50%, transparent 51%);
+      linear-gradient(155deg, transparent 48%, rgba(168, 95, 53, .32) 49%, rgba(168, 95, 53, .32) 50%, transparent 51%);
     background-size: 44px 44px, 44px 44px, 100% 100%;
   }
   .rr-comparison:focus-visible,
@@ -226,11 +240,27 @@
   .rr-page .rr-service-row.is-active { background: var(--rr-ink); }
   .rr-page .rr-button-gold { background: var(--rr-gold); border-color: var(--rr-gold); }
   .rr-pattern-diamond {
-    background-image: repeating-linear-gradient(45deg, transparent 0 7px, rgba(214,166,46,.85) 7px 8px), repeating-linear-gradient(-45deg, transparent 0 7px, rgba(214,166,46,.85) 7px 8px);
+    background-image: repeating-linear-gradient(45deg, transparent 0 7px, rgba(168,95,53,.85) 7px 8px), repeating-linear-gradient(-45deg, transparent 0 7px, rgba(168,95,53,.85) 7px 8px);
   }
   .rr-pattern-double { background: repeating-linear-gradient(0deg, transparent 0 5px, rgba(245,241,232,.5) 5px 6px); }
-  .rr-pattern-dots { background-image: radial-gradient(rgba(214,166,46,.85) 1px, transparent 1.4px); background-size: 8px 8px; }
+  .rr-pattern-dots { background-image: radial-gradient(rgba(168,95,53,.85) 1px, transparent 1.4px); background-size: 8px 8px; }
   .rr-pattern-pleats { background: repeating-linear-gradient(90deg, transparent 0 18px, rgba(245,241,232,.5) 18px 19px); }
+
+  /* Auth forms */
+  .rr-auth-form .rr-control { margin-top: .45rem; }
+  .rr-auth-label {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    color: rgba(52, 42, 34, .72);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .rr-auth-label svg { width: 13px; height: 13px; color: var(--rr-gold); }
+  .rr-auth-form .rr-button-gold { color: var(--rr-paper-high); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -266,11 +296,11 @@
 }
 
 .font-signature { font-family: 'Caveat', cursive, sans-serif; }
-.font-display { font-family: 'Plus Jakarta Sans', sans-serif; }
+.font-display { font-family: 'Fraunces', Georgia, serif; letter-spacing: -.035em; }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: var(--rr-panel); }
-::-webkit-scrollbar-thumb { background: #235F53; border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: #59462F; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--rr-gold); }
 
 .bg-leather-texture {
@@ -303,26 +333,3 @@
 @media (pointer: coarse), (prefers-reduced-motion: reduce) {
   .rr-tilt { transform: none; }
 }
-
-/* Shared application surfaces: keep dashboards, booking, dialogs and auth on
-   the same parchment / ink / cognac system as the landing page. */
-.rr-app-shell [class*="bg-[#073B32]"],
-.rr-app-shell [class*="bg-[#0B4035]"],
-.rr-app-shell [class*="bg-[#052822]"],
-.rr-app-shell [class*="bg-[#0f4b3e]"] { background-color: var(--rr-ink) !important; }
-.rr-app-shell [class*="text-[#073B32]"],
-.rr-app-shell [class*="text-[#0B4035]"] { color: var(--rr-ink) !important; }
-.rr-app-shell [class*="text-[#F5F1E8]"] { color: var(--rr-paper) !important; }
-.rr-app-shell [class*="bg-[#D6A62E]"],
-.rr-app-shell [class*="bg-[#c39626]"] { background-color: var(--rr-gold) !important; }
-.rr-app-shell [class*="text-[#D6A62E]"],
-.rr-app-shell [class*="border-[#D6A62E]"] { color: var(--rr-gold) !important; border-color: color-mix(in srgb, var(--rr-gold) 55%, transparent) !important; }
-.rr-app-shell .rr-control,
-.rr-auth-form .rr-control { background: #fffaf1; border-color: rgba(52, 42, 34, .2); color: var(--rr-ink); }
-.rr-app-shell .rr-control:hover,
-.rr-auth-form .rr-control:hover { background: #fffdf8; border-color: var(--rr-gold); }
-.rr-auth-form .rr-control { margin-top: .45rem; padding: 0 .9rem; }
-.rr-auth-label { display: flex; align-items: center; gap: .45rem; color: rgba(52, 42, 34, .72); font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.rr-auth-label svg { width: 13px; height: 13px; color: var(--rr-gold); }
-.rr-auth-form input::placeholder { color: rgba(52, 42, 34, .35); }
-.rr-auth-form .rr-button-gold { color: #fffaf1; }

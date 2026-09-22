@@ -65,7 +65,7 @@ export const PaystackModal: React.FC = () => {
         particleCount: 80,
         spread: 70,
         origin: { y: 0.6 },
-        colors: ['#073B32', '#D6A62E', '#2563EB', '#F5F1E8']
+        colors: ['#A85F35', '#342A22', '#D28A50', '#F2EBDD']
       });
     } catch {
       // safe fallback
@@ -215,17 +215,17 @@ export const PaystackModal: React.FC = () => {
         aria-modal="true"
         aria-label="Paystack payment"
         tabIndex={-1}
-        className="w-full max-w-md bg-[#073B32] border border-[#D6A62E]/40 rounded-2xl shadow-2xl overflow-hidden text-[#F5F1E8] focus:outline-none"
+        className="w-full max-w-md bg-ink border border-gold rounded-2xl shadow-2xl overflow-hidden text-cream focus:outline-none"
       >
         {/* Modal Top Bar */}
-        <div className="bg-[#0B4035] px-6 py-4 border-b border-[#D6A62E]/30 flex items-center justify-between">
+        <div className="bg-panel px-6 py-4 border-b border-gold flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#2563EB] flex items-center justify-center text-white font-black text-[10px] tracking-tighter shadow-md">
+            <div className="w-10 h-10 rounded-xl bg-paystack flex items-center justify-center text-white font-black text-[10px] tracking-tighter shadow-md">
               PS
             </div>
             <div>
-              <h3 className="font-bold text-base text-[#F5F1E8]">Pay Deposit Securely</h3>
-              <p className="text-xs text-[#D6A62E]">Card • Bank Transfer • M-Pesa • Rolling Razors Customs</p>
+              <h3 className="font-bold text-base text-cream">Pay Deposit Securely</h3>
+              <p className="text-xs text-gold">Card • Bank Transfer • M-Pesa • Rolling Razors Customs</p>
             </div>
           </div>
           <button
@@ -240,12 +240,12 @@ export const PaystackModal: React.FC = () => {
 
         {/* Financial Summary Card */}
         <div className="p-6 space-y-5">
-          <div className="bg-[#052822] p-4 rounded-xl border border-blue-900/60 space-y-2.5">
+          <div className="bg-ink-deep p-4 rounded-xl border border-blue-900/60 space-y-2.5">
             <div className="flex justify-between text-xs text-white/70">
               <span>Service Estimate</span>
               <span className="font-semibold text-white">KES {serviceCost.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between text-sm text-[#D6A62E] font-bold border-t border-white/10 pt-2">
+            <div className="flex justify-between text-sm text-gold font-bold border-t border-white/10 pt-2">
               <span>Deposit Payable Now</span>
               <span>KES {depositCost.toLocaleString()}</span>
             </div>
@@ -258,7 +258,7 @@ export const PaystackModal: React.FC = () => {
           {step === 'prompt' && (
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[#D6A62E] mb-1.5 uppercase tracking-wider">
+                <label className="block text-xs font-semibold text-gold mb-1.5 uppercase tracking-wider">
                   Receipt Email
                 </label>
                 <input
@@ -267,10 +267,10 @@ export const PaystackModal: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="w-full px-4 py-3 rounded-xl bg-[#0B4035] border border-[#D6A62E]/50 text-[#F5F1E8] font-semibold placeholder-white/30 focus:outline-none focus:border-[#D6A62E] focus:ring-1 focus:ring-[#D6A62E] text-base"
+                  className="w-full px-4 py-3 rounded-xl bg-panel border border-gold text-cream font-semibold placeholder-white/30 focus:outline-none focus:border-goldfocus: focus:ring-1 focus:ring-goldfocus: text-base"
                 />
                 <p className="text-[11px] text-white/70 mt-2 flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-[#25D366] shrink-0" />
+                  <ShieldCheck className="w-4 h-4 text-whatsapp shrink-0" />
                   <span>Your payment receipt is emailed here immediately.</span>
                 </p>
               </div>
@@ -281,15 +281,15 @@ export const PaystackModal: React.FC = () => {
                   { label: 'M-Pesa', sub: 'Mobile money' },
                   { label: 'Bank', sub: 'Transfer • USSD' }
                 ].map(ch => (
-                  <div key={ch.label} className="bg-[#052822]/80 p-2.5 rounded-xl border border-white/10 text-center">
+                  <div key={ch.label} className="bg-ink-deep p-2.5 rounded-xl border border-white/10 text-center">
                     <p className="text-[11px] font-bold text-white">{ch.label}</p>
                     <p className="text-[9px] text-white/50">{ch.sub}</p>
                   </div>
                 ))}
               </div>
 
-              <div className="bg-[#052822]/80 p-3 rounded-xl border border-white/10 flex items-start gap-2.5">
-                <Lock className="w-4 h-4 text-[#D6A62E] shrink-0 mt-0.5" />
+              <div className="bg-ink-deep p-3 rounded-xl border border-white/10 flex items-start gap-2.5">
+                <Lock className="w-4 h-4 text-gold shrink-0 mt-0.5" />
                 <p className="text-[11px] text-white/70 leading-relaxed">
                   <strong className="text-white">Security Note:</strong> Payment is processed inside the PCI-DSS compliant Paystack checkout window. We never see your card details.
                 </p>
@@ -298,7 +298,7 @@ export const PaystackModal: React.FC = () => {
               <button
                 id="open-paystack-checkout-btn"
                 onClick={handleInitiateCheckout}
-                className="w-full py-3.5 px-4 rounded-xl bg-[#2563EB] hover:bg-[#1d4ed8] text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all transform active:scale-95 cursor-pointer"
+                className="w-full py-3.5 px-4 rounded-xl bg-paystack hover:bg-paystack-darkhover: text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all transform active:scale-95 cursor-pointer"
               >
                 <CreditCard className="w-4 h-4" />
                 <span>Pay KES {depositCost.toLocaleString()}</span>
@@ -314,7 +314,7 @@ export const PaystackModal: React.FC = () => {
           {/* STEP: Initializing Checkout */}
           {step === 'initiating' && (
             <div className="text-center py-6 space-y-4 animate-in fade-in">
-              <Loader2 className="w-10 h-10 animate-spin text-[#2563EB] mx-auto" />
+              <Loader2 className="w-10 h-10 animate-spin text-paystack mx-auto" />
               <div>
                 <h4 className="font-bold text-base text-white">Contacting Paystack...</h4>
                 <p className="text-xs text-white/70 mt-1">Creating a secure checkout for KES {depositCost.toLocaleString()}...</p>
@@ -325,7 +325,7 @@ export const PaystackModal: React.FC = () => {
           {/* STEP: Verifying after popup */}
           {step === 'verifying' && (
             <div className="text-center py-6 space-y-4 animate-in fade-in">
-              <Loader2 className="w-10 h-10 animate-spin text-[#2563EB] mx-auto" />
+              <Loader2 className="w-10 h-10 animate-spin text-paystack mx-auto" />
               <div>
                 <h4 className="font-bold text-base text-white">Verifying Payment...</h4>
                 <p className="text-xs text-white/70 mt-1">Confirming your payment with Paystack. This takes a few seconds.</p>
@@ -340,28 +340,28 @@ export const PaystackModal: React.FC = () => {
                 <CheckCircle2 className="w-8 h-8" />
               </div>
               <div className="space-y-1">
-                <h4 className="font-black text-xl text-[#F5F1E8]">Payment Confirmed!</h4>
+                <h4 className="font-black text-xl text-cream">Payment Confirmed!</h4>
                 <p className="text-xs text-white/70">
                   Deposit of <strong className="text-white">KES {depositCost.toLocaleString()}</strong> has been recorded and verified.
                 </p>
               </div>
 
-              <div className="bg-[#052822] p-4 rounded-xl border border-blue-900/60 flex items-center justify-between text-xs">
+              <div className="bg-ink-deep p-4 rounded-xl border border-blue-900/60 flex items-center justify-between text-xs">
                 <div className="text-left">
                   <span className="text-white/60 block text-[10px] uppercase font-bold tracking-wider">Paystack Reference</span>
-                  <span className="font-mono font-black text-[#D6A62E] text-sm">{confirmedReceipt}</span>
+                  <span className="font-mono font-black text-gold text-sm">{confirmedReceipt}</span>
                 </div>
                 <button
                   id="copy-paystack-receipt-btn"
                   onClick={handleCopyReceipt}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#0B4035] hover:bg-[#D6A62E] hover:text-[#073B32] text-white text-xs font-semibold transition-all shadow cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-panel hover:bg-goldhover: hover:text-inkhover: text-white text-xs font-semibold transition-all shadow cursor-pointer"
                 >
                   {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                   {copied ? 'Copied' : 'Copy'}
                 </button>
               </div>
 
-              <div className="bg-[#052822]/60 p-3 rounded-lg border border-white/5 text-left text-xs space-y-1 text-white/80">
+              <div className="bg-ink-deep p-3 rounded-lg border border-white/5 text-left text-xs space-y-1 text-white/80">
                 <div className="flex justify-between">
                   <span className="text-white/50">Status:</span>
                   <span className="text-emerald-400 font-bold">Booking Confirmed</span>
@@ -375,7 +375,7 @@ export const PaystackModal: React.FC = () => {
               <button
                 id="done-paystack-btn"
                 onClick={closePaystackPayment}
-                className="w-full py-3.5 px-4 rounded-xl bg-[#D6A62E] hover:bg-[#c49727] text-[#073B32] font-black text-xs uppercase tracking-wider shadow-lg transition-colors cursor-pointer"
+                className="w-full py-3.5 px-4 rounded-xl bg-gold hover:bg-gold-hoverhover: text-ink font-black text-xs uppercase tracking-wider shadow-lg transition-colors cursor-pointer"
               >
                 Return to Dashboard
               </button>
@@ -403,7 +403,7 @@ export const PaystackModal: React.FC = () => {
                     setFailureMessage('');
                     setStep('prompt');
                   }}
-                  className="flex-1 py-2.5 rounded-lg bg-[#D6A62E] hover:bg-[#c49727] text-[#073B32] font-bold text-xs cursor-pointer transition-colors"
+                  className="flex-1 py-2.5 rounded-lg bg-gold hover:bg-gold-hoverhover: text-ink font-bold text-xs cursor-pointer transition-colors"
                 >
                   Try Again
                 </button>
