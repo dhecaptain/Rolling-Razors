@@ -60,6 +60,16 @@ export class StorageService {
     }
 
     // 3. Fallback: Local filesystem provider
+    if (process.env.NODE_ENV === "production") {
+      // The on-disk provider is ephemeral on serverless (Vercel) targets and is
+      // lost when containers/instances recycle. Do not silently mis-deploy:
+      // make the degradation unmissable in logs while keeping the process up
+      // (existing deployments configure no provider may still be running).
+      logger.error(
+        { provider: "local", providerPref },
+        "[Storage] Falling back to the Local filesystem provider in production. Uploads will NOT persist on serverless/ephemeral hosting. Configure STORAGE_PROVIDER + CLOUDINARY_* or SUPABASE_* — see .env.example."
+      );
+    }
     logger.info({ provider: "local" }, "[Storage] Using Local filesystem storage provider");
     return this.localProvider;
   }

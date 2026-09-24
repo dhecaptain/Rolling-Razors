@@ -9,7 +9,23 @@ datasource db {
 
 enum UserRole {
   customer
-  admin
+  owner
+  manager
+  craftsman
+  receptionist
+}
+
+enum StaffRole {
+  owner
+  manager
+  craftsman
+  receptionist
+}
+
+enum StaffStatus {
+  invited
+  active
+  deactivated
 }
 
 enum BookingStatus {
@@ -62,18 +78,20 @@ enum CustomerStatus {
 }
 
 model User {
-  id         String      @id
-  clerkId    String?     @unique
-  name       String
-  phone      String?     @unique
-  email      String?     @unique
-  role         UserRole
-  avatar       String
-  location     String?
-  passwordHash String?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  buildDraft   BuildDraft?
+  id                 String      @id
+  clerkId            String?     @unique
+  name               String
+  phone              String?     @unique
+  email              String?     @unique
+  role               UserRole
+  avatar             String
+  location           String?
+  passwordHash       String?
+  mustChangePassword Boolean     @default(false)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  buildDraft         BuildDraft?
+  staffProfile       Staff?
 }
 
 model BuildDraft {
@@ -234,18 +252,23 @@ model Invoice {
 }
 
 model Staff {
-  id             String   @id
+  id             String      @id
   name           String
-  role           String
-  phone          String   @unique
+  role           StaffRole
+  phone          String      @unique
+  email          String?     @unique
   specialization String?
   specialty      String?
-  activeJobs     Int      @default(0)
-  completedJobs  Int      @default(0)
+  activeJobs     Int         @default(0)
+  completedJobs  Int         @default(0)
   avatar         String
   rating         Float
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  status         StaffStatus @default(invited)
+  clerkId        String?     @unique
+  userId         String?     @unique
+  user           User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 }
 
 model Service {

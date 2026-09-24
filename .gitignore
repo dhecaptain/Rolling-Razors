@@ -15,3 +15,4 @@ server/db.json.bak
 server.ts.json.bak
 .vercel
 .env*
+!.env.example

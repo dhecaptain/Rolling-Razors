@@ -62,8 +62,8 @@ class PrismaDatabaseManager {
     return { user: mapUser(raw), passwordHash: (raw as any).passwordHash || undefined };
   }
 
-  async setUserPassword(id: string, hash: string): Promise<void> {
-    await prisma.user.update({ where: { id }, data: { passwordHash: hash } });
+  async setUserPassword(id: string, hash: string, mustChangePassword = false): Promise<void> {
+    await prisma.user.update({ where: { id }, data: { passwordHash: hash, mustChangePassword } });
   }
 
   private async findRawUser(identifier: string): Promise<any | undefined> {
@@ -339,8 +339,68 @@ class PrismaDatabaseManager {
   }
 
   async getStaff(): Promise<Staff[]> {
-    const rows = await prisma.staff.findMany();
-    return rows.map(r => ({ id: r.id, name: r.name, role: r.role, phone: r.phone, specialization: r.specialization || undefined, specialty: r.specialty || undefined, activeJobs: r.activeJobs, completedJobs: r.completedJobs, avatar: r.avatar, rating: r.rating }));
+    const rows = await prisma.staff.findMany({ orderBy: { createdAt: "desc" } });
+    return rows.map(mapStaff);
+  }
+
+  async getStaffById(id: string): Promise<Staff | undefined> {
+    const r = await prisma.staff.findUnique({ where: { id } });
+    return r ? mapStaff(r) : undefined;
+  }
+
+  async getStaffByUserId(userId: string): Promise<Staff | undefined> {
+    const r = await prisma.staff.findUnique({ where: { userId } });
+    return r ? mapStaff(r) : undefined;
+  }
+
+  async setStaffStatus(id: string, status: "invited" | "active" | "deactivated"): Promise<Staff | undefined> {
+    try {
+      const r = await prisma.staff.update({ where: { id }, data: { status } });
+      return mapStaff(r);
+    } catch { return undefined; }
+  }
+
+  // Creates (or refreshes) a staff login account atomically: an auth User row
+  // (hashed password + forced passcode change) plus the directory Staff row,
+  // both sharing one id so the accounting stays linked. New accounts start as
+  // "invited" until the staff member completes the first passcode change.
+  async createStaffAccount(data: {
+    userId: string; staffId: string; name: string; role: string; phone: string;
+    email?: string; avatar?: string; passwordHash: string; specialization?: string; specialty?: string;
+  }): Promise<Staff> {
+    const staff = await prisma.$transaction(async (tx) => {
+      await tx.user.upsert({
+        where: { id: data.userId },
+        update: { name: data.name, phone: data.phone, email: data.email || null, role: data.role as any, avatar: data.avatar || "", passwordHash: data.passwordHash, mustChangePassword: true },
+        create: { id: data.userId, name: data.name, phone: data.phone, email: data.email || null, role: data.role as any, avatar: data.avatar || "", passwordHash: data.passwordHash, mustChangePassword: true },
+      });
+      return tx.staff.upsert({
+        where: { id: data.staffId },
+        update: { name: data.name, role: data.role as any, phone: data.phone, email: data.email || null, userId: data.userId, status: "invited" as any, specialization: data.specialization || null, specialty: data.specialty || null },
+        create: { id: data.staffId, name: data.name, role: data.role as any, phone: data.phone, email: data.email || null, userId: data.userId, status: "invited" as any, specialization: data.specialization || null, specialty: data.specialty || null, activeJobs: 0, completedJobs: 0, avatar: data.avatar || "", rating: 0 },
+      });
+    });
+    return mapStaff(staff);
+  }
+
+  async updateStaffRecord(id: string, patch: Partial<Staff>): Promise<Staff | undefined> {
+    try {
+      const r = await prisma.staff.update({
+        where: { id },
+        data: { name: patch.name, role: (patch.role as any) ?? undefined, phone: patch.phone, email: patch.email ?? undefined, specialization: patch.specialization, specialty: patch.specialty, avatar: patch.avatar },
+      });
+      return mapStaff(r);
+    } catch { return undefined; }
+  }
+
+  async updateUserRole(id: string, role: string): Promise<void> {
+    await prisma.user.update({ where: { id }, data: { role: role as any } }).catch(() => {});
+  }
+
+  async getUserWithHashById(id: string): Promise<{ user: User; passwordHash?: string } | undefined> {
+    const raw = await prisma.user.findUnique({ where: { id } });
+    if (!raw) return undefined;
+    return { user: mapUser(raw), passwordHash: (raw as any).passwordHash || undefined };
   }
 
   async getTransactions(): Promise<MpesaTransactionRecord[]> {
@@ -485,7 +545,14 @@ class PrismaDatabaseManager {
 }
 
 function mapUser(u: any): User {
-  return { id: u.id, clerkId: u.clerkId || undefined, name: u.name, phone: u.phone || "", email: u.email || "", role: u.role as any, avatar: u.avatar, location: u.location || undefined };
+  return { id: u.id, clerkId: u.clerkId || undefined, name: u.name, phone: u.phone || "", email: u.email || "", role: u.role as any, avatar: u.avatar, location: u.location || undefined, mustChangePassword: Boolean(u.mustChangePassword) };
+}
+function mapStaff(r: any): Staff {
+  return {
+    id: r.id, name: r.name, role: r.role as any, phone: r.phone, email: r.email || undefined,
+    specialization: r.specialization || undefined, specialty: r.specialty || undefined, activeJobs: r.activeJobs, completedJobs: r.completedJobs,
+    avatar: r.avatar, rating: r.rating, status: (r.status as any) || "invited", userId: r.userId || undefined, clerkId: r.clerkId || undefined,
+  };
 }
 function mapVehicle(r: any): Vehicle {
   return { id: r.id, customerId: r.customerId, type: r.type as any, make: r.make, model: r.model, year: r.year, registrationNo: r.registrationNo, color: r.color || undefined, image: r.image || undefined, previousServicesCount: r.previousServicesCount ?? 0, upholsteryHistory: (r.upholsteryHistory as any) || undefined, notes: r.notes || undefined };

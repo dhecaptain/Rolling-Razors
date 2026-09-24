@@ -57,18 +57,11 @@ export async function loginCustomer(request: APIRequestContext, phone: string, p
 export async function loginAdmin(request: APIRequestContext): Promise<void> {
   const res = await request.post("/api/auth/admin/login", {
     data: {
-      identifier: process.env.ADMIN_EMAIL || "ci@rollingrazors.co.ke",
-      password: process.env.ADMIN_PASSWORD || "ci-test-pass",
+      identifier: process.env.ADMIN_EMAIL || "james@rollingrazors.co.ke",
+      password: process.env.ADMIN_PASSWORD || "RollingRazors@2026!",
     },
   });
-  if (!res.ok()) {
-    await request.post("/api/auth/admin/login", {
-      data: {
-        identifier: "james@rollingrazors.co.ke",
-        password: "RollingRazors@2026!",
-      },
-    });
-  }
+  expect(res.ok(), `admin login failed (${res.status()}): ${await res.text()}`).toBeTruthy();
 }
 
 /**

@@ -28,10 +28,11 @@ jobs:
           --health-retries 5
     env:
       DATABASE_URL: postgresql://rolling_razors:rolling_razors_pass@localhost:5435/rolling_razors_test
+      DATABASE_ENGINE: postgres
       AUTH_SECRET: test-secret-32chars-long-for-ci-only
-      ADMIN_EMAIL: ci@rollingrazors.co.ke
-      ADMIN_PHONE: 0712345678
-      ADMIN_PASSWORD: ci-test-pass
+      ADMIN_EMAIL: james@rollingrazors.co.ke
+      ADMIN_PHONE: "+254 712 345 678"
+      ADMIN_PASSWORD: RollingRazors@2026!
       NODE_ENV: test
     steps:
       - uses: actions/checkout@v4
@@ -41,6 +42,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx prisma migrate deploy
+      - run: npx prisma generate
+      - run: npm run db:seed
       - run: npm run typecheck
       - run: npm run build
       - run: npx playwright install --with-deps chromium

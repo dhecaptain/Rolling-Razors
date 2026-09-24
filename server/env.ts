@@ -36,7 +36,7 @@ const authProvider: "clerk" | "legacy" =
 
 export const env = {
   NODE_ENV: process.env.NODE_ENV || "development",
-  PORT: 3000,
+  PORT: parseInt(process.env.PORT || "3000", 10),
   DATABASE_URL: requireEnv("DATABASE_URL", "postgresql://rolling_razors:rolling_razors_pass@localhost:5435/rolling_razors"),
   // Storage engine: "mock" (JSON file, local/tests) or "postgres" (real Prisma + pg/Neon, production).
   DATABASE_ENGINE: ((process.env.DATABASE_ENGINE || "mock").trim().toLowerCase()) as "mock" | "postgres",
@@ -60,6 +60,8 @@ export const env = {
   ADMIN_PHONE: (process.env.ADMIN_PHONE || "+254 712 345 678").trim().replace(/\s+/g, ""),
   ADMIN_PASSWORD: (process.env.ADMIN_PASSWORD || "RollingRazors@2026!").trim(),
   ADMIN_NAME: (process.env.ADMIN_NAME || "James Kimani (Owner)").trim(),
+  // One-time setup secret for POST /api/admin/bootstrap (fresh installation only).
+  BOOTSTRAP_TOKEN: (process.env.BOOTSTRAP_TOKEN || "").trim(),
 
   APP_URL: (process.env.APP_URL || "https://rollingrazors.co.ke").trim(),
   MPESA_CONSUMER_KEY: (process.env.MPESA_CONSUMER_KEY || "").trim(),
@@ -154,6 +156,9 @@ if (env.AUTH_PROVIDER === "legacy") {
 
 if (env.NODE_ENV === "production" && !env.CORS_ORIGIN) {
   throw new Error("CORS_ORIGIN must be set in production (comma-separated allowed origins)");
+}
+if (!env.BOOTSTRAP_TOKEN && env.NODE_ENV === "production") {
+  console.warn("[ENV] BOOTSTRAP_TOKEN not set — admin bootstrap endpoint is disabled (set it to initialise the workshop owner on a fresh installation).");
 }
 if (env.NODE_ENV === "production" && !env.MPESA_CALLBACK_SECRET) {
   throw new Error("MPESA_CALLBACK_SECRET is required in production — M-Pesa callbacks are authenticated against it and verified with Daraja before payments are applied.");

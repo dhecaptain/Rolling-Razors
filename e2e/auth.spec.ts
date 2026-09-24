@@ -32,7 +32,7 @@ test.describe("Auth", () => {
     const provider = await getAuthProvider(request);
     test.skip(provider === "clerk", "Legacy admin login disabled in Clerk mode");
     const res = await request.post("/api/auth/admin/login", {
-      data: { identifier: "james@rollingrazors.co.ke", password: process.env.ADMIN_PASSWORD || "rolling2025" },
+      data: { identifier: "james@rollingrazors.co.ke", password: process.env.ADMIN_PASSWORD || "RollingRazors@2026!" },
     });
     expect([200, 401]).toContain(res.status());
   });

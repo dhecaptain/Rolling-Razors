@@ -1,18 +1,66 @@
-p, admin, bookings, confirm
-p, admin, bookings, read
-p, admin, bookings, update
-p, admin, work-orders, update
-p, admin, invoices, read
-p, admin, invoices, update
-p, admin, customers, read
-p, admin, inventory, read
-p, admin, inventory, update
-p, admin, audit-logs, read
-p, admin, mpesa, read
-p, admin, mpesa, reconcile
-# Future roles — pending client confirmation
-# p, manager, bookings, read
-# p, manager, work-orders, update
-# p, reception, bookings, read
-# p, craftsman, work-orders, update
-g, admin, admin
+# Workshop RBAC — permissions derived from the signed-in user's role.
+# Subject is the role resolved server-side; g() maps the subject to itself so
+# rows read naturally: p, <role>, <object>, <action>.
+#
+# owner       — full workshop administration
+# manager     — day-to-day workshop operations + staff directory maintenance
+# craftsman   — bookings visibility + work-order execution
+# receptionist— bookings + customer directory
+
+# Owner (full control)
+p, owner, bookings, confirm
+p, owner, bookings, read
+p, owner, bookings, update
+p, owner, bookings, create
+p, owner, work-orders, update
+p, owner, invoices, read
+p, owner, invoices, update
+p, owner, customers, read
+p, owner, inventory, read
+p, owner, inventory, update
+p, owner, audit-logs, read
+p, owner, mpesa, read
+p, owner, mpesa, reconcile
+p, owner, services, read
+p, owner, services, update
+p, owner, staff, create
+p, owner, staff, read
+p, owner, staff, update
+p, owner, payments, read
+
+# Manager (operations + staff directory, cannot assign owners — enforced in route)
+p, manager, bookings, read
+p, manager, bookings, update
+p, manager, bookings, confirm
+p, manager, bookings, create
+p, manager, work-orders, update
+p, manager, invoices, read
+p, manager, invoices, update
+p, manager, customers, read
+p, manager, inventory, read
+p, manager, inventory, update
+p, manager, audit-logs, read
+p, manager, mpesa, read
+p, manager, mpesa, reconcile
+p, manager, services, read
+p, manager, services, update
+p, manager, staff, read
+p, manager, staff, update
+p, manager, payments, read
+
+# Craftsman (sees bookings + locations to plan jobs, executes own work orders)
+p, craftsman, bookings, read
+p, craftsman, bookings, create
+p, craftsman, work-orders, update
+
+# Receptionist (front desk)
+p, receptionist, bookings, read
+p, receptionist, bookings, confirm
+p, receptionist, bookings, create
+p, receptionist, customers, read
+p, receptionist, mpesa, read
+
+g, owner, owner
+g, manager, manager
+g, craftsman, craftsman
+g, receptionist, receptionist

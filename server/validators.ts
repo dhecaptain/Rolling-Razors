@@ -102,6 +102,41 @@ export const buildDraftSchema = z.object({
   pattern: z.string().min(1).max(100),
 });
 
+export const staffRoleSchema = z.enum(["owner", "manager", "craftsman", "receptionist"]);
+
+export const staffCreateSchema = z.object({
+  name: z.string().min(2).max(100),
+  phone: phoneSchema,
+  email: z.string().email().optional().or(z.literal("")).optional(),
+  role: staffRoleSchema,
+  specialization: z.string().max(120).optional(),
+  specialty: z.string().max(120).optional(),
+  avatar: z.string().max(2000).optional().or(z.literal("")).optional(),
+  password: z.string().min(8).max(200).optional(),
+}).strip();
+
+export const staffUpdateSchema = z.object({
+  name: z.string().min(2).max(100).optional(),
+  phone: phoneSchema.optional(),
+  email: z.string().email().optional().or(z.literal("")).optional(),
+  role: staffRoleSchema.optional(),
+  specialization: z.string().max(120).optional(),
+  specialty: z.string().max(120).optional(),
+  avatar: z.string().max(2000).optional().or(z.literal("")).optional(),
+}).refine(o => Object.keys(o).length > 0, { message: "At least one supported field to update is required." });
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1).max(200),
+  newPassword: z.string().min(8).max(200),
+});
+
+export const bootstrapSchema = z.object({
+  name: z.string().min(2).max(100),
+  email: z.string().email(),
+  phone: phoneSchema,
+  password: z.string().min(8).max(200).optional(),
+});
+
 export function validate<T>(schema: z.ZodSchema<T>, data: unknown): { success: boolean; data?: T; error?: string } {
   const r = schema.safeParse(data);
   if (r.success) return { success: true, data: r.data };

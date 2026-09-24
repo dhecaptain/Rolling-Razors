@@ -19,9 +19,9 @@ import { rateLimitMiddleware } from "./rates";
 import { initSentry, Sentry } from "./sentry";
 import { requireCasbin, authorize } from "./casbin/enforcer";
 import { normalizePhoneKe, toDarajaPhone, phoneKey, phonesMatch, isValidKePhone } from "./phone";
-import { validate, adminLoginSchema, customerLoginSchema, customerRegisterSchema, stkPushSchema, paystackInitSchema, bookingCreateSchema, vehicleCreateSchema, buildDraftSchema, uploadImageSchema } from "./validators";
+import { validate, adminLoginSchema, customerLoginSchema, customerRegisterSchema, stkPushSchema, paystackInitSchema, bookingCreateSchema, vehicleCreateSchema, buildDraftSchema, uploadImageSchema, staffCreateSchema, staffUpdateSchema, changePasswordSchema, bootstrapSchema } from "./validators";
 import { storageService } from "./storage";
-import { Booking, Customer, User, Vehicle, WorkOrder, UserRole } from "../src/types";
+import { Booking, Customer, User, Vehicle, WorkOrder, UserRole, Staff } from "../src/types";
 
 initSentry();
 const app = express();
@@ -108,9 +108,11 @@ app.use("/api/", generalLimiter);
 const JWT_SECRET = env.AUTH_SECRET;
 if (!JWT_SECRET || JWT_SECRET.length < 16) { logger.error("AUTH_SECRET missing"); if (env.NODE_ENV==="production") process.exit(1); }
 
+const DEFAULT_STAFF_AVATAR = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80";
+
 function generateToken(user: User, expiresInHours=24): string {
   const jti = crypto.randomUUID();
-  const payload={ sub:user.id, jti, id:user.id, name:user.name, email:user.email, phone:user.phone, role:user.role, location:user.location, iss:"rolling-razors-kenya", aud:"rolling-razors-app" };
+  const payload={ sub:user.id, jti, id:user.id, name:user.name, email:user.email, phone:user.phone, role:user.role, location:user.location, mustChangePassword:Boolean(user.mustChangePassword), iatms:Date.now(), iss:"rolling-razors-kenya", aud:"rolling-razors-app" };
   return jwt.sign(payload, JWT_SECRET, { algorithm:"HS256", expiresIn:`${expiresInHours}h` });
 }
 function verifyToken(token:string): any|null { try{ return jwt.verify(token, JWT_SECRET, { algorithms:["HS256"], issuer:"rolling-razors-kenya", audience:"rolling-razors-app" }); }catch{ return null; } }
@@ -150,9 +152,12 @@ function authenticateToken(req: express.Request,res: express.Response,next: expr
   else if((req as any).cookies?.admin_token) token=(req as any).cookies.admin_token;
   if(!token) return res.status(401).json({ success:false, error:"Authorization token required." });
   const d=verifyToken(token); if(!d) return res.status(401).json({ success:false, error:"Invalid or expired session token." });
-  isRevoked(d).then(revoked => {
+  isRevoked(d).then(async revoked => {
     if (revoked) return res.status(401).json({ success:false, error:"Token revoked." });
-    (req as any).user=d; (req as any).token=token; next();
+    if (await isUserRevoked(d)) return res.status(401).json({ success:false, error:"Session revoked. Sign in again." });
+    (req as any).user=d; (req as any).token=token;
+    if (isPasswordChangeBlocked(req)) return res.status(403).json({ success:false, error:"You must change your temporary passcode before using the dashboard." });
+    next();
   });
 }
 function authenticateOptional(req: express.Request,_res: express.Response,next: express.NextFunction){
@@ -161,10 +166,56 @@ function authenticateOptional(req: express.Request,_res: express.Response,next: 
   if(h?.startsWith("Bearer ")) token=h.split(" ")[1];
   else if((req as any).cookies?.rr_auth_token) token=(req as any).cookies.rr_auth_token;
   else if((req as any).cookies?.admin_token) token=(req as any).cookies.admin_token;
-  if(token){ const d=verifyToken(token); if(d){ isRevoked(d).then(revoked=> { if(!revoked) (req as any).user=d; next(); }); return; } }
+  if(token){ const d=verifyToken(token); if(d){ isRevoked(d).then(async revoked=> { if(!revoked && !(await isUserRevoked(d))) (req as any).user=d; next(); }); return; } }
   next();
 }
-function requireAdmin(req: express.Request,res: express.Response,next: express.NextFunction){ const u=(req as any).user; if(!u||u.role!=="admin") return res.status(403).json({ success:false, error:"Admin access required." }); next(); }
+// Role model: staff accounts are owner/manager/craftsman/receptionist. A "staff"
+// bypass is anything that is not a customer — used for the inline ownership
+// skips that staff historically enjoyed via the old "admin" flag.
+const STAFF_ROLES = new Set(["owner", "manager", "craftsman", "receptionist"]);
+function isStaffRole(role?: string): boolean {
+  return typeof role === "string" && STAFF_ROLES.has(role);
+}
+function requireRole(roles: string[]) {
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const u=(req as any).user;
+    if(!u) return res.status(401).json({ success:false, error:"Authorization required." });
+    if(!roles.includes(u.role)) return res.status(403).json({ success:false, error:"Admin access required." });
+    next();
+  };
+}
+// Grand-daddy guard used across the dashboard: owner + manager.
+const requireAdmin = requireRole(["owner", "manager"]);
+
+// Per-user session revocation. Setting rr:revoke:user:<id> to a timestamp
+// invalidates every token minted before it. Used to kick a staff member out
+// immediately on deactivation or passcode change when we have no index of their
+// outstanding jtis. Tokens carry an `iatms` (ms) claim so revocation is exact:
+// a token issued a moment before the marker IS revoked, while one minted after
+// survives — no second-truncation window in either direction.
+const REVOKE_KEY_PREFIX = "rr:revoke:user";
+async function isUserRevoked(d: any): Promise<boolean> {
+  if (!d || !d.id || !d.iat) return false;
+  const marker = await kv.get(`${REVOKE_KEY_PREFIX}:${d.id}`).catch((e: any) => {
+    logger.error({ err: e }, "[auth] revoke-marker store error — failing closed, rejecting session");
+    return "Infinity"; // a store error cannot prove the session is still valid, so revoke
+  });
+  if (!marker) return false;
+  // Pre-`iatms` tokens (issued before this deploy) fall back to the JWT iat
+  // second boundary, which can never spuriously revoke a newer token.
+  const tokenMs = typeof d.iatms === "number" ? d.iatms : Math.floor(d.iat) * 1000;
+  return tokenMs < Number(marker);
+}
+
+// Forced-passcode gate. A staff session still carrying mustChangePassword may
+// only reach the passcode-change/verify/logout endpoints; every other
+// authenticated route returns 403 until the temporary passcode is replaced.
+// This is the server-side twin of the ForcePasswordChangeModal UI.
+const PASSWORD_CHANGE_ALLOWLIST = ["/api/auth/change-password", "/api/auth/verify", "/api/auth/logout"];
+function isPasswordChangeBlocked(req: express.Request): boolean {
+  const u = (req as any).user;
+  return Boolean(u && u.mustChangePassword && isStaffRole(u.role) && PASSWORD_CHANGE_ALLOWLIST.indexOf(req.path) === -1);
+}
 
 // ---------------------------------------------------------------------------
 // Clerk authentication boundary (server-side verification).
@@ -176,16 +227,19 @@ function requireAdmin(req: express.Request,res: express.Response,next: express.N
 const clerkRoleCache = new Map<string, { role: UserRole; expiresAt: number }>();
 
 async function resolveClerkRole(clerkId: string, sessionClaims: any): Promise<UserRole> {
-  if (env.ADMIN_CLERK_IDS.includes(clerkId)) return "admin";
-  const claimRole = sessionClaims?.publicMetadata?.role ?? sessionClaims?.public_metadata?.role;
-  if (claimRole === "admin") return "admin";
-  if (typeof claimRole === "string" && claimRole.length) return "customer";
+  if (env.ADMIN_CLERK_IDS.includes(clerkId)) return "owner";
+  const claimRole = String(sessionClaims?.publicMetadata?.role ?? sessionClaims?.public_metadata?.role ?? "").toLowerCase();
+  if (claimRole === "admin") return "owner"; // legacy Clerk metadata migrated to owner
+  if (isStaffRole(claimRole)) return claimRole as UserRole;
+  if (claimRole) return "customer";
   const cached = clerkRoleCache.get(clerkId);
   if (cached && cached.expiresAt > Date.now()) return cached.role;
   let role: UserRole = "customer";
   try {
     const clerkUser = await clerkClient.users.getUser(clerkId);
-    if (clerkUser.publicMetadata?.role === "admin") role = "admin";
+    const meta = String(clerkUser.publicMetadata?.role || "").toLowerCase();
+    if (meta === "admin") role = "owner";
+    else if (isStaffRole(meta)) role = meta as UserRole;
   } catch (err) {
     logger.warn({ err }, "[Clerk] role lookup failed; defaulting to customer");
   }
@@ -248,6 +302,18 @@ async function requireClerkAuth(req: express.Request, res: express.Response, nex
       appUser = { ...appUser, role };
       await serverDb.upsertUser(appUser);
     }
+    // A staff directory row in "deactivated" state loses all access immediately,
+    // including Clerk sessions — the role checks on protected routes are not enough
+    // if the session predates the deactivation.
+    if (isStaffRole(appUser.role)) {
+      const directory = await serverDb.getStaffByUserId(appUser.id);
+      if (directory?.status === "deactivated") {
+        return res.status(403).json({ success:false, error:"This staff account has been deactivated. Contact the workshop owner." });
+      }
+      if (await isUserRevoked({ id: appUser.id, iat: 1 })) {
+        return res.status(401).json({ success:false, error:"Session revoked. Sign in again." });
+      }
+    }
     (req as any).user = { id: appUser.id, clerkId: userId, role: appUser.role, name: appUser.name, phone: appUser.phone, email: appUser.email };
     next();
   } catch (err) {
@@ -299,26 +365,121 @@ function parseAppointmentDateTime(date: string, time: string): Date {
 
 app.post("/api/auth/admin/login", legacyAuthOnly, adminAuthLimiter, checkAdminIpAllowlist, async (req,res)=>{
   const v=validate(adminLoginSchema, req.body); if(!v.success) return res.status(400).json({ success:false, error:v.error });
-  const { identifier, password }=v.data as any; const cleanIdent=String(identifier).trim().toLowerCase(); const cleanPass=String(password).trim();
+  const { identifier, password }=v.data as any; const cleanIdent=String(identifier).trim(); const cleanPass=String(password).trim();
+  if(!cleanIdent || !cleanPass) return res.status(400).json({ success:false, error:"Workshop staff email/phone and passcode are required." });
+
+  const creds = await serverDb.findUserWithHash(cleanIdent);
+  let user = creds?.user;
+
+  // This is the staff-only sign-in boundary: customer (driver) credentials are
+  // never accepted here, even when technically valid.
+  if (user && !isStaffRole(user.role)) {
+    await serverDb.createAuditLog({ actorId: cleanIdent, actorName: cleanIdent, actorRole: "customer", action: "admin:login:rejected-customer", entityType: "User", entityId: user.id, ip: req.ip, requestId: (req as any).id }).catch(()=>{});
+    return res.status(403).json({ success:false, error:"This is the staff-only sign-in. Driver (customer) credentials are not accepted here." });
+  }
+  if (user) {
+    const directory = await serverDb.getStaffByUserId(user.id);
+    if (directory?.status === "deactivated") {
+      await serverDb.createAuditLog({ actorId: cleanIdent, actorName: cleanIdent, actorRole: user.role, action: "admin:login:deactivated", entityType: "User", entityId: user.id, ip: req.ip, requestId: (req as any).id }).catch(()=>{});
+      return res.status(403).json({ success:false, error:"This staff account has been deactivated. Contact the workshop owner." });
+    }
+  }
+
+  let passwordOk = Boolean(creds?.passwordHash && await comparePassword(cleanPass, creds.passwordHash));
+
+  // Backward-compat shim: an environment-configured ADMIN_EMAIL/ADMIN_PASSWORD
+  // still signs in the workshop owner. The first success migrates the env
+  // credential into the app DB (hashed), after which the DB path is authoritative.
   const adminEmail=env.ADMIN_EMAIL; const adminPhone=env.ADMIN_PHONE; const adminPass=env.ADMIN_PASSWORD;
-  if(!adminPass){ logger.error("[AUTH] ADMIN_PASSWORD not configured"); return res.status(500).json({ success:false, error:"Admin authentication service unavailable." }); }
-  const matchesEmail=Boolean(adminEmail && cleanIdent===adminEmail); const matchesPhone=Boolean(adminPhone && phoneKey(cleanIdent)===phoneKey(adminPhone));
-  const isPassMatch = await comparePassword(cleanPass, adminPass);
-  if((!matchesEmail && !matchesPhone) || !isPassMatch) {
-    await serverDb.createAuditLog({ actorId: cleanIdent, actorName: cleanIdent, actorRole: "admin", action: "admin:login:failed", entityType: "User", entityId: cleanIdent, ip: req.ip, requestId: (req as any).id }).catch(()=>{});
+  if (!passwordOk && adminPass) {
+    const matchesEmail=Boolean(adminEmail && cleanIdent.toLowerCase()===adminEmail.toLowerCase());
+    const matchesPhone=Boolean(adminPhone && phoneKey(cleanIdent)===phoneKey(adminPhone));
+    if ((matchesEmail || matchesPhone) && await comparePassword(cleanPass, adminPass)) {
+      const existingByEmail = adminEmail ? await prisma.user.findFirst({ where: { email: { equals: adminEmail.toLowerCase(), mode:"insensitive" } } }) : null;
+      if (user && !isStaffRole(user.role)) user = { ...user, role: "owner" };
+      if (!user) {
+        user = {
+          id: existingByEmail && isStaffRole(existingByEmail.role) ? existingByEmail.id : `owner-${Date.now()}`,
+          name: (existingByEmail?.name) || env.ADMIN_NAME || (adminEmail ? adminEmail.split("@")[0] : "Workshop Administrator"),
+          phone: existingByEmail?.phone || adminPhone || "+254 712 345 678",
+          email: adminEmail || "admin@rollingrazors.co.ke",
+          role: "owner",
+          avatar: existingByEmail?.avatar || DEFAULT_STAFF_AVATAR,
+          location: existingByEmail?.location || "Workshop HQ, Industrial Area, Nairobi",
+          mustChangePassword: Boolean((existingByEmail as any)?.mustChangePassword),
+        };
+      }
+      const envHash = await hashPassword(adminPass);
+      await serverDb.upsertUser(user);
+      await serverDb.setUserPassword(user.id, envHash, false);
+      passwordOk = true;
+    }
+  }
+
+  if (!passwordOk || !user) {
+    await serverDb.createAuditLog({ actorId: cleanIdent, actorName: cleanIdent, actorRole: user?.role || "unknown", action: "admin:login:failed", entityType: "User", entityId: user?.id || cleanIdent, ip: req.ip, requestId: (req as any).id }).catch(()=>{});
     return res.status(401).json({ success:false, error:"Access Denied: Invalid workshop staff credentials." });
   }
-  const adminName=env.ADMIN_NAME || (adminEmail?adminEmail.split("@")[0]:"Workshop Administrator");
-  let adminUser: User={ id:"staff-admin", name:adminName, phone:adminPhone||"+254 712 345 678", email:adminEmail||"admin@rollingrazors.co.ke", role:"admin", avatar:"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80", location:"Workshop HQ, Industrial Area, Nairobi" };
-  try {
-    const existingByEmail = adminEmail ? await prisma.user.findUnique({ where: { email: adminEmail } }) : null;
-    if (existingByEmail && existingByEmail.id !== adminUser.id) adminUser.id = existingByEmail.id;
-  } catch {}
-  await serverDb.upsertUser(adminUser);
-  const token=generateToken(adminUser,8);
+
+  const sessionUser: User = { ...user, name: user.name || "Workshop Staff", avatar: user.avatar || DEFAULT_STAFF_AVATAR };
+  const token=generateToken(sessionUser,8);
   res.cookie("admin_token", token, { httpOnly:true, secure: env.NODE_ENV==="production", sameSite:"strict", maxAge: 8*60*60*1000, path:"/" });
-  await serverDb.createAuditLog({ actorId: adminUser.id, actorName: adminUser.name, actorRole: "admin", action: "admin:login:success", entityType: "User", entityId: adminUser.id, ip: req.ip, requestId: (req as any).id }).catch(()=>{});
-  return res.json({ success:true, user:{ ...adminUser, token }, token });
+  await serverDb.createAuditLog({ actorId: sessionUser.id, actorName: sessionUser.name, actorRole: sessionUser.role, action: "admin:login:success", entityType: "User", entityId: sessionUser.id, ip: req.ip, requestId: (req as any).id }).catch(()=>{});
+  return res.json({ success:true, user:{ ...sessionUser, mustChangePassword:Boolean(sessionUser.mustChangePassword), token }, token });
+});
+
+// First-login passcode change (mustChangePassword flow). Sets the stored hash,
+// flips the flag off, activates an "invited" directory row, revokes every older
+// session, and hands back a fresh token.
+app.post("/api/auth/change-password", legacyAuthOnly, authenticate, adminAuthLimiter, async (req,res)=>{
+  const v=validate(changePasswordSchema, req.body); if(!v.success) return res.status(400).json({ success:false, error:v.error });
+  const { currentPassword, newPassword }=v.data as any;
+  const sess=(req as any).user; if(!sess) return res.status(401).json({ success:false, error:"Authorization required." });
+  const creds = await serverDb.getUserWithHashById(sess.id);
+  if(!creds?.user || !creds.passwordHash) return res.status(401).json({ success:false, error:"No stored passcode found for this account." });
+  const directory = await serverDb.getStaffByUserId(creds.user.id);
+  if (directory?.status === "deactivated") return res.status(403).json({ success:false, error:"This staff account has been deactivated." });
+  if(!(await comparePassword(String(currentPassword||""), creds.passwordHash))) {
+    await serverDb.createAuditLog({ actorId: creds.user.id, actorName: creds.user.name, actorRole: creds.user.role, action: "auth:change-password:failed", entityType: "User", entityId: creds.user.id, ip: req.ip, requestId: (req as any).id }).catch(()=>{});
+    return res.status(401).json({ success:false, error:"Current passcode is incorrect." });
+  }
+  const hash=await hashPassword(String(newPassword));
+  await serverDb.setUserPassword(creds.user.id, hash, false);
+  if (directory && directory.status === "invited") await serverDb.setStaffStatus(directory.id, "active");
+  await kv.set(`${REVOKE_KEY_PREFIX}:${creds.user.id}`, String(Date.now()), 7*24*60*60).catch(()=>{});
+  const token=generateToken({ ...creds.user, mustChangePassword:false }, 8);
+  res.cookie("admin_token", token, { httpOnly:true, secure: env.NODE_ENV==="production", sameSite:"strict", maxAge: 8*60*60*1000, path:"/" });
+  await serverDb.createAuditLog({ actorId: creds.user.id, actorName: creds.user.name, actorRole: creds.user.role, action: "auth:change-password:success", entityType: "User", entityId: creds.user.id, ip: req.ip, requestId: (req as any).id }).catch(()=>{});
+  return res.json({ success:true, user:{ ...creds.user, mustChangePassword:false, token }, token });
+});
+
+function generateTempPassword(length=12): string {
+  const chars="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+  let out=""; for(let i=0;i<length;i++) out+=chars[crypto.randomInt(chars.length)];
+  return out;
+}
+
+// One-time owner bootstrap for a fresh installation. Guarded by the server-only
+// BOOTSTRAP_TOKEN header — refuses to run when any owner/manager exists.
+app.post("/api/admin/bootstrap", adminAuthLimiter, checkAdminIpAllowlist, async (req,res)=>{
+  const token=(req.headers["x-bootstrap-token"] as string) || "";
+  if(!env.BOOTSTRAP_TOKEN || !safeEqual(token, env.BOOTSTRAP_TOKEN)) return res.status(403).json({ success:false, error:"Invalid bootstrap token." });
+  const v=validate(bootstrapSchema, req.body); if(!v.success) return res.status(400).json({ success:false, error:v.error });
+  const input=v.data as any;
+  const existingAdmin = await prisma.user.findFirst({ where: { role: { in: ["owner", "manager"] } } });
+  if (existingAdmin) return res.status(409).json({ success:false, error:"Administration is already set up. Bootstrap is only allowed on a fresh installation." });
+  const phoneClean=normalizePhoneKe(input.phone);
+  const emailClean=String(input.email).trim().toLowerCase();
+  const directory=await serverDb.getStaff();
+  if (directory.some(s => phonesMatch(s.phone, phoneClean))) return res.status(409).json({ success:false, error:"A directory entry already exists for this phone number." });
+  if (directory.some(s => (s.email || "").toLowerCase() === emailClean)) return res.status(409).json({ success:false, error:"A directory entry already exists for this email." });
+  const tempPassword = input.password || generateTempPassword();
+  const hash=await hashPassword(tempPassword);
+  const id=`owner-${Date.now()}-${crypto.randomUUID().slice(0,6)}`;
+  const createdUser: User = { id, name: input.name, phone: phoneClean, email: emailClean, role: "owner", avatar: DEFAULT_STAFF_AVATAR, location: "Workshop HQ, Industrial Area, Nairobi", mustChangePassword: true };
+  await serverDb.createStaffAccount({ userId: id, staffId: id, name: input.name, role: "owner", phone: phoneClean, email: emailClean, avatar: DEFAULT_STAFF_AVATAR, passwordHash: hash, specialty: "Workshop Administration" });
+  await serverDb.createAuditLog({ actorId: id, actorName: input.name, actorRole: "owner", action: "admin:bootstrap", entityType: "User", entityId: id, after: { ...createdUser } as any, ip: req.ip, requestId: (req as any).id }).catch(()=>{});
+  return res.status(201).json({ success:true, message:"Workshop administration initialised. Sign in with the phone/email and the one-time passcode below, then change it on first access.", temporaryPassword: tempPassword, user: createdUser });
 });
 
 app.post("/api/auth/customer/login", legacyAuthOnly, customerAuthLimiter, async (req,res)=>{
@@ -419,9 +580,9 @@ app.get("/api/bookings", authenticate, async (req,res)=>{
   const { page, limit }=getPagination(req);
   const status=req.query.status as string|undefined; const q=req.query.q as string|undefined;
   const user=(req as any).user;
-  const customerId=user.role === "admin" ? (req.query.customerId as string|undefined) : user.id;
+  const customerId=isStaffRole(user.role) ? (req.query.customerId as string|undefined) : user.id;
   const { data: bookings, total }=await serverDb.getBookingsPaginated(customerId, status, page, limit, q);
-  const sanitized = user.role === "admin" ? bookings : bookings.map(b => ({ ...b, internalNotes: undefined }));
+  const sanitized = isStaffRole(user.role) ? bookings : bookings.map(b => ({ ...b, internalNotes: undefined }));
   res.json({ success:true, bookings: sanitized, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
 });
 
@@ -429,7 +590,7 @@ app.post("/api/bookings", authenticate, async (req,res)=>{
   const v=validate(bookingCreateSchema, req.body); if(!v.success) return res.status(400).json({ success:false, error:v.error });
   const input=v.data as any;
   const user=(req as any).user;
-  const customerId=user.role === "admin" ? input.customerId : user.id;
+  const customerId=isStaffRole(user.role) ? input.customerId : user.id;
   if (!customerId) return res.status(400).json({ success:false, error:"A customer account is required." });
   const customer = await serverDb.getCustomer(customerId);
   if (!customer) return res.status(404).json({ success:false, error:"Customer account not found." });
@@ -443,8 +604,8 @@ app.post("/api/bookings", authenticate, async (req,res)=>{
   const bookingId=`RR-${Date.now().toString().slice(-6)}${Math.floor(100+Math.random()*900)}`;
   const workOrderId=`RR-WO-${bookingId.replace('RR-','')}`;
   const estimatedPrice=Math.max(0, Math.round(service.startingPrice));
-  const customerName=user.role === "admin" ? customer.name : user.name;
-  const customerPhone=normalizePhoneKe(user.role === "admin" ? customer.phone : user.phone);
+  const customerName=isStaffRole(user.role) ? customer.name : user.name;
+  const customerPhone=normalizePhoneKe(isStaffRole(user.role) ? customer.phone : user.phone);
   const consentTimestamp = new Date();
   const bookingData: Booking={
     id:bookingId, customerId, customerName, customerPhone, customerEmail:customer.email,
@@ -466,7 +627,7 @@ app.post("/api/bookings", authenticate, async (req,res)=>{
 
 app.patch("/api/bookings/:id", authenticate, async (req,res)=>{
   const { id }=req.params; const existing=await serverDb.getBooking(id); if(!existing) return res.status(404).json({ success:false, error:"Booking not found." });
-  const user=(req as any).user; const isAdmin = user.role === "admin";
+  const user=(req as any).user; const isAdmin = isStaffRole(user.role);
 
   // Customers may only cancel their own booking (free cancellation up to 24h is
   // advertised on the public site). Cancellation releases the appointment slot.
@@ -484,10 +645,18 @@ app.patch("/api/bookings/:id", authenticate, async (req,res)=>{
     return res.json({ success:true, booking:updated });
   }
 
-  if(!(await authorize("admin", "bookings", "update"))) return res.status(403).json({ success:false, error:"Forbidden." });
-  const allowed=["status","assignedStaffId","assignedStaffName","paymentStatus","paymentMethod","mpesaReceiptNo","depositPaid","depositAmount","balanceAmount","internalNotes"];
+  const canUpdate = await authorize(user.role, "bookings", "update");
+  const canConfirm = await authorize(user.role, "bookings", "confirm");
+  if (!canUpdate && !canConfirm) return res.status(403).json({ success:false, error:"Forbidden." });
+  // Confirm-only roles (receptionist) may record the deposit and confirm or
+  // cancel, but cannot reassign staff or edit internal notes — those stay with
+  // owner/manager who hold the full bookings:update policy row.
+  const allowed = canUpdate
+    ? ["status","assignedStaffId","assignedStaffName","paymentStatus","paymentMethod","mpesaReceiptNo","depositPaid","depositAmount","balanceAmount","internalNotes"]
+    : ["status","paymentStatus","paymentMethod","mpesaReceiptNo","depositPaid","depositAmount","balanceAmount"];
   const patch:any={}; for(const k of allowed) if(k in req.body) patch[k]=req.body[k];
   if(patch.status){
+    if(!canUpdate && !["confirmed","cancelled"].includes(patch.status)) return res.status(403).json({ success:false, error:"Receptionist can only confirm or cancel bookings." });
     const v=serverDb.validateBookingTransition(existing.status, patch.status);
     if(!v.valid) return res.status(409).json({ success:false, error:v.error });
     if(patch.status==="confirmed" && !existing.depositPaid && !patch.depositPaid) return res.status(409).json({ success:false, error:"Cannot confirm booking without deposit. Record M-Pesa payment first." });
@@ -502,7 +671,7 @@ app.patch("/api/bookings/:id", authenticate, async (req,res)=>{
 app.get("/api/vehicles", authenticate, async (req,res)=>{
   const { page, limit }=getPagination(req);
   const user=(req as any).user;
-  const customerId=user.role === "admin" ? (req.query.customerId as string|undefined) : user.id;
+  const customerId=isStaffRole(user.role) ? (req.query.customerId as string|undefined) : user.id;
   const { data: vehicles, total }=await serverDb.getVehiclesPaginated(customerId, page, limit);
   res.json({ success:true, vehicles, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
 });
@@ -510,7 +679,7 @@ app.get("/api/vehicles", authenticate, async (req,res)=>{
 app.post("/api/vehicles", authenticate, async (req,res)=>{
   const v=validate(vehicleCreateSchema, req.body); if(!v.success) return res.status(400).json({ success:false, error:v.error });
   const vehicleData=v.data as Vehicle; const user=(req as any).user;
-  const customerId=user.role === "admin" ? vehicleData.customerId : user.id;
+  const customerId=isStaffRole(user.role) ? vehicleData.customerId : user.id;
   if (!customerId) return res.status(400).json({ success:false, error:"A customer account is required." });
   const newVehicle: Vehicle={ ...vehicleData, customerId, id:`veh_${Date.now()}_${crypto.randomUUID().slice(0,6)}`, registrationNo:vehicleData.registrationNo.toUpperCase(), previousServicesCount:0 };
   const result=await serverDb.addVehicle(newVehicle);
@@ -520,20 +689,20 @@ app.post("/api/vehicles", authenticate, async (req,res)=>{
 
 app.delete("/api/vehicles/:id", authenticate, async (req,res)=>{
   const { id }=req.params; const vehicles=await serverDb.getVehicles(); const target=vehicles.find(v=>v.id===id); if(!target) return res.status(404).json({ success:false, error:"Vehicle not found." });
-  const user=(req as any).user; if(user.role!=="admin" && target.customerId && target.customerId!==user.id) return res.status(403).json({ success:false, error:"You can only delete your own vehicles." });
+  const user=(req as any).user; if(!isStaffRole(user.role) && target.customerId && target.customerId!==user.id) return res.status(403).json({ success:false, error:"You can only delete your own vehicles." });
   const deleted=await serverDb.deleteVehicle(id); if(!deleted) return res.status(404).json({ success:false, error:"Vehicle not found." }); res.json({ success:true, message:"Vehicle deleted." });
 });
 
 app.get("/api/work-orders", authenticate, async (req,res)=>{
   const { page, limit }=getPagination(req);
   const user=(req as any).user;
-  const customerId = user.role === "admin" ? undefined : user.id;
+  const customerId = isStaffRole(user.role) ? undefined : user.id;
   const { data: workOrders, total }=await serverDb.getWorkOrdersPaginated(customerId, page, limit);
-  const sanitized = user.role === "admin" ? workOrders : workOrders.map(wo => ({ ...wo, internalNotes: undefined }));
+  const sanitized = isStaffRole(user.role) ? workOrders : workOrders.map(wo => ({ ...wo, internalNotes: undefined }));
   return res.json({ success:true, workOrders: sanitized, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
 });
 
-app.patch("/api/work-orders/:id", authenticate, requireAdmin, requireCasbin("work-orders","update"), async (req,res)=>{
+app.patch("/api/work-orders/:id", authenticate, requireCasbin("work-orders","update"), async (req,res)=>{
   const { id }=req.params; const allowed=["stage","progressPercentage","assignedStaffId","assignedStaffName","priority","internalNotes","actualCost","version","beforePhotos","progressPhotos","afterPhotos","targetCompletionDate","materialsRequired"]; const patch:any={}; for(const k of allowed) if(k in req.body) patch[k]=req.body[k];
   const user=(req as any).user;
   const result=await serverDb.updateWorkOrderWithVersion(id, patch, { id:user.id, name:user.name, role:user.role, ip:req.ip, requestId:(req as any).id });
@@ -597,7 +766,7 @@ app.get("/api/uploads/file/:encodedKey", async (req, res) => {
       if (token) {
         const decoded = verifyToken(token);
         if (decoded) {
-          if (decoded.role === "admin") {
+          if (isStaffRole(decoded.role)) {
             authorized = true;
           } else if (key.includes(decoded.id)) {
             authorized = true;
@@ -652,7 +821,7 @@ app.delete("/api/uploads/:encodedKey", authenticate, async (req, res) => {
   const key = decodeURIComponent(encodedKey);
   const user = (req as any).user;
 
-  if (user.role !== "admin" && !key.includes(user.id)) {
+  if (!isStaffRole(user.role) && !key.includes(user.id)) {
     return res.status(403).json({ success: false, error: "Forbidden: insufficient permissions to delete asset." });
   }
 
@@ -663,7 +832,7 @@ app.delete("/api/uploads/:encodedKey", authenticate, async (req, res) => {
 app.get("/api/invoices", authenticate, async (req,res)=>{
   const { page, limit }=getPagination(req);
   const user=(req as any).user;
-  const customerId=user.role === "admin" ? (req.query.customerId as string|undefined) : user.id;
+  const customerId=isStaffRole(user.role) ? (req.query.customerId as string|undefined) : user.id;
   const { data: invoices, total }=await serverDb.getInvoicesPaginated(customerId, page, limit);
   res.json({ success:true, invoices, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
 });
@@ -675,7 +844,7 @@ app.patch("/api/invoices/:id", authenticate, requireAdmin, requireCasbin("invoic
   const updated=await serverDb.updateInvoice(id, patch); if(!updated) return res.status(404).json({ success:false, error:"Invoice not found." }); res.json({ success:true, invoice:updated });
 });
 
-app.get("/api/customers", authenticate, requireAdmin, async (req,res)=>{
+app.get("/api/customers", authenticate, requireCasbin("customers","read"), async (req,res)=>{
   const { page, limit }=getPagination(req);
   const { data: customers, total }=await serverDb.getCustomersPaginated(page, limit);
   res.json({ success:true, customers, pagination:{ page, limit, total, pages:Math.ceil(total/limit) } });
@@ -694,7 +863,93 @@ app.get("/api/inventory/low", authenticate, requireAdmin, requireCasbin("invento
   const low=await serverDb.getLowStock();
   res.json({ success:true, lowStock:low });
 });
-app.get("/api/staff", authenticate, requireAdmin, async (_req,res)=>{ res.json({ success:true, staff: await serverDb.getStaff() }); });
+app.get("/api/staff", authenticate, requireAdmin, requireCasbin("staff","read"), async (_req,res)=>{ res.json({ success:true, staff: await serverDb.getStaff() }); });
+app.post("/api/staff", authenticate, requireAdmin, requireCasbin("staff","create"), async (req,res)=>{
+  const v=validate(staffCreateSchema, req.body); if(!v.success) return res.status(400).json({ success:false, error:v.error });
+  const input=v.data as any;
+  const actor=(req as any).user;
+  if(input.role==="owner" && actor.role!=="owner") return res.status(403).json({ success:false, error:"Only the workshop owner can assign the owner role." });
+  const phoneClean=normalizePhoneKe(input.phone);
+  const emailClean=input.email ? String(input.email).trim().toLowerCase() : "";
+  const directory=await serverDb.getStaff();
+  if(directory.some(s=>phonesMatch(s.phone, phoneClean))) return res.status(409).json({ success:false, error:"A staff member with this phone number already exists." });
+  if(emailClean && directory.some(s=>(s.email||"").toLowerCase()===emailClean)) return res.status(409).json({ success:false, error:"A staff member with this email already exists." });
+  // Reuse an existing non-staff profile by id when a driver later registered under
+  // the same contact; otherwise mint a fresh staff account sharing one id.
+  const existingByPhone = await serverDb.findUser(phoneClean).catch(()=>undefined);
+  const existingByEmail = !existingByPhone && emailClean ? await serverDb.findUser(emailClean).catch(()=>undefined) : undefined;
+  const existing = existingByPhone || existingByEmail;
+  if(existing && isStaffRole(existing.role)) return res.status(409).json({ success:false, error:"An active staff profile already exists for this person." });
+  const tempPassword = input.password || generateTempPassword();
+  const hash=await hashPassword(tempPassword);
+  const staffId=`staff-${crypto.randomUUID().slice(0,8)}`;
+  const userId = existing && !isStaffRole(existing.role) ? existing.id : staffId;
+  try {
+    await serverDb.createStaffAccount({ userId, staffId, name: input.name, role: input.role, phone: phoneClean, email: emailClean || undefined, avatar: input.avatar || DEFAULT_STAFF_AVATAR, passwordHash: hash, specialization: input.specialization, specialty: input.specialty });
+  } catch (e: any) {
+    if (e?.code === "P2002") return res.status(409).json({ success:false, error:"A staff account with this phone or email already exists." });
+    logger.error({ err: e }, "[Staff] create failed");
+    return res.status(500).json({ success:false, error:"Could not create the staff account. Please try again." });
+  }
+  const staff=await serverDb.getStaffById(staffId);
+  await serverDb.createAuditLog({ actorId: actor.id, actorName: actor.name, actorRole: actor.role, action: "staff:create", entityType: "Staff", entityId: staffId, after: { id: staffId, name: input.name, role: input.role, phone: phoneClean, email: emailClean } as any, ip: req.ip, requestId: (req as any).id }).catch(()=>{});
+  return res.status(201).json({ success:true, staff, temporaryPassword: tempPassword, message:"Staff member created. Send them the one-time passcode and privacy notice; they must change it on first sign-in." });
+});
+
+app.patch("/api/staff/:id", authenticate, requireAdmin, requireCasbin("staff","update"), async (req,res)=>{
+  const { id }=req.params;
+  const v=validate(staffUpdateSchema, req.body); if(!v.success) return res.status(400).json({ success:false, error:v.error });
+  const input=v.data as any;
+  const actor=(req as any).user;
+  const existing=await serverDb.getStaffById(id); if(!existing) return res.status(404).json({ success:false, error:"Staff member not found." });
+  if(input.role!==undefined && input.role!=="owner" && existing.role==="owner" && actor.role!=="owner") return res.status(403).json({ success:false, error:"Only the workshop owner can change the owner's role." });
+  if(input.role==="owner" && actor.role!=="owner") return res.status(403).json({ success:false, error:"Only the workshop owner can assign the owner role." });
+  const patch:any={};
+  if(input.name!==undefined) patch.name=input.name;
+  if(input.phone!==undefined) patch.phone=normalizePhoneKe(input.phone);
+  if(input.email!==undefined) patch.email=String(input.email).trim().toLowerCase() || undefined;
+  if(input.role!==undefined) patch.role=input.role;
+  if(input.specialization!==undefined) patch.specialization=input.specialization;
+  if(input.specialty!==undefined) patch.specialty=input.specialty;
+  if(input.avatar!==undefined) patch.avatar=input.avatar;
+  const current=await serverDb.getStaff();
+  if(patch.email && current.some(s=>s.id!==id && (s.email||"").toLowerCase()===patch.email)) return res.status(409).json({ success:false, error:"A staff member with this email already exists." });
+  if(patch.phone && current.some(s=>s.id!==id && phonesMatch(s.phone, patch.phone))) return res.status(409).json({ success:false, error:"A staff member with this phone number already exists." });
+  const before={ ...existing };
+  const updated=await serverDb.updateStaffRecord(id, patch as Partial<Staff>); if(!updated) return res.status(404).json({ success:false, error:"Staff member not found." });
+  if(patch.role && existing.userId) {
+    await serverDb.updateUserRole(existing.userId, patch.role);
+    // A role change takes effect immediately: demote/promote revokes outstanding
+    // sessions so reduced permissions cannot be bypassed by a stale elevated token.
+    if(patch.role !== existing.role) await kv.set(`${REVOKE_KEY_PREFIX}:${existing.userId}`, String(Date.now()), 7*24*60*60).catch(()=>{});
+  }
+  await serverDb.createAuditLog({ actorId: actor.id, actorName: actor.name, actorRole: actor.role, action: "staff:update", entityType: "Staff", entityId: id, before, after: updated, ip: req.ip, requestId: (req as any).id }).catch(()=>{});
+  return res.json({ success:true, staff: updated });
+});
+
+app.post("/api/staff/:id/deactivate", authenticate, requireAdmin, requireCasbin("staff","update"), async (req,res)=>{
+  const { id }=req.params;
+  const actor=(req as any).user;
+  const existing=await serverDb.getStaffById(id); if(!existing) return res.status(404).json({ success:false, error:"Staff member not found." });
+  if(existing.userId && existing.userId===actor.id) return res.status(403).json({ success:false, error:"You cannot deactivate your own account." });
+  if(existing.role==="owner" && actor.role!=="owner") return res.status(403).json({ success:false, error:"Only the workshop owner can deactivate the owner." });
+  if(existing.status==="deactivated") return res.status(409).json({ success:false, error:"This staff member is already deactivated." });
+  const updated=await serverDb.setStaffStatus(id, "deactivated"); if(!updated) return res.status(404).json({ success:false, error:"Staff member not found." });
+  // Soft deactivate: the directory row stays (history preserved) but every
+  // outstanding session is revoked and logins are blocked until reactivated.
+  if(existing.userId) await kv.set(`${REVOKE_KEY_PREFIX}:${existing.userId}`, String(Date.now()), 7*24*60*60).catch(()=>{});
+  await serverDb.createAuditLog({ actorId: actor.id, actorName: actor.name, actorRole: actor.role, action: "staff:deactivated", entityType: "Staff", entityId: id, before: { ...existing }, after: updated, ip: req.ip, requestId: (req as any).id }).catch(()=>{});
+  return res.json({ success:true, staff: updated, message:"Staff member deactivated. Active sessions were revoked." });
+});
+
+app.post("/api/staff/:id/reactivate", authenticate, requireAdmin, requireCasbin("staff","update"), async (req,res)=>{
+  const { id }=req.params;
+  const actor=(req as any).user;
+  const existing=await serverDb.getStaffById(id); if(!existing) return res.status(404).json({ success:false, error:"Staff member not found." });
+  const updated=await serverDb.setStaffStatus(id, "active"); if(!updated) return res.status(404).json({ success:false, error:"Staff member not found." });
+  await serverDb.createAuditLog({ actorId: actor.id, actorName: actor.name, actorRole: actor.role, action: "staff:reactivated", entityType: "Staff", entityId: id, before: { ...existing }, after: updated, ip: req.ip, requestId: (req as any).id }).catch(()=>{});
+  return res.json({ success:true, staff: updated, message:"Staff member reactivated and can sign in again." });
+});
 app.get("/api/services", async (_req,res)=>{
   const services=await prisma.service.findMany({ orderBy:{ startingPrice:"asc" } });
   res.json({ success:true, services });
@@ -764,7 +1019,7 @@ app.post("/api/mpesa/stkpush", mpesaLimiter, authenticate, async (req,res)=>{
   if (!user) return res.status(401).json({ success: false, error: "Authentication required." });
   if (bookingId) {
     const booking = await serverDb.getBooking(bookingId); if (!booking) return res.status(404).json({ success: false, error: "Booking not found." });
-    if (user.role !== "admin" && booking.customerId !== user.id) return res.status(403).json({ success: false, error: "Not your booking." });
+    if (!isStaffRole(user.role) && booking.customerId !== user.id) return res.status(403).json({ success: false, error: "Not your booking." });
     const expected = Math.round(booking.depositAmount);
     if (Math.round(Number(amount)) !== expected) return res.status(400).json({ success: false, error: `Amount mismatch: expected KES ${expected.toLocaleString()} for booking ${bookingId}.` });
     if (booking.depositPaid) return res.status(409).json({ success: false, error: "Deposit already paid for this booking." });
@@ -773,7 +1028,7 @@ app.post("/api/mpesa/stkpush", mpesaLimiter, authenticate, async (req,res)=>{
   }
   if (invoiceId) {
     const inv = await serverDb.getInvoice(invoiceId); if (!inv) return res.status(404).json({ success: false, error: "Invoice not found." });
-    if (user.role !== "admin") {
+    if (!isStaffRole(user.role)) {
       const linkedBooking = inv.bookingId ? await serverDb.getBooking(inv.bookingId) : null;
       if (!linkedBooking || linkedBooking.customerId !== user.id) return res.status(403).json({ success: false, error: "Not your invoice." });
     }
@@ -882,7 +1137,7 @@ app.get("/api/mpesa/query/:checkoutRequestId", authenticate, async (req, res) =>
   const tx = result.tx;
   if (!tx) return res.status(404).json({ success: false, error: "Transaction not found." });
   const user = (req as any).user;
-  if (user.role !== "admin" && tx.bookingId) {
+  if (!isStaffRole(user.role) && tx.bookingId) {
     const booking = await serverDb.getBooking(tx.bookingId);
     if (!booking || booking.customerId !== user.id) return res.status(403).json({ success: false, error: "Not your transaction." });
   }
@@ -952,7 +1207,7 @@ app.post("/api/paystack/initialize", paystackLimiter, authenticate, async (req, 
   if (bookingId) {
     const booking = await serverDb.getBooking(bookingId);
     if (!booking) return res.status(404).json({ success: false, error: "Booking not found." });
-    if (user.role !== "admin" && booking.customerId !== user.id) return res.status(403).json({ success: false, error: "Not your booking." });
+    if (!isStaffRole(user.role) && booking.customerId !== user.id) return res.status(403).json({ success: false, error: "Not your booking." });
     const expected = Math.round(booking.depositAmount);
     if (Math.round(Number(amount)) !== expected) return res.status(400).json({ success: false, error: `Amount mismatch: expected KES ${expected.toLocaleString()} for booking ${bookingId}.` });
     if (booking.depositPaid) return res.status(409).json({ success: false, error: "Deposit already paid for this booking." });
@@ -982,7 +1237,7 @@ app.post("/api/paystack/initialize", paystackLimiter, authenticate, async (req, 
   if (invoiceId) {
     const inv = await serverDb.getInvoice(invoiceId);
     if (!inv) return res.status(404).json({ success: false, error: "Invoice not found." });
-    if (user.role !== "admin") {
+    if (!isStaffRole(user.role)) {
       const linkedBooking = inv.bookingId ? await serverDb.getBooking(inv.bookingId) : null;
       if (!linkedBooking || linkedBooking.customerId !== user.id) return res.status(403).json({ success: false, error: "Not your invoice." });
     }
@@ -1048,7 +1303,7 @@ app.get("/api/paystack/verify", authenticate, async (req, res) => {
   const tx = await serverDb.getTransaction(reference);
   if (!tx) return res.status(404).json({ success: false, error: "Transaction not found." });
   const user = (req as any).user;
-  if (user.role !== "admin" && tx.bookingId) {
+  if (!isStaffRole(user.role) && tx.bookingId) {
     const booking = await serverDb.getBooking(tx.bookingId);
     if (!booking || booking.customerId !== user.id) return res.status(403).json({ success: false, error: "Not your transaction." });
   }

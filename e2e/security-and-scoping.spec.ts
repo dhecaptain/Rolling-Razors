@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import type { APIRequestContext } from "@playwright/test";
-import { registerCustomer, uniqueAppointment } from "./helpers";
+import { registerCustomer, uniqueAppointment, loginAdmin } from "./helpers";
 
 /**
  * Cross-cutting security and data-scoping coverage:
@@ -234,10 +234,7 @@ test.describe("Security & data scoping", () => {
     const booking = await createBooking(ctx, A.user, A.phone, A.email);
 
     const admin = await playwright.request.newContext();
-    const login = await admin.post("/api/auth/admin/login", {
-      data: { identifier: process.env.ADMIN_EMAIL || "ci@rollingrazors.co.ke", password: process.env.ADMIN_PASSWORD || "ci-test-pass" },
-    });
-    expect(login.status(), `admin login failed: ${await login.text()}`).toBe(200);
+    await loginAdmin(admin);
 
     const woList = await (await admin.get("/api/work-orders?limit=50")).json();
     const wo = (woList.workOrders as any[]).find((w: any) => w.bookingId === booking.id);
@@ -268,10 +265,7 @@ test.describe("Security & data scoping", () => {
     const booking = await createBooking(ctx, A.user, A.phone, A.email);
 
     const admin = await playwright.request.newContext();
-    const login = await admin.post("/api/auth/admin/login", {
-      data: { identifier: process.env.ADMIN_EMAIL || "ci@rollingrazors.co.ke", password: process.env.ADMIN_PASSWORD || "ci-test-pass" },
-    });
-    expect(login.status(), `admin login failed: ${await login.text()}`).toBe(200);
+    await loginAdmin(admin);
 
     const note = await admin.patch(`/api/bookings/${booking.id}`, { data: { internalNotes: "Priority customer" } });
     expect(note.status(), `admin booking patch should work: ${await note.text()}`).toBe(200);

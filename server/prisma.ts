@@ -4,7 +4,7 @@ import crypto from "crypto";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
-import { INITIAL_SERVICES } from "../src/data/mockData";
+import { INITIAL_SERVICES, INITIAL_STAFF, INITIAL_CUSTOMERS, INITIAL_VEHICLES, INITIAL_BOOKINGS, INITIAL_WORK_ORDERS, INITIAL_INVOICES } from "../src/data/mockData";
 
 export interface InMemoryDb {
   users: any[];
@@ -24,6 +24,43 @@ export interface InMemoryDb {
 
 const DB_FILE_PATH = path.join(process.cwd(), "data", "rolling_razors_db.json");
 
+/**
+ * Default dataset for a brand-new mock database, mirroring prisma/seed.ts so
+ * the mock and Postgres start from the same owner-led world: the owner + second
+ * owner as staff-fluent Users, the demo driver, the full seed data (customers,
+ * vehicles, bookings, work orders, invoices), and the inventory list.
+ */
+function defaultDataSet(): InMemoryDb {
+  const users = [
+    { id: "staff-1", name: "James Kimani (Owner)", phone: "+254 712 345 678", email: "james@rollingrazors.co.ke", role: "owner", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80", location: "Workshop HQ, Industrial Area, Nairobi" },
+    { id: "cust-1", name: "Brian Mwangi", phone: "+254 712 901 234", email: "brian.mwangi@gmail.com", role: "customer", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80", location: "Kilimani, Nairobi" },
+    { id: "staff-admin", name: "davidpolycarp7", phone: "+254723459826", email: "davidpolycarp7@gmail.com", role: "owner", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80", location: "Workshop HQ, Industrial Area, Nairobi" },
+  ];
+  const inventoryItems = [
+    { sku: "LEATHER-NAPPA-TAN-001", name: "Nappa Leather Tan #804", category: "leather", qtyOnHand: 18, reorderPoint: 12, costPerUnit: 2800 },
+    { sku: "LEATHER-ITALIAN-SADDLE", name: "Italian Saddle Brown Leather", category: "leather", qtyOnHand: 3, reorderPoint: 10, costPerUnit: 4200 },
+    { sku: "VINYL-HD-BLACK-001", name: "Heavy-Duty Vinyl Black", category: "vinyl", qtyOnHand: 45, reorderPoint: 15, costPerUnit: 850 },
+    { sku: "FOAM-HD-50MM", name: "High-Density Foam 50mm", category: "foam", qtyOnHand: 8, reorderPoint: 10, costPerUnit: 1200 },
+    { sku: "THREAD-GOLD-40", name: "Gold Bonded Nylon Thread #40", category: "thread", qtyOnHand: 22, reorderPoint: 8, costPerUnit: 150 },
+    { sku: "CANVAS-RIPSTOP-550", name: "Ripstop Canvas 550gsm", category: "canvas", qtyOnHand: 30, reorderPoint: 10, costPerUnit: 950 },
+  ];
+  return {
+    users,
+    customers: INITIAL_CUSTOMERS,
+    vehicles: INITIAL_VEHICLES,
+    bookings: INITIAL_BOOKINGS,
+    workOrders: INITIAL_WORK_ORDERS,
+    invoices: INITIAL_INVOICES,
+    staff: INITIAL_STAFF,
+    services: INITIAL_SERVICES,
+    mpesaTransactions: [],
+    otps: [],
+    auditLogs: [],
+    inventoryItems,
+    buildDrafts: [],
+  };
+}
+
 function loadDb(): InMemoryDb {
   let rawDb: any = {};
   try {
@@ -34,13 +71,32 @@ function loadDb(): InMemoryDb {
     console.warn("[Prisma Mock] Failed to read db file, starting fresh:", err);
   }
 
+  // A totally fresh mock (no persisted file yet) starts from the same seeded
+  // world the Postgres seed creates, so the owner-led data contract holds
+  // across engines — including an owner row in the staff directory.
+  if (!rawDb.staff || rawDb.staff.length === 0) {
+    rawDb = defaultDataSet();
+  }
+
   const normalizeDate = (val: any) => (val ? new Date(val) : new Date());
+
+  // Mirrors the Postgres migrations' role backfills: legacy mock rows stored
+  // "admin" for the owner and Capitalized staff roles. Normalize in-memory so
+  // Casbin/isStaffRole checks see the canonical lowercase clinician roles.
+  const STAFF_ROLES = new Set(["owner", "manager", "craftsman", "receptionist"]);
+  const normalizeRole = (r: any) => {
+    const rl = String(r || "customer").toLowerCase();
+    return rl === "admin" ? "owner" : rl;
+  };
 
   const users = (rawDb.users || []).map((u: any) => ({
     ...u,
+    role: normalizeRole(u.role),
     createdAt: normalizeDate(u.createdAt),
     updatedAt: normalizeDate(u.updatedAt),
   }));
+
+  const staffUserIds = new Set(users.filter((u: any) => STAFF_ROLES.has(u.role)).map((u: any) => u.id));
 
   const customers = (rawDb.customers || []).map((c: any) => ({
     ...c,
@@ -76,6 +132,9 @@ function loadDb(): InMemoryDb {
 
   const staff = (rawDb.staff || []).map((s: any) => ({
     ...s,
+    role: normalizeRole(s.role),
+    status: s.status || "active",
+    userId: s.userId ?? (staffUserIds.has(s.id) ? s.id : undefined),
     createdAt: normalizeDate(s.createdAt),
     updatedAt: normalizeDate(s.updatedAt),
   }));
