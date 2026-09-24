@@ -38,9 +38,11 @@ import { setAuthToken, getAuthToken } from '../lib/authToken';
 export type AppView = 'website' | 'booking' | 'customer_dashboard' | 'admin_dashboard' | 'auth' | 'admin_auth';
 
 /** Centralized role-check helpers. Use these instead of inline `role === 'admin'`. */
-export const isStaff = (role: UserRole): boolean => role === 'admin';
-export const isCustomer = (role: UserRole): boolean => role === 'customer';
-export const canAccessAdmin = (role: UserRole): boolean => isStaff(role);
+const STAFF_ROLES: Set<UserRole> = new Set(['owner', 'manager', 'craftsman', 'receptionist']);
+export const isStaff = (role: UserRole | undefined): boolean => Boolean(role && STAFF_ROLES.has(role));
+export const isCustomer = (role: UserRole | undefined): boolean => role === 'customer';
+/** Full workshop administration is owner + manager (Casbin owner/manager rows). */
+export const canAccessAdmin = (role: UserRole | undefined): boolean => role === 'owner' || role === 'manager';
 export const STAFF_VIEWS: AppView[] = ['admin_dashboard', 'admin_auth'];
 export const CUSTOMER_VIEWS: AppView[] = ['customer_dashboard'];
 
@@ -131,6 +133,9 @@ interface AppContextType {
   addVehicle: (vehicle: Omit<Vehicle, 'id' | 'previousServicesCount'>) => void;
   deleteVehicle: (id: string) => void;
   updateProfile: (patch: Partial<User>) => void;
+
+  // Staff actions (server-backed)
+  refreshStaff: () => Promise<void>;
   
   // Service actions
   updateServicePrice: (serviceId: string, price: number) => void;
@@ -261,17 +266,17 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
 
   const resolveSafeView = React.useCallback((): AppView => {
     if (isLoggedIn && currentUser) {
-      return canAccessAdmin(role) ? 'admin_dashboard' : 'customer_dashboard';
+      return isStaff(role) ? 'admin_dashboard' : 'customer_dashboard';
     }
     return 'website';
   }, [isLoggedIn, currentUser, role]);
 
   const isViewAllowed = React.useCallback((nextView: AppView): boolean => {
     if (nextView === 'admin_dashboard') {
-      return canAccessAdmin(role);
+      return isStaff(role);
     }
     if (nextView === 'admin_auth') {
-      return !(isLoggedIn && !canAccessAdmin(role));
+      return !(isLoggedIn && !isStaff(role));
     }
     if (nextView === 'customer_dashboard') {
       return isLoggedIn;
@@ -1305,12 +1310,26 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
     addToast('success', 'Profile Updated', 'Your contact details are updated for this session.');
   };
 
+  const refreshStaff = React.useCallback(async () => {
+    try {
+      const res = await authFetch('/api/staff');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.staff)) {
+          setStaff(data.staff as Staff[]);
+        }
+      }
+    } catch {
+      // Keep the existing directory — server may be unreachable.
+    }
+  }, [authFetch]);
+
   const deleteVehicle = (id: string) => {
     let allowed = true;
     setVehicles(prev => {
       const target = prev.find(v => v.id === id);
       if (!target) return prev;
-      if (currentUser && currentUser.role !== 'admin' && target.customerId && target.customerId !== currentUser.id) {
+      if (currentUser && !isStaff(currentUser.role) && target.customerId && target.customerId !== currentUser.id) {
         allowed = false;
         return prev;
       }
@@ -1495,7 +1514,8 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
         setBookingWizardInitialServiceId,
         bookingWizardDraft,
         setBookingWizardDraft,
-        updateProfile
+        updateProfile,
+        refreshStaff
       }}
     >
       {children}

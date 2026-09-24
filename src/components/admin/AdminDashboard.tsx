@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useApp } from '../../context/AppContext';
+import { useApp, isStaff } from '../../context/AppContext';
 import {
-  BarChart3, Calendar as CalendarIcon, Car, CheckCircle2, Clock, DollarSign, FileText, Filter, Layers, MapPin, Plus, Scissors, ShieldAlert, Smartphone, Trash2, UserCheck, Users, X, TrendingUp, Search, Check, Phone, ArrowRight, AlertTriangle, History, Camera
+  BarChart3, Calendar as CalendarIcon, Car, CheckCircle2, Clock, DollarSign, FileText, Filter, Layers, MapPin, Plus, Scissors, ShieldAlert, Smartphone, Trash2, UserCheck, Users, X, TrendingUp, Search, Check, Phone, ArrowRight, AlertTriangle, History, Camera, Power, PowerOff, UserPlus, KeyRound
 } from 'lucide-react';
-import { Booking, WorkOrder, WorkOrderStage } from '../../types';
+import { Booking, WorkOrder, WorkOrderStage, STAFF_ROLE_LABEL, STAFF_STATUS_LABEL, StaffRole, UserRole } from '../../types';
 import { PhotoUploader } from '../common/PhotoUploader';
 
 export const AdminDashboard: React.FC = () => {
   const {
-    currentUser, adminTab, setAdminTab, bookings, updateBookingStatus, workOrders, updateWorkOrderStage, updateWorkOrderPhotos, services, addService, staff, customers, addToast, setView, openAuth, authFetch
+    currentUser, adminTab, setAdminTab, bookings, updateBookingStatus, workOrders, updateWorkOrderStage, updateWorkOrderPhotos, services, addService, staff, customers, addToast, setView, openAuth, authFetch, refreshStaff
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -28,6 +28,34 @@ export const AdminDashboard: React.FC = () => {
   const [newServiceDesc, setNewServiceDesc] = useState('');
   const [newServiceDuration, setNewServiceDuration] = useState('1 - 2 Days');
   const [showAddServiceModal, setShowAddServiceModal] = useState(false);
+  const [showAddStaffModal, setShowAddStaffModal] = useState(false);
+  const [newStaffTemp, setNewStaffTemp] = useState<string | null>(null);
+  const [newStaffForm, setNewStaffForm] = useState<{ name: string; phone: string; email: string; role: UserRole; specialty: string }>({ name: '', phone: '', email: '', role: 'craftsman', specialty: '' });
+
+  const role = (currentUser?.role || 'customer') as UserRole;
+
+  // Role-scoped workspace tabs — mirrored from server/casbin/policy.csv so the
+  // UI never offers actions the backend would reject with 403.
+  const TAB_SCOPE: Record<string, string[]> = {
+    owner: ['overview', 'kanban', 'bookings', 'calendar', 'services', 'customers', 'staff', 'payments'],
+    manager: ['overview', 'kanban', 'bookings', 'calendar', 'services', 'customers', 'staff', 'payments'],
+    craftsman: ['kanban', 'bookings'],
+    receptionist: ['bookings', 'customers'],
+  };
+  const allowedTabs = TAB_SCOPE[role] || [];
+  const canConfirmBookings = ['owner', 'manager', 'receptionist'].includes(role);
+  const canManageStaff = ['owner', 'manager'].includes(role);
+  const canAddStaff = role === 'owner';
+  const canSetOwnerRole = role === 'owner';
+  // Inventory + audit trails are owner/manager-only on the server; skip the
+  // requests entirely for other roles to avoid guaranteed 403 noise.
+  const canAccessAdmin = canManageStaff;
+
+  useEffect(() => {
+    if (!allowedTabs.includes(adminTab)) {
+      setAdminTab((allowedTabs[0] || 'overview') as any);
+    }
+  }, [adminTab, role]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchQuery), 350);
@@ -54,17 +82,18 @@ export const AdminDashboard: React.FC = () => {
   }, [adminTab]);
 
   useEffect(() => {
+    if (!canAccessAdmin) return;
     authFetch('/api/inventory/low')
       .then(r=>r.json()).then(d=>{ if(d.success) setLowStock(d.lowStock || []); }).catch(()=>{});
-  }, [adminTab]);
+  }, [adminTab, canAccessAdmin]);
 
   useEffect(() => {
-    if (!selectedBookingForAdmin) return;
+    if (!canAccessAdmin || !selectedBookingForAdmin) return;
     authFetch(`/api/audit-logs?entityType=Booking&entityId=${selectedBookingForAdmin.id}&limit=20`)
       .then(r=>r.json()).then(d=>{ if(d.success) setAuditLogs(d.logs); else setAuditLogs([]); }).catch(()=>setAuditLogs([]));
   }, [selectedBookingForAdmin]);
 
-  if (!currentUser || currentUser.role !== 'admin') {
+  if (!currentUser || !isStaff(currentUser.role)) {
     return (
       <div className="min-h-screen pt-32 pb-20 flex items-center justify-center bg-ink text-cream px-4">
         <div className="max-w-md w-full bg-panel border-2 border-rose-500/40 rounded-3xl p-8 text-center space-y-4 shadow-2xl">
@@ -137,6 +166,62 @@ export const AdminDashboard: React.FC = () => {
     addToast('success','Service Added', `${newServiceName} is now live on the catalog.`);
   };
 
+  // Refresh the live staff directory whenever its tab is opened.
+  useEffect(() => {
+    if (adminTab === 'staff') refreshStaff();
+  }, [adminTab, refreshStaff]);
+
+  const handleStaffDeactivate = async (memberId: string) => {
+    const res = await authFetch(`/api/staff/${memberId}/deactivate`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) {
+      addToast('error', 'Deactivation Failed', data.error || 'Could not deactivate staff member.');
+      return;
+    }
+    await refreshStaff();
+    addToast('success', 'Staff Deactivated', data.message || 'Staff account suspended and sessions revoked.');
+  };
+
+  const handleStaffReactivate = async (memberId: string) => {
+    const res = await authFetch(`/api/staff/${memberId}/reactivate`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) {
+      addToast('error', 'Reactivation Failed', data.error || 'Could not reactivate staff member.');
+      return;
+    }
+    await refreshStaff();
+    addToast('success', 'Staff Reactivated', data.message || 'Staff account can sign in again.');
+  };
+
+  const handleAddStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStaffForm.name || !newStaffForm.phone) return;
+    try {
+      const res = await authFetch('/api/staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newStaffForm.name,
+          phone: newStaffForm.phone,
+          email: newStaffForm.email || undefined,
+          role: newStaffForm.role,
+          specialization: newStaffForm.specialty || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        addToast('error', 'Add Failed', data.error || 'Could not add staff member.');
+        return;
+      }
+      await refreshStaff();
+      setShowAddStaffModal(false);
+      setNewStaffTemp(data.temporaryPassword || null);
+      setNewStaffForm({ name: '', phone: '', email: '', role: 'craftsman', specialty: '' });
+    } catch {
+      addToast('error', 'Add Failed', 'Server unreachable when adding the staff member.');
+    }
+  };
+
   return (
     <div id="admin-dashboard-container" className="min-h-screen pt-28 pb-20 bg-ink text-cream">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -149,10 +234,10 @@ export const AdminDashboard: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl sm:text-3xl font-black font-display text-white">Workshop Operations Hub</h1>
-                <span className="px-2.5 py-0.5 rounded-full bg-gold text-ink font-black text-[10px] uppercase">Admin Master</span>
+                <span className="px-2.5 py-0.5 rounded-full bg-gold text-ink font-black text-[10px] uppercase">{STAFF_ROLE_LABEL[role as StaffRole] || role}</span>
               </div>
               <p className="text-xs text-gold mt-0.5">Rolling Razors Customs • Nairobi Workshop Operations & Kenyan M-Pesa Ledger</p>
-              <p className="text-[10px] text-white/50 mt-1">Workshop floor access is scoped to authorized staff roles. Operations are audit-logged.</p>
+              <p className="text-[10px] text-white/50 mt-1">Workshop floor access is scoped to your role ({role}). Operations are audit-logged.</p>
             </div>
           </div>
           <div className="flex items-center gap-3 bg-ink p-3 rounded-2xl border border-white/10 text-xs">
@@ -189,7 +274,7 @@ export const AdminDashboard: React.FC = () => {
             { id: 'customers', label: `Customers (${customers.length})`, icon: <Users className="w-4 h-4" /> },
             { id: 'staff', label: `Craftsmen (${staff.length})`, icon: <UserCheck className="w-4 h-4" /> },
             { id: 'payments', label: 'M-Pesa Ledger', icon: <Smartphone className="w-4 h-4" /> }
-          ].map(tab => (
+          ].filter(tab => allowedTabs.includes(tab.id)).map(tab => (
             <button key={tab.id} onClick={() => setAdminTab(tab.id as any)} aria-pressed={adminTab===tab.id} className={`min-h-11 px-3.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${adminTab===tab.id ? 'bg-gold text-ink shadow-sm' : 'text-cream-muted hover:text-cream hover:bg-white/5'}`}>
               {tab.icon}<span>{tab.label}</span>
             </button>
@@ -367,7 +452,7 @@ export const AdminDashboard: React.FC = () => {
                         <td className="py-3.5 px-4"><span className="capitalize font-bold text-xs">{booking.status.replace('_',' ')}</span></td>
                         <td className="py-3.5 px-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
-                            {booking.status==='pending' && (
+                            {booking.status==='pending' && canConfirmBookings && (
                               <button onClick={async()=>{
                                 const res=await authFetch(`/api/bookings/${booking.id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'confirmed'})});
                                 const data=await res.json();
@@ -468,21 +553,52 @@ export const AdminDashboard: React.FC = () => {
 
         {adminTab === 'staff' && (
           <div className="bg-panel rounded-3xl border border-white/10 p-6 sm:p-8 space-y-6 animate-in fade-in">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <div><h3 className="text-xl font-bold text-white font-display">Workshop Master Craftsmen Team</h3><p className="text-xs text-white/70">Expert leather workers, seat carpenters, and canvas fabricators.</p></div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+              <div><h3 className="text-xl font-bold text-white font-display">Workshop Craftsmen & Staff Directory</h3><p className="text-xs text-white/70">Roles, statuses and access control. Deactivating revokes active sessions immediately.</p></div>
+              {canAddStaff && (
+                <button id="add-staff-btn" onClick={() => setShowAddStaffModal(true)} className="py-2.5 px-4 rounded-xl bg-gold text-ink font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow"><UserPlus className="w-3.5 h-3.5" /> Add Staff Member</button>
+              )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {staff.map(member => (
-                <div key={member.id} className="p-5 rounded-2xl bg-ink border border-gold space-y-3 text-center shadow-lg">
-                  <img src={member.avatar} alt={member.name} className="w-20 h-20 rounded-full mx-auto object-cover border-2 border-gold" />
-                  <div><h4 className="font-bold text-base text-white">{member.name}</h4><p className="text-xs text-gold">{member.role}</p></div>
-                  <div className="text-xs text-white/70 space-y-1 bg-panel p-2.5 rounded-xl">
-                    <div>Specialty: <strong>{member.specialty}</strong></div>
-                    <div>Active Assigned Jobs: <strong className="text-gold">{member.activeJobs}</strong></div>
-                    <div>Rating: ⭐ {member.rating} / 5.0</div>
+              {staff.map(member => {
+                const memberStatus: string = member.status || 'active';
+                const isSelf = Boolean(member.userId && member.userId === currentUser?.id);
+                const isOwnerRow = member.role === 'owner';
+                const canToggle = canManageStaff && !isSelf && (isOwnerRow ? canSetOwnerRole : true);
+                const statusStyle = memberStatus === 'active'
+                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                  : memberStatus === 'deactivated'
+                    ? 'bg-rose-500/20 text-rose-400 border-rose-500/40'
+                    : 'bg-amber-500/20 text-amber-400 border-amber-500/40';
+                return (
+                  <div key={member.id} className="p-5 rounded-2xl bg-ink border border-gold space-y-3 text-center shadow-lg">
+                    <img src={member.avatar} alt={member.name} className="w-20 h-20 rounded-full mx-auto object-cover border-2 border-gold" />
+                    <div>
+                      <h4 className="font-bold text-base text-white">{member.name}</h4>
+                      <p className="text-xs text-gold">{STAFF_ROLE_LABEL[member.role as StaffRole] || member.role}</p>
+                      {member.email && <p className="text-[10px] text-white/40 truncate">{member.email}</p>}
+                    </div>
+                    <div>
+                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border ${statusStyle}`}>{STAFF_STATUS_LABEL[memberStatus as any] || memberStatus}</span>
+                      {isSelf && <span className="inline-block ml-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gold text-ink">You</span>}
+                    </div>
+                    <div className="text-xs text-white/70 space-y-1 bg-panel p-2.5 rounded-xl">
+                      <div>Specialty: <strong>{member.specialization || member.specialty || 'General'}</strong></div>
+                      <div>Active Assigned Jobs: <strong className="text-gold">{member.activeJobs}</strong></div>
+                      <div>Rating: ⭐ {member.rating} / 5.0</div>
+                    </div>
+                    {canToggle && (
+                      <div className="pt-1">
+                        {memberStatus === 'deactivated' ? (
+                          <button onClick={() => handleStaffReactivate(member.id)} className="w-full py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500 hover:text-white text-[11px] font-black flex items-center justify-center gap-1.5 transition-colors"><PowerOff className="w-3 h-3" /> Reactivate</button>
+                        ) : (
+                          <button onClick={() => handleStaffDeactivate(member.id)} className="w-full py-2 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-400 hover:bg-rose-500 hover:text-white text-[11px] font-black flex items-center justify-center gap-1.5 transition-colors"><Power className="w-3 h-3" /> Deactivate</button>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -683,6 +799,61 @@ export const AdminDashboard: React.FC = () => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {newStaffTemp && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in">
+          <div className="bg-ink border-2 border-gold rounded-2xl max-w-md w-full p-6 text-cream shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 border-b border-white/10 pb-3">
+              <div className="w-11 h-11 rounded-2xl bg-gold/10 border border-gold flex items-center justify-center text-gold">
+                <KeyRound className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-bold text-base text-white">Staff Member Added</h4>
+                <p className="text-xs text-white/60">Share this one-time passcode securely (WhatsApp/phone)</p>
+              </div>
+            </div>
+            <div className="p-4 rounded-2xl bg-panel border border-amber-500/40 text-center">
+              <span className="block text-[10px] uppercase font-bold text-white/50 mb-1">Temporary sign-in passcode</span>
+              <span id="new-staff-temp-password" className="font-mono text-2xl font-black text-gold tracking-widest">{newStaffTemp}</span>
+              <p className="text-[11px] text-white/60 mt-2">They must change it on first sign-in. The account starts as <strong className="text-amber-400">Invited</strong>.</p>
+            </div>
+            <div className="pt-2 flex justify-end">
+              <button onClick={() => setNewStaffTemp(null)} className="py-2 px-5 rounded-xl bg-gold text-ink font-black text-xs uppercase">Done</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddStaffModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+          <form onSubmit={handleAddStaff} className="bg-ink border-2 border-gold rounded-2xl max-w-md w-full p-6 text-cream shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h4 className="font-bold text-base text-white">Add Staff Member</h4>
+              <button type="button" onClick={() => setShowAddStaffModal(false)} className="text-white/60 hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="space-y-3 text-xs">
+              <div><label className="block text-white/70 mb-1">Full Name</label><input type="text" required value={newStaffForm.name} onChange={e=>setNewStaffForm(f=>({...f,name:e.target.value}))} placeholder="e.g. James Mwangi" className="w-full py-2 px-3 rounded-lg bg-panel border border-white/20 text-white font-bold" /></div>
+              <div><label className="block text-white/70 mb-1">Phone (used for sign-in)</label><input type="tel" required value={newStaffForm.phone} onChange={e=>setNewStaffForm(f=>({...f,phone:e.target.value}))} placeholder="+254 7XX XXX XXX" className="w-full py-2 px-3 rounded-lg bg-panel border border-white/20 text-white font-bold" /></div>
+              <div><label className="block text-white/70 mb-1">Email (optional)</label><input type="email" value={newStaffForm.email} onChange={e=>setNewStaffForm(f=>({...f,email:e.target.value}))} placeholder="name@rollingrazors.co.ke" className="w-full py-2 px-3 rounded-lg bg-panel border border-white/20 text-white font-bold" /></div>
+              <div>
+                <label className="block text-white/70 mb-1">Role</label>
+                <select value={newStaffForm.role} onChange={e=>setNewStaffForm(f=>({...f,role:e.target.value as UserRole}))} className="w-full py-2 px-3 rounded-lg bg-panel border border-white/20 text-white font-bold">
+                  <option value="craftsman">Craftsman</option>
+                  <option value="receptionist">Receptionist</option>
+                  <option value="manager">Manager</option>
+                  {canSetOwnerRole && <option value="owner">Owner</option>}
+                </select>
+                <p className="text-[10px] text-white/40 mt-1">Owner role can only be granted by the current owner.</p>
+              </div>
+              <div><label className="block text-white/70 mb-1">Specialty (optional)</label><input type="text" value={newStaffForm.specialty} onChange={e=>setNewStaffForm(f=>({...f,specialty:e.target.value}))} placeholder="e.g. Leather Seats, Canopies" className="w-full py-2 px-3 rounded-lg bg-panel border border-white/20 text-white font-bold" /></div>
+            </div>
+            <div className="pt-3 border-t border-white/10 flex justify-end gap-2">
+              <button type="button" onClick={() => setShowAddStaffModal(false)} className="py-2 px-4 rounded-xl bg-white/10 text-white font-bold text-xs">Cancel</button>
+              <button id="submit-add-staff-btn" type="submit" className="py-2 px-4 rounded-xl bg-gold text-ink font-black text-xs uppercase">Create Staff Account</button>
+            </div>
+          </form>
         </div>
       )}
 

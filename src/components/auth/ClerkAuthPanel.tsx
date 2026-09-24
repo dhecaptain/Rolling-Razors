@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { SignIn, SignUp } from '@clerk/react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { ArrowLeft, ShieldAlert, Lock } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useApp, isStaff } from '../../context/AppContext';
 import { Logo } from '../common/Logo';
 
 interface ClerkAuthPanelProps {
@@ -97,7 +97,7 @@ export const ClerkAuthPanel: React.FC<ClerkAuthPanelProps> = ({ admin = false })
   const reduce = useReducedMotion();
 
   // A signed-in customer must never be presented the workshop (admin) sign-in.
-  if (admin && isLoggedIn && currentUser && currentUser.role !== 'admin') {
+  if (admin && isLoggedIn && currentUser && !isStaff(currentUser.role)) {
     return (
       <div
         id="admin-auth-page"

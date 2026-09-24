@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect } from 'react';
-import { AppProvider, useApp, canAccessAdmin, STAFF_VIEWS } from './context/AppContext';
+import { AppProvider, useApp, isStaff, STAFF_VIEWS } from './context/AppContext';
 import { ShieldAlert, ArrowRight } from 'lucide-react';
 import { Navbar } from './components/website/Navbar';
 import { InspectionBayLanding } from './components/website/InspectionBayLanding';
@@ -13,6 +13,7 @@ import { PaystackModal } from './components/common/PaystackModal';
 import { ToastContainer } from './components/common/ToastContainer';
 import { LegalModal } from './components/common/LegalModal';
 import { CookieConsentBanner } from './components/common/CookieConsentBanner';
+import { ForcePasswordChangeModal } from './components/auth/ForcePasswordChangeModal';
 import { trackPageView } from './lib/analytics';
 const AdminAuthView = lazy(() => import('./components/auth/AdminAuthView').then(m => ({ default: m.AdminAuthView })));
 
@@ -52,7 +53,7 @@ const MainContent: React.FC = () => {
   const isViewStaffOnly = STAFF_VIEWS.includes(view);
 
   // Authorization boundary: staff-only views require server-verified admin role.
-  const denied = isViewStaffOnly && !canAccessAdmin(userRole);
+  const denied = isViewStaffOnly && !isStaff(userRole);
 
   // For admin_auth: if already logged in as customer, redirect away.
   const customerAtAdminAuth = view === 'admin_auth' && isLoggedIn && userRole === 'customer';
@@ -117,6 +118,7 @@ const MainContent: React.FC = () => {
         onSwitchType={setLegalModalType}
       />
       <CookieConsentBanner />
+      <ForcePasswordChangeModal />
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowUpRight, Menu, X, UserRound, ShieldAlert, Car, ChevronDown, LogOut, PhoneCall, Home, LayoutDashboard } from 'lucide-react';
-import { useApp, canAccessAdmin } from '../../context/AppContext';
+import { useApp, isStaff } from '../../context/AppContext';
 import { Logo } from '../common/Logo';
 import { BUSINESS_CONFIG } from '../../config/business';
 
@@ -97,7 +97,7 @@ export const Navbar: React.FC = () => {
 
   const openDashboard = () => {
     closeMobileMenu();
-    if (currentUser && canAccessAdmin(currentUser.role)) {
+    if (currentUser && isStaff(currentUser.role)) {
       setAdminTab('overview');
       setView('admin_dashboard');
     } else {
@@ -125,9 +125,9 @@ export const Navbar: React.FC = () => {
 
           <div className="hidden items-center gap-2 sm:flex">
             {isLoggedIn && currentUser ? (
-              <button id="header-active-dashboard-link-btn" type="button" onClick={() => setView(canAccessAdmin(currentUser.role) ? 'admin_dashboard' : 'customer_dashboard')} className="hidden min-h-11 items-center gap-2 rounded-full border border-cream px-4 py-2 text-[11px] font-bold text-cream transition-colors hover:border-gold hover:text-gold md:inline-flex">
-                {canAccessAdmin(currentUser.role) ? <ShieldAlert aria-hidden="true" className="h-3.5 w-3.5" /> : <Car aria-hidden="true" className="h-3.5 w-3.5" />}
-                {canAccessAdmin(currentUser.role) ? 'Workshop hub' : 'Driver garage'}
+              <button id="header-active-dashboard-link-btn" type="button" onClick={() => setView(isStaff(currentUser.role) ? 'admin_dashboard' : 'customer_dashboard')} className="hidden min-h-11 items-center gap-2 rounded-full border border-cream px-4 py-2 text-[11px] font-bold text-cream transition-colors hover:border-gold hover:text-gold md:inline-flex">
+                {isStaff(currentUser.role) ? <ShieldAlert aria-hidden="true" className="h-3.5 w-3.5" /> : <Car aria-hidden="true" className="h-3.5 w-3.5" />}
+                {isStaff(currentUser.role) ? 'Workshop hub' : 'Driver garage'}
               </button>
             ) : (
               <>
@@ -146,7 +146,7 @@ export const Navbar: React.FC = () => {
                 {authDropdownOpen && (
                   <div id="auth-profile-dropdown" className="absolute right-0 top-12 w-56 border border-gold bg-ink p-2 shadow-2xl">
                     <p className="border-b border-cream px-3 py-2 text-xs font-bold text-cream">{currentUser.name}</p>
-                    <button type="button" onClick={() => { setAuthDropdownOpen(false); if (canAccessAdmin(currentUser.role)) { setAdminTab('overview'); setView('admin_dashboard'); } else { setCustomerTab('dashboard'); setView('customer_dashboard'); } }} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs text-cream hover:bg-panel"><Car aria-hidden="true" className="h-3.5 w-3.5 text-gold" />Open dashboard</button>
+                    <button type="button" onClick={() => { setAuthDropdownOpen(false); if (isStaff(currentUser.role)) { setAdminTab('overview'); setView('admin_dashboard'); } else { setCustomerTab('dashboard'); setView('customer_dashboard'); } }} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs text-cream hover:bg-panel"><Car aria-hidden="true" className="h-3.5 w-3.5 text-gold" />Open dashboard</button>
                     <button id="navbar-signout-btn" type="button" onClick={() => { setAuthDropdownOpen(false); logout(); }} className="flex w-full items-center gap-2 border-t border-cream px-3 py-2.5 text-left text-xs font-bold text-rose-300 hover:bg-rose-500/10"><LogOut aria-hidden="true" className="h-3.5 w-3.5" />Sign out</button>
                   </div>
                 )}
@@ -235,7 +235,7 @@ export const Navbar: React.FC = () => {
               <div className="space-y-1">
                 <button type="button" onClick={openDashboard} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-cream transition-colors hover:bg-panel hover:text-white">
                   <LayoutDashboard className="h-5 w-5 text-gold" />
-                  {canAccessAdmin(currentUser.role) ? 'Workshop Hub' : 'Driver Garage'}
+                  {isStaff(currentUser.role) ? 'Workshop Hub' : 'Driver Garage'}
                 </button>
                 <button type="button" onClick={() => { closeMobileMenu(); logout(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold text-rose-300 transition-colors hover:bg-rose-500/10">
                   <LogOut className="h-5 w-5" />

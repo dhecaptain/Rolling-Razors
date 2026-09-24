@@ -1,4 +1,22 @@
-export type UserRole = 'customer' | 'admin';
+export type UserRole = 'customer' | 'owner' | 'manager' | 'craftsman' | 'receptionist';
+
+export type StaffRole = 'owner' | 'manager' | 'craftsman' | 'receptionist';
+
+export type StaffStatus = 'invited' | 'active' | 'deactivated';
+
+/** Human-readable labels for the granular staff roles. */
+export const STAFF_ROLE_LABEL: Record<StaffRole, string> = {
+  owner: 'Owner',
+  manager: 'Manager',
+  craftsman: 'Craftsman',
+  receptionist: 'Receptionist',
+};
+
+export const STAFF_STATUS_LABEL: Record<StaffStatus, string> = {
+  invited: 'Invited',
+  active: 'Active',
+  deactivated: 'Deactivated',
+};
 
 export interface User {
   id: string;
@@ -9,6 +27,7 @@ export interface User {
   role: UserRole;
   avatar: string;
   location?: string;
+  mustChangePassword?: boolean;
   token?: string;
 }
 
@@ -196,14 +215,18 @@ export interface Customer {
 export interface Staff {
   id: string;
   name: string;
-  role: string;
+  role: StaffRole | string;
   phone: string;
+  email?: string;
   specialization?: string;
   specialty?: string;
   activeJobs: number;
   completedJobs: number;
   avatar: string;
   rating: number;
+  status?: StaffStatus;
+  userId?: string;
+  clerkId?: string;
 }
 
 export interface Invoice {
