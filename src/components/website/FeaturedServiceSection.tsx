@@ -232,7 +232,7 @@ export const FeaturedServiceSection: React.FC = () => {
                       className={`flex items-center gap-2 py-1.5 px-3 rounded-xl border text-xs font-semibold transition-all ${
                         activeColor === c.name
                           ? 'bg-ink border-gold text-white ring-1 ring-gold'
-                          : 'bg-ink border-white/10 text-white/70 hover:bg-inkhover:'
+                          : 'bg-ink border-white/10 text-white/70 hover:bg-ink'
                       }`}
                     >
                       <span className="w-3.5 h-3.5 rounded-full shrink-0 shadow-inner" style={{ backgroundColor: c.hex }} />
@@ -290,7 +290,7 @@ export const FeaturedServiceSection: React.FC = () => {
             <button
               id="start-custom-build-btn"
               onClick={handleStartCustomBuild}
-              className="w-full py-4 px-6 rounded-xl bg-gold hover:bg-gold-hoverhover: text-ink font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-0.5 cursor-pointer"
+              className="w-full py-4 px-6 rounded-xl bg-gold hover:bg-gold-hover text-ink font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-0.5 cursor-pointer"
             >
               <span>Start Your Custom Build</span>
               <ArrowRight className="w-4 h-4" />

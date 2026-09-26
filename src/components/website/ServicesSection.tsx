@@ -76,7 +76,7 @@ export const ServicesSection: React.FC = () => {
             <div
               key={service.id}
               id={`service-card-${service.id}`}
-              className="group rounded-2xl bg-ink border border-gold hover:border-goldhover: transition-all duration-300 overflow-hidden flex flex-col shadow-lg hover:shadow-2xl hover:-translate-y-1"
+              className="group rounded-2xl bg-ink border border-gold hover:border-gold transition-all duration-300 overflow-hidden flex flex-col shadow-lg hover:shadow-2xl hover:-translate-y-1"
             >
               {/* Image Container with Zoom Effect */}
               <div className="relative h-48 overflow-hidden">
@@ -141,7 +141,7 @@ export const ServicesSection: React.FC = () => {
                     <button
                       id={`book-service-card-btn-${service.id}`}
                       onClick={() => handleBookSpecificService(service.id)}
-                      className="p-2 rounded-xl bg-panel hover:bg-goldhover: text-gold hover:text-inkhover: border border-gold transition-colors"
+                      className="p-2 rounded-xl bg-panel hover:bg-gold text-gold hover:text-ink border border-gold transition-colors"
                       title="Book this service"
                       aria-label={`Book ${service.name}`}
                     >
@@ -239,7 +239,7 @@ export const ServicesSection: React.FC = () => {
                 <button
                   id="modal-book-this-service-btn"
                   onClick={() => handleBookSpecificService(selectedService.id)}
-                  className="py-3 px-6 rounded-xl bg-gold hover:bg-gold-hoverhover: text-ink font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg cursor-pointer"
+                  className="py-3 px-6 rounded-xl bg-gold hover:bg-gold-hover text-ink font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg cursor-pointer"
                 >
                   <Calendar className="w-4 h-4" />
                   <span>Book This Service</span>

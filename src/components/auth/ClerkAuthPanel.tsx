@@ -63,17 +63,17 @@ const clerkAppearance = {
     // Fields
     formFieldLabel: 'text-gold font-bold text-[11px] uppercase tracking-wider',
     formFieldInput:
-      'bg-paper-high border border-ink text-ink placeholder-black/30 focus:border-goldfocus:',
-    formFieldInputShowPasswordButton: 'text-white/50 hover:text-goldhover:',
-    formFieldAction: 'text-gold hover:text-creamhover: text-xs font-semibold',
+      'bg-paper-high border border-ink text-ink placeholder-black/30 focus:border-gold',
+    formFieldInputShowPasswordButton: 'text-white/50 hover:text-gold',
+    formFieldAction: 'text-gold hover:text-cream text-xs font-semibold',
     // Primary button
     formButtonPrimary:
-      'bg-gold hover:bg-gold-hoverhover: text-paper font-black text-xs uppercase tracking-wider shadow-lg normal-case',
+      'bg-gold hover:bg-gold-hover text-paper font-black text-xs uppercase tracking-wider shadow-lg normal-case',
     formButtonReset: 'text-gold',
     // Identity / OTP
     identityPreview: 'bg-ink border border-white/10',
     identityPreviewText: 'text-cream font-medium',
-    identityPreviewEditButton: 'text-gold hover:text-creamhover:',
+    identityPreviewEditButton: 'text-gold hover:text-cream',
     otpCodeFieldInput: 'bg-ink border-gold text-cream',
     // Feedback
     alert: 'bg-rose-500/15 border border-rose-500/40',
@@ -81,9 +81,9 @@ const clerkAppearance = {
     // Footer / links
     footer: 'bg-transparent',
     footerActionText: 'text-white/60',
-    footerActionLink: 'text-gold hover:text-creamhover: font-bold',
-    footerPagesLink: 'text-white/50 hover:text-goldhover:',
-    backLink: 'text-gold hover:text-creamhover: text-xs font-semibold',
+    footerActionLink: 'text-gold hover:text-cream font-bold',
+    footerPagesLink: 'text-white/50 hover:text-gold',
+    backLink: 'text-gold hover:text-cream text-xs font-semibold',
   },
 } as const;
 

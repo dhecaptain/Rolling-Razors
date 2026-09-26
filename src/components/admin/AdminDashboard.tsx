@@ -1,14 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useApp, isStaff } from '../../context/AppContext';
 import {
-  BarChart3, Calendar as CalendarIcon, Car, CheckCircle2, Clock, DollarSign, FileText, Filter, Layers, MapPin, Plus, Scissors, ShieldAlert, Smartphone, Trash2, UserCheck, Users, X, TrendingUp, Search, Check, Phone, ArrowRight, AlertTriangle, History, Camera, Power, PowerOff, UserPlus, KeyRound
+  BarChart3, Calendar as CalendarIcon, Car, CheckCircle2, Clock, DollarSign, FileText, Filter, Layers, MapPin, Plus, Scissors, ShieldAlert, Smartphone, Trash2, UserCheck, Users, X, TrendingUp, Search, Check, Phone, ArrowRight, AlertTriangle, History, Camera, Power, PowerOff, UserPlus, KeyRound, LayoutDashboard, Image as ImageIcon, CalendarDays, CreditCard, LogOut, ArrowUpRight
 } from 'lucide-react';
-import { Booking, WorkOrder, WorkOrderStage, STAFF_ROLE_LABEL, STAFF_STATUS_LABEL, StaffRole, UserRole } from '../../types';
+import { Booking, Service, WorkOrder, WorkOrderStage, STAFF_ROLE_LABEL, STAFF_STATUS_LABEL, StaffRole, UserRole } from '../../types';
 import { PhotoUploader } from '../common/PhotoUploader';
+
+const readableStatus = (value: string) => value.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+const BOOKING_FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'pending', label: 'Pending' },
+  { id: 'confirmed', label: 'Confirmed' },
+  { id: 'in_progress', label: 'In progress' },
+  { id: 'completed', label: 'Completed' },
+];
 
 export const AdminDashboard: React.FC = () => {
   const {
-    currentUser, adminTab, setAdminTab, bookings, updateBookingStatus, workOrders, updateWorkOrderStage, updateWorkOrderPhotos, services, addService, staff, customers, addToast, setView, openAuth, authFetch, refreshStaff
+    currentUser, adminTab, setAdminTab, bookings, updateBookingStatus, workOrders, updateWorkOrderStage, updateWorkOrderPhotos, services, addService, updateServiceDetails, staff, customers, addToast, setView, logout, openAuth, authFetch, refreshStaff
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -27,6 +36,9 @@ export const AdminDashboard: React.FC = () => {
   const [newServicePrice, setNewServicePrice] = useState(15000);
   const [newServiceDesc, setNewServiceDesc] = useState('');
   const [newServiceDuration, setNewServiceDuration] = useState('1 - 2 Days');
+  const [newServiceImage, setNewServiceImage] = useState('');
+  const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
+  const [serviceSaveBusy, setServiceSaveBusy] = useState(false);
   const [showAddServiceModal, setShowAddServiceModal] = useState(false);
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [newStaffTemp, setNewStaffTemp] = useState<string | null>(null);
@@ -132,6 +144,26 @@ export const AdminDashboard: React.FC = () => {
     { id: 'READY_FOR_COLLECTION', label: '6. Ready for Collection' }
   ];
 
+  const navigationItems = [
+    { id: 'overview', label: 'Overview', group: 'Workspace', icon: <LayoutDashboard className="h-4 w-4" /> },
+    { id: 'kanban', label: 'Work orders', group: 'Operations', icon: <Scissors className="h-4 w-4" /> },
+    { id: 'bookings', label: 'Bookings', group: 'Operations', icon: <FileText className="h-4 w-4" />, count: bookingsTotal || bookings.length },
+    { id: 'calendar', label: 'Schedule', group: 'Operations', icon: <CalendarDays className="h-4 w-4" /> },
+    { id: 'services', label: 'Services', group: 'Manage', icon: <Layers className="h-4 w-4" />, count: services.length },
+    { id: 'customers', label: 'Customers', group: 'Manage', icon: <Users className="h-4 w-4" />, count: customers.length },
+    { id: 'staff', label: 'Staff', group: 'Manage', icon: <UserCheck className="h-4 w-4" />, count: staff.length },
+    { id: 'payments', label: 'Payments', group: 'Manage', icon: <CreditCard className="h-4 w-4" /> },
+  ].filter((item) => allowedTabs.includes(item.id));
+  const pageTitle = navigationItems.find((item) => item.id === adminTab)?.label || 'Workshop';
+  const bookingStatusBreakdown = [
+    { label: 'Pending', value: bookings.filter((booking) => booking.status === 'pending').length, color: '#C2844B' },
+    { label: 'Confirmed', value: bookings.filter((booking) => ['confirmed', 'checked_in'].includes(booking.status)).length, color: '#D6A62E' },
+    { label: 'In progress', value: bookings.filter((booking) => ['in_progress', 'quality_check', 'ready'].includes(booking.status)).length, color: '#6E9984' },
+    { label: 'Completed', value: bookings.filter((booking) => booking.status === 'completed').length, color: '#A9B98B' },
+  ];
+  const bookingStatusTotal = bookingStatusBreakdown.reduce((total, segment) => total + segment.value, 0);
+  const circumference = 2 * Math.PI * 42;
+
   const handleStageChange = async (orderId: string, newStage: WorkOrderStage, version?: number) => {
     const res = await authFetch(`/api/work-orders/${orderId}`, {
       method: 'PATCH',
@@ -145,25 +177,69 @@ export const AdminDashboard: React.FC = () => {
       return;
     }
     updateWorkOrderStage(orderId, newStage as any);
-    addToast('success','Work Order Updated', `Moved to ${newStage.replace(/_/g,' ')}.`);
+    addToast('success','Work Order Updated', `Moved to ${newStage.replace(/_/g,' ').toLowerCase()}.`);
   };
 
-  const handleSaveService = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newServiceName) return;
-    addService({
-      name: newServiceName,
-      shortDesc: newServiceDesc || 'Professional upholstery customization.',
-      longDesc: newServiceDesc || 'High quality tailoring for Kenyan vehicles.',
-      startingPrice: newServicePrice,
-      estimatedDuration: newServiceDuration,
-      image: 'https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=800&q=80',
-      iconName: 'Scissors',
-      includedFeatures: ['Custom measurement', 'High density foam', '1 Year warranty'],
-      materialsAvailable: ['Nappa Leather', 'Vinyl', 'Alcantara']
-    });
+  const openServiceEditor = (service?: Service) => {
+    setEditingServiceId(service?.id || null);
+    setNewServiceName(service?.name || '');
+    setNewServicePrice(service?.startingPrice ?? 15000);
+    setNewServiceDesc(service?.shortDesc || '');
+    setNewServiceDuration(service?.estimatedDuration || '1 - 2 Days');
+    setNewServiceImage(service?.image || '');
+    setShowAddServiceModal(true);
+  };
+
+  const closeServiceEditor = () => {
     setShowAddServiceModal(false);
-    addToast('success','Service Added', `${newServiceName} is now live on the catalog.`);
+    setEditingServiceId(null);
+    setNewServiceName('');
+    setNewServicePrice(15000);
+    setNewServiceDesc('');
+    setNewServiceDuration('1 - 2 Days');
+    setNewServiceImage('');
+  };
+
+  const handleSaveService = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = newServiceName.trim();
+    const description = newServiceDesc.trim();
+    if (!name || !Number.isSafeInteger(newServicePrice) || newServicePrice < 0) {
+      addToast('error', 'Check the service details', 'Enter a service name and a valid whole-number price.');
+      return;
+    }
+    setServiceSaveBusy(true);
+    const serviceImage = newServiceImage || '/images/services/leather-seats.jpg';
+    try {
+      if (editingServiceId) {
+        await updateServiceDetails(editingServiceId, {
+          name,
+          shortDesc: description,
+          longDesc: description,
+          startingPrice: newServicePrice,
+          estimatedDuration: newServiceDuration.trim() || '1 - 2 Days',
+          image: serviceImage,
+        });
+      } else {
+        addService({
+          name,
+          shortDesc: description || 'Professional upholstery customization.',
+          longDesc: description || 'High quality tailoring for Kenyan vehicles.',
+          startingPrice: newServicePrice,
+          estimatedDuration: newServiceDuration.trim() || '1 - 2 Days',
+          image: serviceImage,
+          iconName: 'Scissors',
+          includedFeatures: ['Custom measurement', 'High density foam', '1 Year warranty'],
+          materialsAvailable: ['Nappa Leather', 'Vinyl', 'Alcantara']
+        });
+        addToast('success', 'Service added', `${name} is being published to the catalog.`);
+      }
+      closeServiceEditor();
+    } catch (error) {
+      addToast('error', 'Could not save service', error instanceof Error ? error.message : 'Please try again.');
+    } finally {
+      setServiceSaveBusy(false);
+    }
   };
 
   // Refresh the live staff directory whenever its tab is opened.
@@ -223,87 +299,133 @@ export const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div id="admin-dashboard-container" className="min-h-screen pt-28 pb-20 bg-ink text-cream">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div id="admin-dashboard-container" className="min-h-screen bg-ink text-cream">
+      <div className="min-h-screen lg:grid lg:grid-cols-[250px_minmax(0,1fr)]">
+        <aside className="sticky top-0 hidden h-screen flex-col border-r border-white/10 bg-ink-deep px-4 py-6 lg:flex">
+          <div className="mb-8 flex items-center gap-3 px-3">
+            <span className="grid h-10 w-10 place-items-center rounded-xl border border-gold/40 bg-gold/10 text-gold"><Scissors className="h-5 w-5" /></span>
+            <div><p className="text-[10px] font-bold uppercase tracking-[.2em] text-gold">Rolling Razors</p><p className="mt-0.5 text-sm font-bold text-cream">Workshop</p></div>
+          </div>
+          <nav aria-label="Workshop dashboard" className="flex-1 space-y-6 overflow-y-auto">
+            {['Workspace', 'Operations', 'Manage'].map((group) => {
+              const items = navigationItems.filter((item) => item.group === group);
+              if (!items.length) return null;
+              return <div key={group}>
+                <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[.16em] text-white/40">{group}</p>
+                <div className="space-y-1">
+                  {items.map((item) => (
+                    <button key={item.id} type="button" onClick={() => setAdminTab(item.id)} aria-current={adminTab === item.id ? 'page' : undefined} className={`group flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-[13px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold ${adminTab === item.id ? 'bg-gold text-ink shadow-lg shadow-black/20' : 'text-cream-muted hover:bg-white/5 hover:text-cream'}`}>
+                      {item.icon}<span className="flex-1">{item.label}</span>
+                      {item.count !== undefined && <span className={`min-w-6 rounded-full px-1.5 py-0.5 text-center text-[10px] ${adminTab === item.id ? 'bg-ink/10 text-ink' : 'bg-white/5 text-white/60'}`}>{item.count}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>;
+            })}
+          </nav>
+          <div className="mt-6 space-y-2 border-t border-white/10 pt-4">
+            <button type="button" onClick={() => setView('website')} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-semibold text-cream-muted transition-colors hover:bg-white/5 hover:text-cream focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold"><ArrowUpRight className="h-4 w-4" />View website</button>
+            <button type="button" onClick={logout} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-semibold text-cream-muted transition-colors hover:bg-rose-500/10 hover:text-rose-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold"><LogOut className="h-4 w-4" />Sign out</button>
+          </div>
+        </aside>
 
-        <div className="rr-md-card border-gold p-6 sm:p-8 shadow-2xl mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-ink border-2 border-gold flex items-center justify-center text-gold shadow-inner">
-              <ShieldAlert className="w-8 h-8" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl sm:text-3xl font-black font-display text-white">Workshop Operations Hub</h1>
-                <span className="px-2.5 py-0.5 rounded-full bg-gold text-ink font-black text-[10px] uppercase">{STAFF_ROLE_LABEL[role as StaffRole] || role}</span>
+        <div className="min-w-0">
+          <nav aria-label="Workshop sections" className="sticky top-0 z-30 flex gap-1 overflow-x-auto border-b border-white/10 bg-ink-deep/95 px-3 py-2 backdrop-blur-xl lg:hidden">
+            {navigationItems.map((item) => (
+              <button key={item.id} type="button" onClick={() => setAdminTab(item.id)} aria-current={adminTab === item.id ? 'page' : undefined} className={`flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-xs font-semibold ${adminTab === item.id ? 'bg-gold text-ink' : 'text-cream-muted hover:bg-white/5 hover:text-cream'}`}>
+                {item.icon}<span>{item.label}</span>
+              </button>
+            ))}
+            <span className="my-1 w-px shrink-0 bg-white/10" aria-hidden="true" />
+            <button type="button" onClick={() => setView('website')} className="flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-xs font-semibold text-cream-muted hover:bg-white/5 hover:text-cream"><ArrowUpRight className="h-4 w-4" /><span>Website</span></button>
+            <button type="button" onClick={logout} className="flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-xs font-semibold text-cream-muted hover:bg-rose-500/10 hover:text-rose-200"><LogOut className="h-4 w-4" /><span>Sign out</span></button>
+          </nav>
+
+          <main className="min-w-0 px-4 py-6 sm:px-6 lg:px-9 lg:py-9">
+            <header className="mb-7 flex flex-col justify-between gap-4 border-b border-white/10 pb-6 sm:flex-row sm:items-end">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[.2em] text-gold">Workshop / Nairobi</p>
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <h1 className="font-display text-3xl font-black tracking-tight text-white sm:text-4xl">{pageTitle}</h1>
+                  <span className="rounded-full border border-gold/30 bg-gold/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-gold">{STAFF_ROLE_LABEL[role as StaffRole] || role}</span>
+                </div>
+                <p className="mt-2 text-sm text-cream-muted">Welcome back, {currentUser?.name}. Here’s what’s happening in your workshop.</p>
               </div>
-              <p className="text-xs text-gold mt-0.5">Rolling Razors Customs • Nairobi Workshop Operations & Kenyan M-Pesa Ledger</p>
-              <p className="text-[10px] text-white/50 mt-1">Workshop floor access is scoped to your role ({role}). Operations are audit-logged.</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 bg-ink p-3 rounded-2xl border border-white/10 text-xs">
-            <div>
-              <span className="text-[10px] text-white/50 block">M-PESA COLLECTED (ledger)</span>
-              <span className="text-base font-black text-whatsapp">KES {totalRevenue.toLocaleString()}</span>
-            </div>
-            <div className="h-8 w-px bg-white/10 mx-1" />
-            <div>
-              <span className="text-[10px] text-white/50 block">JOBS IN WORKSHOP</span>
-              <span className="text-base font-black text-gold">{inWorkshopCount} Vehicles</span>
-            </div>
-          </div>
-        </div>
+              <div className="flex items-center gap-2 text-xs text-cream-muted"><Clock className="h-4 w-4 text-gold" />{new Date().toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</div>
+            </header>
 
-        {lowStock.length > 0 && (
-          <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/40 flex items-start gap-3 text-xs">
-            <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-            <div>
-              <div className="font-bold text-amber-300">Low Stock Alert — {lowStock.length} items below reorder point</div>
-              <div className="text-white/70 mt-1">{lowStock.map((i:any)=>`${i.sku} (${i.qtyOnHand}${i.unit})`).join(', ')}</div>
-              <div className="text-[11px] text-white/50 mt-1">Restock flagged items before moving to MATERIALS_PREPARED.</div>
-            </div>
-          </div>
-        )}
-
-        <div className="flex items-center gap-2 border-b border-white/10 pb-3 mb-8 overflow-x-auto">
-          {[
-            { id: 'overview', label: 'Overview & Metrics', icon: <BarChart3 className="w-4 h-4" /> },
-            { id: 'kanban', label: 'Work Order Kanban', icon: <Scissors className="w-4 h-4" /> },
-            { id: 'bookings', label: `Bookings (${bookingsTotal||bookings.length})`, icon: <FileText className="w-4 h-4" /> },
-            { id: 'calendar', label: 'Workshop Schedule', icon: <CalendarIcon className="w-4 h-4" /> },
-            { id: 'services', label: `Services (${services.length})`, icon: <Layers className="w-4 h-4" /> },
-            { id: 'customers', label: `Customers (${customers.length})`, icon: <Users className="w-4 h-4" /> },
-            { id: 'staff', label: `Craftsmen (${staff.length})`, icon: <UserCheck className="w-4 h-4" /> },
-            { id: 'payments', label: 'M-Pesa Ledger', icon: <Smartphone className="w-4 h-4" /> }
-          ].filter(tab => allowedTabs.includes(tab.id)).map(tab => (
-            <button key={tab.id} onClick={() => setAdminTab(tab.id as any)} aria-pressed={adminTab===tab.id} className={`min-h-11 px-3.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${adminTab===tab.id ? 'bg-gold text-ink shadow-sm' : 'text-cream-muted hover:text-cream hover:bg-white/5'}`}>
-              {tab.icon}<span>{tab.label}</span>
-            </button>
-          ))}
-        </div>
+            {lowStock.length > 0 && (
+              <div className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/[.08] p-4 text-xs">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
+                <div><div className="font-bold text-amber-200">Low stock · {lowStock.length} items need attention</div><div className="mt-1 text-cream-muted">{lowStock.map((item: any) => `${item.sku} (${item.qtyOnHand}${item.unit})`).join(', ')}</div></div>
+              </div>
+            )}
 
         {adminTab === 'overview' && (
           <div className="space-y-8 animate-in fade-in">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="p-5 rounded-2xl bg-panel border border-gold space-y-1">
                 <span className="text-[11px] text-white/60 block uppercase font-bold">Total Bookings</span>
                 <span className="text-3xl font-black text-white">{bookingsTotal||bookings.length}</span>
-                <p className="text-[11px] text-gold flex items-center gap-1"><TrendingUp className="w-3 h-3" /> DB paginated</p>
+                <p className="text-[11px] text-gold flex items-center gap-1"><TrendingUp className="w-3 h-3" /> All requests</p>
               </div>
               <div className="p-5 rounded-2xl bg-panel border border-gold space-y-1">
-                <span className="text-[11px] text-white/60 block uppercase font-bold">Active Jobs in Bays</span>
+                <span className="text-[11px] text-white/60 block uppercase font-bold">Jobs at workshop</span>
                 <span className="text-3xl font-black text-gold">{inWorkshopCount}</span>
-                <p className="text-[11px] text-white/70">8 Workshop Bays Total</p>
+                <p className="text-[11px] text-white/70">Currently at the workshop</p>
               </div>
               <div className="p-5 rounded-2xl bg-panel border border-gold space-y-1">
-                <span className="text-[11px] text-white/60 block uppercase font-bold">Deposit Revenue (ledger)</span>
+                <span className="text-[11px] text-white/60 block uppercase font-bold">Deposits collected</span>
                 <span className="text-2xl sm:text-3xl font-black text-whatsapp">KES {totalRevenue.toLocaleString()}</span>
-                <p className="text-[11px] text-whatsapp">Paybill ledger</p>
+                <p className="text-[11px] text-white/70">Recorded payments</p>
               </div>
               <div className="p-5 rounded-2xl bg-panel border border-gold space-y-1">
                 <span className="text-[11px] text-white/60 block uppercase font-bold">Master Craftsmen</span>
                 <span className="text-3xl font-black text-purple-400">{staff.length}</span>
                 <p className="text-[11px] text-white/70">Upholstery & Canvas</p>
               </div>
+            </div>
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+              <section className="rounded-2xl border border-white/10 bg-panel p-5 shadow-xl sm:p-6" aria-labelledby="booking-status-chart-title">
+                <div className="flex items-start justify-between gap-4">
+                  <div><h2 id="booking-status-chart-title" className="font-display text-lg font-bold text-white">Booking status</h2><p className="mt-1 text-xs text-cream-muted">A live view of customer requests</p></div>
+                  <span className="rounded-lg border border-white/10 bg-ink px-3 py-1.5 text-[10px] font-semibold text-cream-muted">{bookings.length} total</span>
+                </div>
+                <div className="mt-5 flex flex-col items-center gap-6 sm:flex-row">
+                  <div className="relative h-40 w-40 shrink-0" role="img" aria-label={`Bookings by status: ${bookingStatusBreakdown.map((segment) => `${segment.label} ${segment.value}`).join(', ')}`}>
+                    <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+                      <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,.08)" strokeWidth="10" />
+                      {bookingStatusBreakdown.map((segment, index) => {
+                        const length = bookingStatusTotal ? circumference * segment.value / bookingStatusTotal : 0;
+                        const offset = bookingStatusBreakdown.slice(0, index).reduce((sum, previous) => sum + (bookingStatusTotal ? circumference * previous.value / bookingStatusTotal : 0), 0);
+                        return <circle key={segment.label} cx="50" cy="50" r="42" fill="none" stroke={segment.color} strokeWidth="10" strokeDasharray={`${length} ${circumference - length}`} strokeDashoffset={-offset} />;
+                      })}
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center"><span className="font-display text-3xl font-black text-white">{bookings.length}</span><span className="text-[10px] uppercase tracking-wide text-cream-muted">Bookings</span></div>
+                  </div>
+                  <div className="grid w-full grid-cols-2 gap-x-4 gap-y-4">
+                    {bookingStatusBreakdown.map((segment) => <div key={segment.label} className="flex items-center gap-2.5"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: segment.color }} /><div><p className="text-[11px] text-cream-muted">{segment.label}</p><p className="mt-0.5 text-lg font-bold text-white">{segment.value}</p></div></div>)}
+                  </div>
+                </div>
+              </section>
+
+              <section className="rounded-2xl border border-white/10 bg-panel p-5 shadow-xl sm:p-6" aria-labelledby="workload-chart-title">
+                <div className="flex items-start justify-between gap-4">
+                  <div><h2 id="workload-chart-title" className="font-display text-lg font-bold text-white">Workshop workload</h2><p className="mt-1 text-xs text-cream-muted">Active jobs by stage</p></div>
+                  <span className="rounded-lg border border-white/10 bg-ink px-3 py-1.5 text-[10px] font-semibold text-cream-muted">{inWorkshopCount} active</span>
+                </div>
+                <div className="mt-6 space-y-4" role="img" aria-label={`Active work orders by stage: ${kanbanStages.map((stage) => `${stage.label}, ${workOrders.filter((order) => order.stage === stage.id).length}`).join('; ')}`}>
+                  {kanbanStages.map((stage, index) => {
+                    const count = workOrders.filter((order) => order.stage === stage.id).length;
+                    const maxCount = Math.max(1, ...kanbanStages.map((item) => workOrders.filter((order) => order.stage === item.id).length));
+                    return <div key={stage.id} className="grid grid-cols-[112px_minmax(0,1fr)_28px] items-center gap-3 text-[11px]">
+                      <span className="truncate text-cream-muted">{stage.label.replace(/^\d+\. /, '')}</span>
+                      <span className="h-2 overflow-hidden rounded-full bg-ink"><span className="block h-full rounded-full bg-gold transition-all" style={{ width: `${count ? Math.max(6, count / maxCount * 100) : 0}%`, opacity: 1 - index * 0.07 }} /></span>
+                      <span className="text-right font-bold text-white">{count}</span>
+                    </div>;
+                  })}
+                </div>
+              </section>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               <div className="lg:col-span-7 bg-panel border border-gold rounded-3xl p-6 space-y-5">
@@ -319,10 +441,10 @@ export const AdminDashboard: React.FC = () => {
                           <span className="font-mono font-bold text-gold">{wo.id}</span>
                           <span className="text-white font-bold">{wo.vehicleDisplayName}</span>
                         </div>
-                        <p className="text-white/70">{wo.serviceName} • Craftsman: {wo.assignedStaffName} • v{(wo as any).version ?? 0}</p>
+                        <p className="text-white/70">{wo.serviceName} · {wo.assignedStaffName || 'Unassigned'}</p>
                       </div>
                       <div className="text-right space-y-1">
-                        <span className="px-2.5 py-0.5 rounded-full bg-gold text-gold border border-gold font-bold block">{wo.stage.replace(/_/g,' ')}</span>
+                        <span className="inline-block rounded-full border border-gold/40 bg-ink px-2.5 py-1 text-xs font-bold text-cream">{wo.stage.replace(/_/g,' ').toLowerCase()}</span>
                         <div className="flex items-center justify-end gap-2">
                           <span className="text-[10px] text-white/50">{wo.progressPercentage}%</span>
                           <button
@@ -364,8 +486,8 @@ export const AdminDashboard: React.FC = () => {
           <div className="space-y-6 animate-in fade-in">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h3 className="text-xl font-bold text-white font-display">Workshop Job Status Board (Kanban)</h3>
-                <p className="text-xs text-white/70">Move orders — optimistic lock v0..n, 409 on conflict. Low-stock blocks MATERIALS_PREPARED.</p>
+                <h3 className="text-xl font-bold text-white font-display">Work orders</h3>
+                <p className="text-xs text-white/70">Move a job to the next stage as work progresses. Items with low stock may need restocking before preparation.</p>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 overflow-x-auto pb-4">
@@ -380,16 +502,13 @@ export const AdminDashboard: React.FC = () => {
                     <div className="space-y-2.5 flex-1">
                       {stageOrders.map(order => (
                         <div key={order.id} className="p-3.5 rounded-xl bg-ink border border-gold shadow-md space-y-2 text-xs hover:border-gold transition-all">
-                          <div className="flex items-center justify-between">
-                            <span className="font-mono text-[11px] text-gold font-bold">{order.id}</span>
-                            <span className="font-mono text-[10px] text-white/60">v{(order as any).version ?? 0}</span>
-                          </div>
+                          <div className="font-mono text-[11px] text-gold font-bold">{order.id}</div>
                           <h5 className="font-bold text-white text-xs leading-tight">{order.vehicleDisplayName}</h5>
                           <p className="text-[11px] text-white/70">{order.serviceName}</p>
-                          <div className="text-[10px] text-gold font-medium bg-panel p-1.5 rounded-lg border border-white/5">Craftsman: {order.assignedStaffName}</div>
+                          <div className="text-[10px] text-cream-muted">{order.assignedStaffName || 'Unassigned'}</div>
                           <div className="pt-2 border-t border-white/10 flex items-center justify-between">
-                            <span className="text-[10px] text-white/50">Next Stage:</span>
-                            <select value={order.stage} onChange={(e)=>handleStageChange(order.id, e.target.value as WorkOrderStage, (order as any).version)} className="bg-panel border border-white/20 text-white text-[10px] rounded px-1.5 py-0.5 font-bold">
+                            <label htmlFor={`work-order-stage-${order.id}`} className="text-[10px] text-white/70">Move to</label>
+                            <select id={`work-order-stage-${order.id}`} aria-label={`Move ${order.vehicleDisplayName} to a stage`} value={order.stage} onChange={(e)=>handleStageChange(order.id, e.target.value as WorkOrderStage, (order as any).version)} className="min-h-10 max-w-[125px] rounded-lg border border-white/20 bg-panel px-2 text-[10px] font-bold text-white focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30">
                               <option value="BOOKED">1. Booked</option>
                               <option value="VEHICLE_RECEIVED">2. Received</option>
                               <option value="MATERIALS_PREPARED">3. Prepped</option>
@@ -401,7 +520,8 @@ export const AdminDashboard: React.FC = () => {
                           </div>
                           <button
                             onClick={() => setSelectedWorkOrderForPhotos(order)}
-                            className="w-full mt-2 py-1 px-2 rounded-lg bg-panel hover:bg-white/10 text-white/80 hover:text-gold text-[10px] font-bold flex items-center justify-center gap-1.5 border border-white/10 transition-colors"
+                            aria-label={`View photos for ${order.vehicleDisplayName}`}
+                            className="mt-2 flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-panel px-2 text-[10px] font-bold text-white/80 transition-colors hover:bg-white/10 hover:text-gold"
                           >
                             <Camera className="w-3 h-3 text-gold" />
                             <span>Bay Photos ({((order.beforePhotos?.length || 0) + (order.progressPhotos?.length || 0) + (order.afterPhotos?.length || 0))})</span>
@@ -422,15 +542,15 @@ export const AdminDashboard: React.FC = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h3 className="text-xl font-bold text-white font-display">Customer Bookings Directory</h3>
-                <p className="text-xs text-white/70">Server-paginated, searchable, state-machine enforced.</p>
+                <p className="text-xs text-white/70">Find a booking, review the details, and update its status.</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <div className="relative">
                   <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-white/40" />
-                  <input value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder="Search name, phone, plate, ID" className="pl-8 pr-3 py-2 rounded-lg bg-panel border border-white/10 text-xs text-white placeholder:text-white/40 w-48" />
+                  <input type="search" aria-label="Search bookings" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder="Search name, phone or plate" className="min-h-10 w-full rounded-lg border border-white/10 bg-panel pl-8 pr-3 text-xs text-white placeholder:text-white/40 sm:w-48" />
                 </div>
-                {['all','pending','confirmed','in_progress','completed'].map(st => (
-                  <button key={st} onClick={()=>setBookingFilterStatus(st)} aria-pressed={bookingFilterStatus===st} className={`py-1.5 px-3 rounded-lg text-xs font-bold capitalize transition-all ${bookingFilterStatus===st ? 'bg-gold text-ink' : 'bg-panel text-cream-muted hover:text-cream'}`}>{st}</button>
+                {BOOKING_FILTERS.map(({ id, label }) => (
+                  <button key={id} onClick={()=>setBookingFilterStatus(id)} aria-pressed={bookingFilterStatus===id} className={`min-h-10 rounded-lg px-3 text-xs font-bold transition-colors ${bookingFilterStatus===id ? 'bg-gold text-ink' : 'bg-panel text-cream-muted hover:text-cream'}`}>{label}</button>
                 ))}
               </div>
             </div>
@@ -449,18 +569,18 @@ export const AdminDashboard: React.FC = () => {
                         <td className="py-3.5 px-4">{booking.serviceName}</td>
                         <td className="py-3.5 px-4"><div>{booking.appointmentDate}</div><div className="text-[10px] text-white/60">{booking.appointmentTime}</div></td>
                         <td className="py-3.5 px-4"><span className={booking.depositPaid?"text-emerald-400 font-bold":"text-amber-400 font-bold"}>{booking.depositPaid?`Paid (KES ${booking.depositAmount.toLocaleString()})`:`Pending KES ${booking.depositAmount.toLocaleString()}`}</span></td>
-                        <td className="py-3.5 px-4"><span className="capitalize font-bold text-xs">{booking.status.replace('_',' ')}</span></td>
+                        <td className="py-3.5 px-4"><span className="font-bold text-xs">{readableStatus(booking.status)}</span></td>
                         <td className="py-3.5 px-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
                             {booking.status==='pending' && canConfirmBookings && (
                               <button onClick={async()=>{
                                 const res=await authFetch(`/api/bookings/${booking.id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'confirmed'})});
                                 const data=await res.json();
-                                if(!res.ok) addToast('error','Confirm Failed', data.error||'State transition rejected');
+                                if(!res.ok) addToast('error','Confirm Failed', data.error||'We could not confirm this booking. Refresh and try again.');
                                 else { updateBookingStatus(booking.id,'confirmed','Admin confirmed schedule.'); addToast('success','Booking Confirmed',`Booking ${booking.id} is confirmed.`); }
                               }} className="py-1 px-2.5 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[11px] font-bold hover:bg-emerald-500 hover:text-white">Confirm</button>
                             )}
-                            <button onClick={()=>setSelectedBookingForAdmin(booking)} className="py-1 px-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold">Specs</button>
+                            <button onClick={()=>setSelectedBookingForAdmin(booking)} className="min-h-10 rounded-lg bg-white/10 px-3 text-white text-[11px] font-bold transition-colors hover:bg-white/20">Details</button>
                           </div>
                         </td>
                       </tr>
@@ -512,27 +632,27 @@ export const AdminDashboard: React.FC = () => {
         )}
 
         {adminTab === 'services' && (
-          <div className="space-y-6 animate-in fade-in">
-            <div className="flex items-center justify-between">
-              <div><h3 className="text-xl font-bold text-white font-display">Service Catalog & Base Pricing</h3><p className="text-xs text-white/70">Manage upholstery services.</p></div>
-              <button id="add-new-service-btn" onClick={()=>setShowAddServiceModal(true)} className="py-2.5 px-4 rounded-xl bg-gold text-ink font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow"><Plus className="w-3.5 h-3.5" /> Add Service</button>
+          <section className="space-y-6 animate-in fade-in">
+            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+              <div><h2 className="font-display text-2xl font-bold text-white">Service catalog</h2><p className="mt-1 text-sm text-cream-muted">Keep service details, pricing, and customer-facing photos up to date.</p></div>
+              <button id="add-new-service-btn" type="button" onClick={() => openServiceEditor()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gold px-4 text-xs font-black uppercase tracking-wide text-ink shadow-lg transition-colors hover:bg-gold-hover"><Plus className="h-4 w-4" />Add service</button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {services.map(srv => (
-                <div key={srv.id} className="p-5 rounded-2xl bg-panel border border-gold shadow-xl space-y-3 flex flex-col justify-between">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between"><h4 className="font-bold text-base text-white">{srv.name}</h4><span className="text-gold font-bold text-xs">KES {srv.startingPrice.toLocaleString()}</span></div>
-                    <p className="text-xs text-white/70">{srv.shortDesc}</p>
-                    <div className="text-[11px] text-white/50">Estimated Duration: {srv.estimatedDuration}</div>
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
+              {services.map((service) => (
+                <article key={service.id} className="overflow-hidden rounded-2xl border border-white/10 bg-panel shadow-xl transition-transform duration-200 hover:-translate-y-0.5 hover:border-gold/40">
+                  <div className="relative aspect-[16/9] overflow-hidden bg-ink-deep">
+                    {service.image ? <img src={service.image} alt={`${service.name} service`} className="h-full w-full object-cover" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none'; }} /> : <div className="grid h-full place-items-center text-gold/70"><ImageIcon className="h-9 w-9" /></div>}
+                    <span className="absolute bottom-3 left-3 rounded-full border border-white/10 bg-ink/80 px-3 py-1.5 text-[10px] font-semibold text-cream backdrop-blur">{service.estimatedDuration || 'Timing confirmed on request'}</span>
                   </div>
-                  <div className="pt-2 border-t border-white/10 flex justify-between items-center text-xs">
-                    <span className="text-[10px] text-emerald-400 font-bold">✓ Active Online</span>
-                    <button onClick={()=>addToast('info','Edit Service','Pricing update module opened.')} className="text-gold font-bold hover:underline">Edit Pricing</button>
+                  <div className="space-y-4 p-5">
+                    <div className="flex items-start justify-between gap-3"><h3 className="font-display text-lg font-bold leading-snug text-white">{service.name}</h3><span className="shrink-0 rounded-lg bg-gold/10 px-2.5 py-1.5 text-xs font-bold text-gold">KES {service.startingPrice.toLocaleString()}</span></div>
+                    <p className="min-h-10 text-xs leading-5 text-cream-muted">{service.shortDesc}</p>
+                    <div className="flex items-center justify-between border-t border-white/10 pt-3"><span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-300">Available online</span><button type="button" onClick={() => openServiceEditor(service)} className="min-h-10 rounded-lg border border-white/10 px-3 text-xs font-bold text-cream transition-colors hover:border-gold hover:text-gold focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold">Edit service</button></div>
                   </div>
-                </div>
+                </article>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
         {adminTab === 'customers' && (
@@ -554,7 +674,7 @@ export const AdminDashboard: React.FC = () => {
         {adminTab === 'staff' && (
           <div className="bg-panel rounded-3xl border border-white/10 p-6 sm:p-8 space-y-6 animate-in fade-in">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
-              <div><h3 className="text-xl font-bold text-white font-display">Workshop Craftsmen & Staff Directory</h3><p className="text-xs text-white/70">Roles, statuses and access control. Deactivating revokes active sessions immediately.</p></div>
+              <div><h3 className="text-xl font-bold text-white font-display">Workshop staff</h3><p className="text-xs text-white/70">Manage staff roles and sign-in access.</p></div>
               {canAddStaff && (
                 <button id="add-staff-btn" onClick={() => setShowAddStaffModal(true)} className="py-2.5 px-4 rounded-xl bg-gold text-ink font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow"><UserPlus className="w-3.5 h-3.5" /> Add Staff Member</button>
               )}
@@ -609,29 +729,29 @@ export const AdminDashboard: React.FC = () => {
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 rounded-2xl bg-mpesa flex items-center justify-center text-white font-black text-sm shadow">M-PESA</div>
                 <div>
-                  <h3 className="text-xl font-bold text-white font-display">Lipa na M-Pesa Business Ledger (Source of Truth)</h3>
-                  <p className="text-xs text-emerald-400">Paybill via Daraja transactions — not derived from bookings</p>
+                  <h3 className="text-xl font-bold text-white font-display">M-Pesa payments</h3>
+                  <p className="text-xs text-emerald-400">Payments received through Safaricom</p>
                 </div>
               </div>
-              <div className="text-right"><span className="text-xs text-white/60 block uppercase">Settled In Ledger</span><span className="text-2xl sm:text-3xl font-black text-whatsapp">KES {totalRevenue.toLocaleString()}</span></div>
+              <div className="text-right"><span className="text-xs text-white/60 block uppercase">Total received</span><span className="text-2xl sm:text-3xl font-black text-whatsapp">KES {totalRevenue.toLocaleString()}</span></div>
             </div>
             <div className="bg-panel rounded-3xl border border-white/10 p-6 space-y-4 shadow-xl">
-              <h4 className="font-bold text-sm text-white uppercase tracking-wider">Recent Safaricom STK Transactions (paginated)</h4>
+              <h4 className="font-bold text-sm text-white uppercase tracking-wider">Recent payments</h4>
               <div className="space-y-2 text-xs">
-                {transactions.length===0 && <p className="text-white/50 text-center py-4">No transactions yet — ledger is live. Bookings without STK show Pending.</p>}
+                {transactions.length===0 && <p className="text-white/60 text-center py-8">No payments recorded yet. Completed M-Pesa payments will appear here.</p>}
                 {transactions.map((t) => (
                   <div key={t.checkoutRequestId} className="p-3 rounded-xl bg-ink border border-white/5 flex items-center justify-between">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-emerald-400">{t.receiptNumber || t.checkoutRequestId.slice(0,10)}</span>
+                        <span className="font-mono font-bold text-emerald-400">{t.receiptNumber || 'Receipt pending'}</span>
                         <span className="text-white font-bold">{t.bookingId || '—'}</span>
                         <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${t.status==='SUCCESS'?'bg-emerald-500/20 text-emerald-400':t.status==='FAILED'?'bg-rose-500/20 text-rose-400':'bg-amber-500/20 text-amber-400'}`}>{t.status}</span>
                       </div>
-                      <span className="text-[10px] text-white/60">{new Date(t.createdAt).toLocaleDateString()} • {t.phone} • {t.amount.toLocaleString()} KES</span>
+                      <span className="text-[10px] text-white/60">{new Date(t.createdAt).toLocaleDateString()} · {t.phone}</span>
                     </div>
                     <div className="text-right">
                       <span className="font-bold text-white block">KES {Number(t.amount).toLocaleString()}</span>
-                      <span className="text-[10px] text-white/50">{t.merchantRequestId.slice(0,8)}</span>
+                      <span className="text-[10px] text-white/50">{readableStatus(t.status)}</span>
                     </div>
                   </div>
                 ))}
@@ -640,6 +760,8 @@ export const AdminDashboard: React.FC = () => {
           </div>
         )}
 
+          </main>
+        </div>
       </div>
 
       {selectedBookingForAdmin && (
@@ -858,21 +980,29 @@ export const AdminDashboard: React.FC = () => {
       )}
 
       {showAddServiceModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-          <form onSubmit={handleSaveService} className="bg-ink border-2 border-gold rounded-2xl max-w-md w-full p-6 text-cream shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <h4 className="font-bold text-base text-white">Add New Workshop Service</h4>
-              <button type="button" onClick={()=>setShowAddServiceModal(false)} className="text-white/60 hover:text-white"><X className="w-5 h-5" /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) closeServiceEditor(); }}>
+          <form onSubmit={handleSaveService} className="max-h-[92vh] w-full max-w-2xl space-y-5 overflow-y-auto rounded-3xl border border-gold/40 bg-ink p-5 text-cream shadow-2xl sm:p-7">
+            <div className="flex items-start justify-between border-b border-white/10 pb-4">
+              <div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-gold">Service catalog</p><h2 className="mt-1 font-display text-2xl font-bold text-white">{editingServiceId ? 'Edit service' : 'Add a service'}</h2><p className="mt-1 text-xs text-cream-muted">These details and photos appear in the customer service catalog.</p></div>
+              <button type="button" aria-label="Close service editor" onClick={closeServiceEditor} className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 text-cream-muted transition-colors hover:border-gold hover:text-white"><X className="h-4 w-4" /></button>
             </div>
-            <div className="space-y-3 text-xs">
-              <div><label className="block text-white/70 mb-1">Service Title</label><input type="text" required value={newServiceName} onChange={e=>setNewServiceName(e.target.value)} placeholder="e.g. Dashboard Leather Wrap" className="w-full py-2 px-3 rounded-lg bg-panel border border-white/20 text-white font-bold" /></div>
-              <div><label className="block text-white/70 mb-1">Starting Price (KES)</label><input type="number" required value={newServicePrice} onChange={e=>setNewServicePrice(Number(e.target.value))} className="w-full py-2 px-3 rounded-lg bg-panel border border-white/20 text-white font-bold" /></div>
-              <div><label className="block text-white/70 mb-1">Estimated Turnaround</label><input type="text" value={newServiceDuration} onChange={e=>setNewServiceDuration(e.target.value)} placeholder="1 - 2 Days" className="w-full py-2 px-3 rounded-lg bg-panel border border-white/20 text-white font-bold" /></div>
-              <div><label className="block text-white/70 mb-1">Description</label><textarea rows={2} value={newServiceDesc} onChange={e=>setNewServiceDesc(e.target.value)} placeholder="Service scope..." className="w-full py-2 px-3 rounded-lg bg-panel border border-white/20 text-white" /></div>
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-[1fr_1.15fr]">
+              <div className="rounded-2xl border border-white/10 bg-panel p-4">
+                <PhotoUploader category="service" entityId={editingServiceId || 'new-service'} photos={newServiceImage ? [newServiceImage] : []} onChange={(photos) => setNewServiceImage(photos[0] || '')} maxPhotos={1} title="Service image" subtitle="Upload a clear photo of the finished work." />
+                <p className="mt-3 text-[10px] leading-4 text-cream-muted">JPEG, PNG, or WebP · up to 10 MB</p>
+              </div>
+              <div className="space-y-4">
+                <label className="block text-xs font-semibold text-cream-muted">Service name<input type="text" required maxLength={100} value={newServiceName} onChange={(event) => setNewServiceName(event.target.value)} placeholder="e.g. Custom leather seats" className="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-panel px-3 text-sm text-white placeholder:text-white/35 focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/20" /></label>
+                <label className="block text-xs font-semibold text-cream-muted">Short description<textarea rows={3} maxLength={500} value={newServiceDesc} onChange={(event) => setNewServiceDesc(event.target.value)} placeholder="Describe the work and what customers can expect." className="mt-2 w-full rounded-xl border border-white/10 bg-panel px-3 py-2.5 text-sm leading-5 text-white placeholder:text-white/35 focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/20" /></label>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label className="block text-xs font-semibold text-cream-muted">Starting price (KES)<input type="number" min="0" step="1" required value={newServicePrice} onChange={(event) => setNewServicePrice(Number(event.target.value))} className="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-panel px-3 text-sm text-white focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/20" /></label>
+                  <label className="block text-xs font-semibold text-cream-muted">Estimated turnaround<input type="text" maxLength={100} value={newServiceDuration} onChange={(event) => setNewServiceDuration(event.target.value)} placeholder="1 - 2 Days" className="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-panel px-3 text-sm text-white placeholder:text-white/35 focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/20" /></label>
+                </div>
+              </div>
             </div>
-            <div className="pt-3 border-t border-white/10 flex justify-end gap-2">
-              <button type="button" onClick={()=>setShowAddServiceModal(false)} className="py-2 px-4 rounded-xl bg-white/10 text-white font-bold text-xs">Cancel</button>
-              <button type="submit" className="py-2 px-4 rounded-xl bg-gold text-ink font-black text-xs uppercase">Publish Service</button>
+            <div className="flex flex-col-reverse gap-2 border-t border-white/10 pt-4 sm:flex-row sm:justify-end">
+              <button type="button" onClick={closeServiceEditor} className="min-h-11 rounded-xl border border-white/15 px-5 text-xs font-bold text-cream transition-colors hover:bg-white/5">Cancel</button>
+              <button type="submit" disabled={serviceSaveBusy} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gold px-5 text-xs font-black uppercase text-ink transition-colors hover:bg-gold-hover disabled:cursor-wait disabled:opacity-60">{serviceSaveBusy ? 'Saving…' : editingServiceId ? 'Save changes' : 'Publish service'}<ArrowRight className="h-4 w-4" /></button>
             </div>
           </form>
         </div>

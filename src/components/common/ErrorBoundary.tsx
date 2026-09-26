@@ -61,7 +61,7 @@ export class ErrorBoundary extends Component<EBProps, EBState> {
               <button 
                 id="error-boundary-retry-btn"
                 onClick={this.handleTryAgain} 
-                className="w-full py-2.5 rounded-xl bg-gold hover:bg-gold-hoverhover: text-ink font-black text-xs uppercase tracking-wider transition-colors cursor-pointer"
+                className="w-full py-2.5 rounded-xl bg-gold hover:bg-gold-hover text-ink font-black text-xs uppercase tracking-wider transition-colors cursor-pointer"
               >
                 Try Again
               </button>

@@ -7,10 +7,9 @@ import { BUSINESS_CONFIG } from '../../config/business';
 
 const NAV_ITEMS = [
   ['Services', 'services-section'],
-  ['Build spec', 'spec-section'],
-  ['How it works', 'booking-route'],
+  ['Booking guide', 'booking-route'],
   ['Our work', 'portfolio-section'],
-  ['Workshop', 'arrival-section'],
+  ['Visit us', 'arrival-section'],
 ] as const;
 
 export const Navbar: React.FC = () => {

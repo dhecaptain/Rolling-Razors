@@ -27,7 +27,7 @@ export const CustomerReviews: React.FC = () => {
           {reviews.map((rev) => (
             <div
               key={rev.id}
-              className="p-6 rounded-2xl bg-panel border border-gold flex flex-col justify-between space-y-4 shadow-xl hover:border-goldhover: transition-all hover:-translate-y-1"
+              className="p-6 rounded-2xl bg-panel border border-gold flex flex-col justify-between space-y-4 shadow-xl hover:border-gold transition-all hover:-translate-y-1"
             >
               <div className="space-y-3">
                 {/* 5 Stars */}

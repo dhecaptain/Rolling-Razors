@@ -60,13 +60,13 @@ export const Footer: React.FC = () => {
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-gold shrink-0" />
-                <a href={BUSINESS_CONFIG.phone.telLink} className="hover:text-goldhover: transition-colors">
+                <a href={BUSINESS_CONFIG.phone.telLink} className="hover:text-gold transition-colors">
                   {BUSINESS_CONFIG.phone.formatted}
                 </a>
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-gold shrink-0" />
-                <a href={`mailto:${BUSINESS_CONFIG.email.primary}`} className="hover:text-goldhover: transition-colors">
+                <a href={`mailto:${BUSINESS_CONFIG.email.primary}`} className="hover:text-gold transition-colors">
                   {BUSINESS_CONFIG.email.primary}
                 </a>
               </div>
@@ -84,32 +84,32 @@ export const Footer: React.FC = () => {
             </h4>
             <ul className="space-y-2 text-xs text-cream">
               <li>
-                <button onClick={scrollToTop} className="hover:text-goldhover: transition-colors cursor-pointer">
+                <button onClick={scrollToTop} className="hover:text-gold transition-colors cursor-pointer">
                   Home
                 </button>
               </li>
               <li>
-                <button onClick={() => scrollToSection('services-section')} className="hover:text-goldhover: transition-colors cursor-pointer">
+                <button onClick={() => scrollToSection('services-section')} className="hover:text-gold transition-colors cursor-pointer">
                   Our Services
                 </button>
               </li>
               <li>
-                <button onClick={() => scrollToSection('portfolio-section')} className="hover:text-goldhover: transition-colors cursor-pointer">
+                <button onClick={() => scrollToSection('portfolio-section')} className="hover:text-gold transition-colors cursor-pointer">
                   Our Work & Portfolio
                 </button>
               </li>
               <li>
-                <button onClick={() => scrollToSection('how-it-works-section')} className="hover:text-goldhover: transition-colors cursor-pointer">
+                <button onClick={() => scrollToSection('how-it-works-section')} className="hover:text-gold transition-colors cursor-pointer">
                   How It Works
                 </button>
               </li>
               <li>
-                <button onClick={() => scrollToSection('why-choose-us-section')} className="hover:text-goldhover: transition-colors cursor-pointer">
+                <button onClick={() => scrollToSection('why-choose-us-section')} className="hover:text-gold transition-colors cursor-pointer">
                   About Us
                 </button>
               </li>
               <li>
-                <button onClick={() => scrollToSection('contact-location-section')} className="hover:text-goldhover: transition-colors cursor-pointer">
+                <button onClick={() => scrollToSection('contact-location-section')} className="hover:text-gold transition-colors cursor-pointer">
                   Contact & Map
                 </button>
               </li>
@@ -122,13 +122,13 @@ export const Footer: React.FC = () => {
               Services
             </h4>
             <ul className="space-y-2 text-xs text-cream">
-              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-1'); setView('booking'); }} className="hover:text-goldhover: cursor-pointer">Car Interior Upholstery</button></li>
-              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-2'); setView('booking'); }} className="hover:text-goldhover: cursor-pointer">Custom Car Seats</button></li>
-              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-4'); setView('booking'); }} className="hover:text-goldhover: cursor-pointer">Genuine Leather Work</button></li>
-              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-5'); setView('booking'); }} className="hover:text-goldhover: cursor-pointer">Steering Wheel Stitching</button></li>
-              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-3'); setView('booking'); }} className="hover:text-goldhover: cursor-pointer">Cushion Customization</button></li>
-              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-10'); setView('booking'); }} className="hover:text-goldhover: cursor-pointer">Roofing & Headliner Repair</button></li>
-              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-7'); setView('booking'); }} className="hover:text-goldhover: cursor-pointer">Car Shades & Tents</button></li>
+              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-1'); setView('booking'); }} className="hover:text-gold cursor-pointer">Car Interior Upholstery</button></li>
+              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-2'); setView('booking'); }} className="hover:text-gold cursor-pointer">Custom Car Seats</button></li>
+              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-4'); setView('booking'); }} className="hover:text-gold cursor-pointer">Genuine Leather Work</button></li>
+              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-5'); setView('booking'); }} className="hover:text-gold cursor-pointer">Steering Wheel Stitching</button></li>
+              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-3'); setView('booking'); }} className="hover:text-gold cursor-pointer">Cushion Customization</button></li>
+              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-10'); setView('booking'); }} className="hover:text-gold cursor-pointer">Roofing & Headliner Repair</button></li>
+              <li><button onClick={() => { setBookingWizardInitialServiceId('srv-7'); setView('booking'); }} className="hover:text-gold cursor-pointer">Car Shades & Tents</button></li>
             </ul>
           </div>
 
@@ -145,7 +145,7 @@ export const Footer: React.FC = () => {
             <button
               id="footer-book-now-btn"
               onClick={startBooking}
-              className="w-full py-2.5 px-4 rounded-xl bg-gold hover:bg-gold-hoverhover: text-ink font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer"
+              className="w-full py-2.5 px-4 rounded-xl bg-gold hover:bg-gold-hover text-ink font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer"
             >
               <Calendar className="w-3.5 h-3.5" /> Book a Service
             </button>
@@ -159,7 +159,7 @@ export const Footer: React.FC = () => {
                   href={BUSINESS_CONFIG.socials.facebook} 
                   target="_blank" 
                   rel="noreferrer" 
-                  className="w-8 h-8 rounded-lg bg-panel hover:bg-goldhover: hover:text-inkhover: flex items-center justify-center transition-colors text-xs font-bold"
+                  className="w-8 h-8 rounded-lg bg-panel hover:bg-gold hover:text-ink flex items-center justify-center transition-colors text-xs font-bold"
                   aria-label="Facebook"
                 >
                   FB
@@ -169,7 +169,7 @@ export const Footer: React.FC = () => {
                   href={BUSINESS_CONFIG.socials.instagram} 
                   target="_blank" 
                   rel="noreferrer" 
-                  className="w-8 h-8 rounded-lg bg-panel hover:bg-goldhover: hover:text-inkhover: flex items-center justify-center transition-colors text-xs font-bold"
+                  className="w-8 h-8 rounded-lg bg-panel hover:bg-gold hover:text-ink flex items-center justify-center transition-colors text-xs font-bold"
                   aria-label="Instagram"
                 >
                   IG
@@ -189,7 +189,7 @@ export const Footer: React.FC = () => {
                   href={BUSINESS_CONFIG.socials.tiktok} 
                   target="_blank" 
                   rel="noreferrer" 
-                  className="w-8 h-8 rounded-lg bg-panel hover:bg-goldhover: hover:text-inkhover: flex items-center justify-center transition-colors text-xs font-bold"
+                  className="w-8 h-8 rounded-lg bg-panel hover:bg-gold hover:text-ink flex items-center justify-center transition-colors text-xs font-bold"
                   aria-label="TikTok"
                 >
                   TT
@@ -233,7 +233,7 @@ export const Footer: React.FC = () => {
             </button>
             <button 
               onClick={scrollToTop}
-              className="p-2 rounded-lg bg-panel hover:bg-goldhover: hover:text-inkhover: text-white transition-colors cursor-pointer"
+              className="p-2 rounded-lg bg-panel hover:bg-gold hover:text-ink text-white transition-colors cursor-pointer"
               title="Back to Top"
             >
               <ArrowUp className="w-4 h-4" />

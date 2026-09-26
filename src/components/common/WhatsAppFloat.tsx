@@ -58,7 +58,7 @@ export const WhatsAppFloat: React.FC<WhatsAppFloatProps> = ({
             <button 
               id="close-whatsapp-popup-btn"
               onClick={() => setIsOpen(false)}
-              className="text-cream hover:text-creamhover: p-1 rounded-lg hover:bg-white/10"
+              className="text-cream hover:text-cream p-1 rounded-lg hover:bg-white/10"
             >
               <X className="w-5 h-5" />
             </button>
@@ -85,7 +85,7 @@ export const WhatsAppFloat: React.FC<WhatsAppFloatProps> = ({
                   <button
                     key={idx}
                     onClick={() => setCustomMsg(tmpl)}
-                    className="text-left text-[11px] px-2.5 py-1 rounded bg-panel hover:bg-goldhover: hover:text-inkhover: text-cream border border-white/10 transition-colors"
+                    className="text-left text-[11px] px-2.5 py-1 rounded bg-panel hover:bg-gold hover:text-ink text-cream border border-white/10 transition-colors"
                   >
                     {tmpl}
                   </button>
@@ -101,7 +101,7 @@ export const WhatsAppFloat: React.FC<WhatsAppFloatProps> = ({
                 value={customMsg}
                 onChange={(e) => setCustomMsg(e.target.value)}
                 placeholder="Type your vehicle inquiry here..."
-                className="w-full text-xs p-2.5 rounded-lg bg-ink-deep border border-emerald-700/50 text-cream placeholder-white/40 focus:outline-none focus:border-goldfocus: resize-none"
+                className="w-full text-xs p-2.5 rounded-lg bg-ink-deep border border-emerald-700/50 text-cream placeholder-white/40 focus:outline-none focus:border-gold resize-none"
               />
             </div>
 
@@ -110,14 +110,14 @@ export const WhatsAppFloat: React.FC<WhatsAppFloatProps> = ({
               <button
                 id="send-whatsapp-chat-btn"
                 onClick={handleSend}
-                className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-whatsapp hover:bg-whatsapp-darkhover: text-white font-bold text-xs shadow transition-colors"
+                className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-whatsapp hover:bg-whatsapp-dark text-white font-bold text-xs shadow transition-colors"
               >
                 <Send className="w-3.5 h-3.5" /> Start WhatsApp Chat
               </button>
               <a
                 href={BUSINESS_CONFIG.phone.telLink}
                 id="direct-phone-call-btn"
-                className="flex items-center justify-center p-2 rounded-lg bg-panel hover:bg-goldhover: hover:text-inkhover: text-cream border border-gold transition-colors"
+                className="flex items-center justify-center p-2 rounded-lg bg-panel hover:bg-gold hover:text-ink text-cream border border-gold transition-colors"
                 title={`Call ${BUSINESS_CONFIG.phone.formatted}`}
               >
                 <PhoneCall className="w-4 h-4" />
@@ -131,7 +131,7 @@ export const WhatsAppFloat: React.FC<WhatsAppFloatProps> = ({
       <button
         id="toggle-whatsapp-float-btn"
         onClick={() => setIsOpen(!isOpen)}
-        className="group flex items-center gap-2.5 px-4 py-3 rounded-full bg-whatsapp hover:bg-whatsapp-darkhover: text-white font-semibold text-sm shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
+        className="group flex items-center gap-2.5 px-4 py-3 rounded-full bg-whatsapp hover:bg-whatsapp-dark text-white font-semibold text-sm shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
         aria-label="Chat on WhatsApp with Rolling Razors Customs"
       >
         <MessageCircle className="w-6 h-6 fill-white" />

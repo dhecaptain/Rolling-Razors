@@ -178,7 +178,7 @@ export const PortfolioGallery: React.FC = () => {
           {filteredItems.map((item) => (
             <div
               key={item.id}
-              className="bg-panel rounded-2xl overflow-hidden border border-gold hover:border-goldhover: transition-all duration-300 shadow-xl group flex flex-col justify-between"
+              className="bg-panel rounded-2xl overflow-hidden border border-gold hover:border-gold transition-all duration-300 shadow-xl group flex flex-col justify-between"
             >
               <div className="relative h-60 overflow-hidden">
                 <img

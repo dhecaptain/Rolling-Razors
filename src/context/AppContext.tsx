@@ -139,6 +139,7 @@ interface AppContextType {
   
   // Service actions
   updateServicePrice: (serviceId: string, price: number) => void;
+  updateServiceDetails: (serviceId: string, patch: Partial<Omit<Service, 'id'>>) => Promise<void>;
   toggleServiceAvailability: (serviceId: string) => void;
   
   // Invoice actions
@@ -1353,6 +1354,28 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
     addToast('success', 'Price Updated', `Service base pricing updated to KES ${price.toLocaleString()}.`);
   };
 
+  const updateServiceDetails = async (serviceId: string, patch: Partial<Omit<Service, 'id'>>) => {
+    const previous = services.find(service => service.id === serviceId);
+    if (!previous) throw new Error('This service could not be found. Refresh the page and try again.');
+    const updated = { ...previous, ...patch };
+    setServices(current => current.map(service => service.id === serviceId ? updated : service));
+    try {
+      const response = await fetch(`/api/services/${serviceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        credentials: 'include',
+        body: JSON.stringify(patch),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) throw new Error(data.error || 'Could not save the service.');
+      setServices(current => current.map(service => service.id === serviceId ? data.service : service));
+      addToast('success', 'Service updated', `${updated.name} has been saved.`);
+    } catch (error) {
+      setServices(current => current.map(service => service.id === serviceId ? previous : service));
+      throw error;
+    }
+  };
+
   const toggleServiceAvailability = (serviceId: string) => {
     const service = services.find(s => s.id === serviceId); if (!service) return;
     const nextFeatured = !service.isFeatured;
@@ -1486,6 +1509,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
         deleteVehicle,
         addService,
         updateServicePrice,
+        updateServiceDetails,
         toggleServiceAvailability,
         generateInvoiceForBooking,
         markNotificationAsRead,

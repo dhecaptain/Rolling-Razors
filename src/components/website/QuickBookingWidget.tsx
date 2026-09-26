@@ -78,7 +78,7 @@ export const QuickBookingWidget: React.FC = () => {
               id="quick-booking-service-select"
               value={serviceId}
               onChange={(e) => setServiceId(e.target.value)}
-              className="w-full py-2.5 px-3.5 rounded-xl bg-ink border border-gold text-cream text-xs font-semibold focus:outline-none focus:border-goldfocus: cursor-pointer appearance-none"
+              className="w-full py-2.5 px-3.5 rounded-xl bg-ink border border-gold text-cream text-xs font-semibold focus:outline-none focus:border-gold cursor-pointer appearance-none"
             >
               {services.map(srv => (
                 <option key={srv.id} value={srv.id} className="bg-ink text-white">
@@ -107,7 +107,7 @@ export const QuickBookingWidget: React.FC = () => {
                 className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all text-center border ${
                   vehicleType === vt 
                     ? 'bg-gold text-ink border-gold shadow-sm' 
-                    : 'bg-ink text-cream border-white/10 hover:border-goldhover:'
+                    : 'bg-ink text-cream border-white/10 hover:border-gold'
                 }`}
               >
                 {vt}
@@ -128,7 +128,7 @@ export const QuickBookingWidget: React.FC = () => {
               value={preferredDate}
               min={new Date().toISOString().split('T')[0]}
               onChange={(e) => setPreferredDate(e.target.value)}
-              className="w-full py-2.5 px-3 rounded-xl bg-ink border border-gold text-cream text-xs font-semibold focus:outline-none focus:border-goldfocus:"
+              className="w-full py-2.5 px-3 rounded-xl bg-ink border border-gold text-cream text-xs font-semibold focus:outline-none focus:border-gold"
             />
           </div>
 
@@ -140,7 +140,7 @@ export const QuickBookingWidget: React.FC = () => {
               id="quick-booking-time-select"
               value={preferredTime}
               onChange={(e) => setPreferredTime(e.target.value)}
-              className="w-full py-2.5 px-3 rounded-xl bg-ink border border-gold text-cream text-xs font-semibold focus:outline-none focus:border-goldfocus: cursor-pointer"
+              className="w-full py-2.5 px-3 rounded-xl bg-ink border border-gold text-cream text-xs font-semibold focus:outline-none focus:border-gold cursor-pointer"
             >
               {timeSlots.map(time => (
                 <option key={time} value={time} className="bg-ink text-white">
@@ -164,7 +164,7 @@ export const QuickBookingWidget: React.FC = () => {
               className={`py-2 px-3 rounded-xl text-xs font-bold transition-all text-left border flex items-center gap-2 ${
                 locationType === 'workshop'
                   ? 'bg-ink border-gold text-white ring-1 ring-gold'
-                  : 'bg-ink border-white/10 text-white/70 hover:bg-inkhover:'
+                  : 'bg-ink border-white/10 text-white/70 hover:bg-ink'
               }`}
             >
               <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${locationType === 'workshop' ? 'border-gold' : 'border-white/30'}`}>
@@ -183,7 +183,7 @@ export const QuickBookingWidget: React.FC = () => {
               className={`py-2 px-3 rounded-xl text-xs font-bold transition-all text-left border flex items-center gap-2 ${
                 locationType === 'customer_location'
                   ? 'bg-ink border-gold text-white ring-1 ring-gold'
-                  : 'bg-ink border-white/10 text-white/70 hover:bg-inkhover:'
+                  : 'bg-ink border-white/10 text-white/70 hover:bg-ink'
               }`}
             >
               <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${locationType === 'customer_location' ? 'border-gold' : 'border-white/30'}`}>
@@ -211,7 +211,7 @@ export const QuickBookingWidget: React.FC = () => {
         <button
           id="check-availability-submit-btn"
           type="submit"
-          className="w-full py-3.5 px-4 rounded-xl bg-gold hover:bg-gold-hoverhover: text-ink font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all transform active:scale-95 cursor-pointer mt-2"
+          className="w-full py-3.5 px-4 rounded-xl bg-gold hover:bg-gold-hover text-ink font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all transform active:scale-95 cursor-pointer mt-2"
         >
           <span>Check Availability & Proceed</span>
           <ArrowRight className="w-4 h-4" />

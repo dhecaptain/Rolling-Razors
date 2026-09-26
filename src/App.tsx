@@ -57,6 +57,7 @@ const MainContent: React.FC = () => {
 
   // For admin_auth: if already logged in as customer, redirect away.
   const customerAtAdminAuth = view === 'admin_auth' && isLoggedIn && userRole === 'customer';
+  const isWorkspaceView = view === 'customer_dashboard' || view === 'admin_dashboard';
 
   useEffect(() => {
     const titles: Record<string, string> = {
@@ -87,15 +88,15 @@ const MainContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-ink text-cream flex flex-col font-sans selection:bg-gold selection:text-ink">
       <a href="#main-content" className="sr-only z-[100] focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:bg-gold focus:px-4 focus:py-3 focus:text-ink">Skip to main content</a>
-      {/* Top Navigation */}
-      <Navbar />
+      {/* Public site navigation stays out of authenticated workspaces. */}
+      {!isWorkspaceView && <Navbar />}
 
       {/* Dynamic Main View */}
       <main id="main-content" className="flex-1">
         {view === 'website' && <InspectionBayLanding />}
 
         {view === 'booking' && <button type="button" onClick={() => setView('website')} className="mx-5 mt-24 min-h-11 text-left text-sm font-bold text-gold">← Back to site</button>}
-        <Suspense fallback={<div className="min-h-[60vh] bg-ink px-5 pt-24"><div className="mx-auto max-w-5xl animate-pulse space-y-6"><div className="h-4 w-32 bg-gold" /><div className="h-12 w-2/3 bg-panel" /><div className="h-64 w-full bg-panel" /><div className="h-2 w-1/3 bg-gold" /></div></div>}>
+        <Suspense fallback={<div role="status" aria-live="polite" aria-label="Loading page content" className="min-h-[60vh] bg-ink px-5 pt-24"><div aria-hidden="true" className="mx-auto max-w-5xl animate-pulse space-y-6"><div className="h-4 w-32 rounded bg-gold/70" /><div className="h-12 w-2/3 rounded bg-panel" /><div className="h-64 w-full rounded-2xl bg-panel" /><div className="h-2 w-1/3 rounded bg-gold/70" /></div><p className="sr-only">Loading your workspace…</p></div>}>
           {view === 'booking' && <BookingWizard />}
           {view === 'customer_dashboard' && <CustomerDashboard />}
           {view === 'admin_dashboard' && !denied && <AdminDashboard />}
@@ -107,7 +108,7 @@ const MainContent: React.FC = () => {
       </main>
 
       {/* Modals, Overlays and Floating Tools */}
-      <WhatsAppFloat />
+      {!isWorkspaceView && <WhatsAppFloat />}
       <MpesaModal />
       <PaystackModal />
       <ToastContainer />

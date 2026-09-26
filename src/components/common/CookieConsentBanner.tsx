@@ -40,10 +40,10 @@ export const CookieConsentBanner: React.FC = () => {
         </div>
       </div>
       <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <button type="button" onClick={() => choose('essential')} className="rounded-xl border border-white/15 px-4 py-2.5 text-xs font-bold text-white/80 hover:border-goldhover: hover:text-white">
+        <button type="button" onClick={() => choose('essential')} className="rounded-xl border border-white/15 px-4 py-2.5 text-xs font-bold text-white/80 hover:border-gold hover:text-white">
           Essential only
         </button>
-        <button type="button" onClick={() => choose('accepted')} className="rounded-xl bg-gold px-4 py-2.5 text-xs font-black uppercase tracking-wide text-ink hover:bg-gold-hoverhover:">
+        <button type="button" onClick={() => choose('accepted')} className="rounded-xl bg-gold px-4 py-2.5 text-xs font-black uppercase tracking-wide text-ink hover:bg-gold-hover">
           Accept analytics
         </button>
       </div>

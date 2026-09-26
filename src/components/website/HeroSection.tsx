@@ -80,7 +80,7 @@ export const HeroSection: React.FC = () => {
               <button
                 id="hero-primary-book-btn"
                 onClick={handleBookNow}
-                className="py-3.5 px-7 rounded-xl bg-gold hover:bg-gold-hoverhover: text-ink font-black text-sm uppercase tracking-wider flex items-center gap-2.5 shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-0.5 cursor-pointer"
+                className="py-3.5 px-7 rounded-xl bg-gold hover:bg-gold-hover text-ink font-black text-sm uppercase tracking-wider flex items-center gap-2.5 shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-0.5 cursor-pointer"
               >
                 <span>Book a Service</span>
                 <ArrowRight className="w-4 h-4" />

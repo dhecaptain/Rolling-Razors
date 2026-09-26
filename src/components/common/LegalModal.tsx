@@ -233,7 +233,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="py-2.5 px-6 rounded-xl bg-gold hover:bg-gold-hoverhover: text-ink font-black text-xs uppercase tracking-wider shadow cursor-pointer"
+            className="py-2.5 px-6 rounded-xl bg-gold hover:bg-gold-hover text-ink font-black text-xs uppercase tracking-wider shadow cursor-pointer"
           >
             I Understand & Close
           </button>

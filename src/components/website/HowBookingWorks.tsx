@@ -67,7 +67,7 @@ export const HowBookingWorks: React.FC = () => {
           {steps.map((step, idx) => (
             <div 
               key={idx}
-              className="relative bg-ink border border-gold rounded-2xl p-6 flex flex-col justify-between space-y-6 shadow-xl group hover:border-goldhover: transition-all hover:-translate-y-1"
+              className="relative bg-ink border border-gold rounded-2xl p-6 flex flex-col justify-between space-y-6 shadow-xl group hover:border-gold transition-all hover:-translate-y-1"
             >
               {/* Step Number & Icon */}
               <div className="flex items-center justify-between">
@@ -113,7 +113,7 @@ export const HowBookingWorks: React.FC = () => {
           <button
             id="how-it-works-book-btn"
             onClick={startBooking}
-            className="py-3 px-6 rounded-xl bg-gold hover:bg-gold-hoverhover: text-ink font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg whitespace-nowrap cursor-pointer"
+            className="py-3 px-6 rounded-xl bg-gold hover:bg-gold-hover text-ink font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg whitespace-nowrap cursor-pointer"
           >
             <span>Book Your Service Now</span>
             <ArrowRight className="w-4 h-4" />

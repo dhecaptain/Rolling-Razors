@@ -267,7 +267,7 @@ export const PaystackModal: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="w-full px-4 py-3 rounded-xl bg-panel border border-gold text-cream font-semibold placeholder-white/30 focus:outline-none focus:border-goldfocus: focus:ring-1 focus:ring-goldfocus: text-base"
+                  className="w-full px-4 py-3 rounded-xl bg-panel border border-gold text-cream font-semibold placeholder-white/30 focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold text-base"
                 />
                 <p className="text-[11px] text-white/70 mt-2 flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-whatsapp shrink-0" />
@@ -298,7 +298,7 @@ export const PaystackModal: React.FC = () => {
               <button
                 id="open-paystack-checkout-btn"
                 onClick={handleInitiateCheckout}
-                className="w-full py-3.5 px-4 rounded-xl bg-paystack hover:bg-paystack-darkhover: text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all transform active:scale-95 cursor-pointer"
+                className="w-full py-3.5 px-4 rounded-xl bg-paystack hover:bg-paystack-dark text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all transform active:scale-95 cursor-pointer"
               >
                 <CreditCard className="w-4 h-4" />
                 <span>Pay KES {depositCost.toLocaleString()}</span>
@@ -354,7 +354,7 @@ export const PaystackModal: React.FC = () => {
                 <button
                   id="copy-paystack-receipt-btn"
                   onClick={handleCopyReceipt}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-panel hover:bg-goldhover: hover:text-inkhover: text-white text-xs font-semibold transition-all shadow cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-panel hover:bg-gold hover:text-ink text-white text-xs font-semibold transition-all shadow cursor-pointer"
                 >
                   {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                   {copied ? 'Copied' : 'Copy'}
@@ -375,7 +375,7 @@ export const PaystackModal: React.FC = () => {
               <button
                 id="done-paystack-btn"
                 onClick={closePaystackPayment}
-                className="w-full py-3.5 px-4 rounded-xl bg-gold hover:bg-gold-hoverhover: text-ink font-black text-xs uppercase tracking-wider shadow-lg transition-colors cursor-pointer"
+                className="w-full py-3.5 px-4 rounded-xl bg-gold hover:bg-gold-hover text-ink font-black text-xs uppercase tracking-wider shadow-lg transition-colors cursor-pointer"
               >
                 Return to Dashboard
               </button>
@@ -403,7 +403,7 @@ export const PaystackModal: React.FC = () => {
                     setFailureMessage('');
                     setStep('prompt');
                   }}
-                  className="flex-1 py-2.5 rounded-lg bg-gold hover:bg-gold-hoverhover: text-ink font-bold text-xs cursor-pointer transition-colors"
+                  className="flex-1 py-2.5 rounded-lg bg-gold hover:bg-gold-hover text-ink font-bold text-xs cursor-pointer transition-colors"
                 >
                   Try Again
                 </button>

@@ -820,16 +820,16 @@ export const INITIAL_INVOICES: Invoice[] = [
 export const INITIAL_PORTFOLIO: PortfolioItem[] = [
   {
     id: 'port-1',
-    title: 'Toyota Probox Full Cabin Overhaul',
-    category: 'Car Interiors',
-    service: 'Full Upholstery',
+    title: 'Custom Seat Upholstery Refresh',
+    category: 'Seats',
+    service: 'Custom Car Seats',
     location: 'Nairobi, Kenya',
-    vehicleModel: 'Toyota Probox 2018',
-    image: 'https://images.unsplash.com/photo-1541348263662-e0c8de4259ba?auto=format&fit=crop&w=1200&q=80',
-    beforeImage: 'https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&w=1200&q=80',
-    afterImage: 'https://images.unsplash.com/photo-1541348263662-e0c8de4259ba?auto=format&fit=crop&w=1200&q=80',
-    description: 'Converted a tired commercial cabin into a luxury executive commuter with tan double-stitched leatherette, matching door trims, and noise-canceling floor carpet.',
-    tags: ['Toyota Probox', 'Tan Leather', 'Diamond Stitch', 'Full Cabin'],
+    vehicleModel: 'Vehicle interior',
+    image: '/images/portfolio/after-seat.jpg',
+    beforeImage: '/images/portfolio/before-seat.jpg',
+    afterImage: '/images/portfolio/after-seat.jpg',
+    description: 'A worn vehicle seat refreshed with clean upholstery, smooth cushioning, and careful stitching.',
+    tags: ['Seat Upholstery', 'Leather Finish', 'Before & After'],
     isFeatured: true
   },
   {

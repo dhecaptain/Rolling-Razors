@@ -247,7 +247,7 @@ export const MpesaModal: React.FC = () => {
                     value={phoneNumber.replace(/^\+254/, '')}
                     onChange={(e) => setPhoneNumber(e.target.value)}
                     placeholder="712345678"
-                    className="w-full pl-20 pr-4 py-3 rounded-xl bg-panel border border-gold text-cream font-bold placeholder-white/30 focus:outline-none focus:border-goldfocus: focus:ring-1 focus:ring-goldfocus: text-base font-mono"
+                    className="w-full pl-20 pr-4 py-3 rounded-xl bg-panel border border-gold text-cream font-bold placeholder-white/30 focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold text-base font-mono"
                   />
                 </div>
                 <p className="text-[11px] text-white/70 mt-2 flex items-center gap-1.5">
@@ -266,7 +266,7 @@ export const MpesaModal: React.FC = () => {
               <button
                 id="send-stk-push-btn"
                 onClick={handleInitiateSTK}
-                className="w-full py-3.5 px-4 rounded-xl bg-mpesa hover:bg-mpesa-darkhover: text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all transform active:scale-95 cursor-pointer"
+                className="w-full py-3.5 px-4 rounded-xl bg-mpesa hover:bg-mpesa-dark text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all transform active:scale-95 cursor-pointer"
               >
                 <span>Send STK Push • KES {depositCost.toLocaleString()}</span>
                 <ArrowRight className="w-4 h-4" />
@@ -353,7 +353,7 @@ export const MpesaModal: React.FC = () => {
                 <button
                   id="copy-mpesa-receipt-btn"
                   onClick={handleCopyReceipt}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-panel hover:bg-goldhover: hover:text-inkhover: text-white text-xs font-semibold transition-all shadow cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-panel hover:bg-gold hover:text-ink text-white text-xs font-semibold transition-all shadow cursor-pointer"
                 >
                   {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                   {copied ? 'Copied' : 'Copy'}
@@ -374,7 +374,7 @@ export const MpesaModal: React.FC = () => {
               <button
                 id="done-mpesa-btn"
                 onClick={closeMpesaPayment}
-                className="w-full py-3.5 px-4 rounded-xl bg-gold hover:bg-gold-hoverhover: text-ink font-black text-xs uppercase tracking-wider shadow-lg transition-colors cursor-pointer"
+                className="w-full py-3.5 px-4 rounded-xl bg-gold hover:bg-gold-hover text-ink font-black text-xs uppercase tracking-wider shadow-lg transition-colors cursor-pointer"
               >
                 Return to Dashboard
               </button>
@@ -402,7 +402,7 @@ export const MpesaModal: React.FC = () => {
                     setFailureMessage('');
                     setStep('prompt');
                   }}
-                  className="flex-1 py-2.5 rounded-lg bg-gold hover:bg-gold-hoverhover: text-ink font-bold text-xs cursor-pointer transition-colors"
+                  className="flex-1 py-2.5 rounded-lg bg-gold hover:bg-gold-hover text-ink font-bold text-xs cursor-pointer transition-colors"
                 >
                   Try Again
                 </button>

@@ -531,7 +531,7 @@ export const BookingWizard: React.FC = () => {
                     value={vehicleMake}
                     onChange={(e) => setVehicleMake(e.target.value)}
                     placeholder="e.g. Toyota, Nissan"
-                    className="w-full py-2.5 px-3.5 rounded-xl bg-ink border border-gold text-cream text-xs font-semibold focus:outline-none focus:border-goldfocus:"
+                    className="w-full py-2.5 px-3.5 rounded-xl bg-ink border border-gold text-cream text-xs font-semibold focus:outline-none focus:border-gold"
                   />
                 </div>
                 <div>
@@ -542,7 +542,7 @@ export const BookingWizard: React.FC = () => {
                     value={vehicleModel}
                     onChange={(e) => setVehicleModel(e.target.value)}
                     placeholder="e.g. Prado TX, Axio"
-                    className="w-full py-2.5 px-3.5 rounded-xl bg-ink border border-gold text-cream text-xs font-semibold focus:outline-none focus:border-goldfocus:"
+                    className="w-full py-2.5 px-3.5 rounded-xl bg-ink border border-gold text-cream text-xs font-semibold focus:outline-none focus:border-gold"
                   />
                 </div>
                 <div>
@@ -553,7 +553,7 @@ export const BookingWizard: React.FC = () => {
                     value={vehicleYear}
                     onChange={(e) => setVehicleYear(Number(e.target.value))}
                     placeholder="e.g. 2021"
-                    className="w-full py-2.5 px-3.5 rounded-xl bg-ink border border-gold text-cream text-xs font-semibold focus:outline-none focus:border-goldfocus:"
+                    className="w-full py-2.5 px-3.5 rounded-xl bg-ink border border-gold text-cream text-xs font-semibold focus:outline-none focus:border-gold"
                   />
                 </div>
                 <div>
@@ -564,7 +564,7 @@ export const BookingWizard: React.FC = () => {
                     value={vehicleReg}
                     onChange={(e) => setVehicleReg(e.target.value.toUpperCase())}
                     placeholder="e.g. KDF 782G"
-                    className="w-full py-2.5 px-3.5 rounded-xl bg-ink border border-gold text-cream text-xs font-mono font-bold focus:outline-none focus:border-goldfocus:"
+                    className="w-full py-2.5 px-3.5 rounded-xl bg-ink border border-gold text-cream text-xs font-mono font-bold focus:outline-none focus:border-gold"
                   />
                 </div>
               </div>
@@ -623,7 +623,7 @@ export const BookingWizard: React.FC = () => {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="e.g. Please bolster driver thigh support, repair sagging roof headliner, match door cards."
-                  className="w-full py-2.5 px-3.5 rounded-xl bg-ink border border-gold text-cream text-xs focus:outline-none focus:border-goldfocus:"
+                  className="w-full py-2.5 px-3.5 rounded-xl bg-ink border border-gold text-cream text-xs focus:outline-none focus:border-gold"
                 />
               </div>
 
@@ -990,7 +990,7 @@ export const BookingWizard: React.FC = () => {
                 <button
                   id="wizard-share-whatsapp-btn"
                   onClick={handleShareWhatsApp}
-                  className="w-full sm:w-auto py-3 px-5 rounded-xl bg-whatsapp hover:bg-whatsapp-darkhover: text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg"
+                  className="w-full sm:w-auto py-3 px-5 rounded-xl bg-whatsapp hover:bg-whatsapp-dark text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg"
                 >
                   <MessageCircle className="w-4 h-4" /> Share on WhatsApp
                 </button>

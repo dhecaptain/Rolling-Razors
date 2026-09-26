@@ -21,7 +21,10 @@ import {
   Edit,
   X,
   Camera,
-  Image as ImageIcon
+  Image as ImageIcon,
+  ArrowUpRight,
+  LogOut,
+  LayoutDashboard
 } from 'lucide-react';
 import { Booking, Vehicle } from '../../types';
 import { phoneKey, phonesMatch } from '../../utils/phone';
@@ -42,6 +45,7 @@ export const CustomerDashboard: React.FC = () => {
     setView,
     openAuth,
     setBookingWizardInitialServiceId,
+    logout,
     addToast
   } = useApp();
 
@@ -145,7 +149,7 @@ export const CustomerDashboard: React.FC = () => {
       case 'confirmed': return <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-xs font-bold">Confirmed</span>;
       case 'pending': return <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 text-xs font-bold">Pending Deposit</span>;
       case 'checked_in': return <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/40 text-xs font-bold">Checked In</span>;
-      case 'in_progress': return <span className="px-2.5 py-0.5 rounded-full bg-gold text-gold border border-gold text-xs font-bold animate-pulse">In Workshop</span>;
+      case 'in_progress': return <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-400/30 text-xs font-bold">Work in progress</span>;
       case 'quality_check': return <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/40 text-xs font-bold">Quality Check</span>;
       case 'ready': return <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 text-xs font-bold">Ready for Pickup</span>;
       case 'completed': return <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/40 text-xs font-bold">Completed</span>;
@@ -154,105 +158,68 @@ export const CustomerDashboard: React.FC = () => {
     }
   };
 
+  const driverNavigation = [
+    { id: 'dashboard' as const, label: 'Overview', icon: <LayoutDashboard className="h-4 w-4" /> },
+    { id: 'bookings' as const, label: 'My bookings', icon: <Calendar className="h-4 w-4" />, count: myBookings.length },
+    { id: 'vehicles' as const, label: 'My garage', icon: <Car className="h-4 w-4" />, count: myVehicles.length },
+    { id: 'profile' as const, label: 'Profile & payments', icon: <User className="h-4 w-4" /> },
+  ];
+  const pageTitle = driverNavigation.find((item) => item.id === customerTab)?.label || 'Overview';
+  const changeTab = (tab: typeof customerTab) => setCustomerTab(tab);
+
   return (
-    <div id="customer-portal-container" className="min-h-screen pt-28 pb-20 bg-ink text-cream">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Top Driver Bar */}
-        <div className="rr-md-card border-gold p-6 sm:p-8 shadow-2xl mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <img
-              src={currentUser.avatar}
-              alt={currentUser.name}
-              className="w-16 h-16 rounded-2xl object-cover border-2 border-gold shadow-md"
-            />
+    <div id="customer-portal-container" className="min-h-screen bg-ink text-cream">
+      <div className="min-h-screen lg:grid lg:grid-cols-[250px_minmax(0,1fr)]">
+        <aside className="sticky top-0 hidden h-screen flex-col border-r border-white/10 bg-ink-deep px-4 py-6 lg:flex">
+          <div className="mb-8 flex items-center gap-3 px-3">
+            <span className="grid h-10 w-10 place-items-center rounded-xl border border-gold/40 bg-gold/10 text-gold"><Scissors className="h-5 w-5" /></span>
+            <div><p className="text-[10px] font-bold uppercase tracking-[.2em] text-gold">Rolling Razors</p><p className="mt-0.5 text-sm font-bold text-cream">Driver garage</p></div>
+          </div>
+          <nav aria-label="Driver dashboard" className="flex-1 space-y-6">
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl sm:text-3xl font-black font-display text-white">
-                  Karibu, {currentUser.name}!
-                </h1>
-                <span className={`px-2.5 py-0.5 rounded-full font-black text-[10px] uppercase tracking-wider shadow-sm ${loyaltyTier.badgeClass}`}>
-                  {loyaltyTier.name}
-                </span>
+              <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[.16em] text-white/40">My account</p>
+              <div className="space-y-1">
+                {driverNavigation.map((item) => (
+                  <button key={item.id} type="button" onClick={() => changeTab(item.id)} aria-current={customerTab === item.id ? 'page' : undefined} className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-[13px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold ${customerTab === item.id ? 'bg-gold text-ink shadow-lg shadow-black/20' : 'text-cream-muted hover:bg-white/5 hover:text-cream'}`}>
+                    {item.icon}<span className="flex-1">{item.label}</span>
+                    {'count' in item && <span className={`min-w-6 rounded-full px-1.5 py-0.5 text-center text-[10px] ${customerTab === item.id ? 'bg-ink/10 text-ink' : 'bg-white/5 text-white/60'}`}>{item.count}</span>}
+                  </button>
+                ))}
               </div>
-              <p className="text-xs text-gold mt-0.5 flex items-center gap-2">
-                <span>🇰🇪 {currentUser.phone}</span>
-                <span>•</span>
-                <span>{currentUser.location || 'Nairobi, Kenya'}</span>
-              </p>
             </div>
+          </nav>
+          <div className="mt-6 space-y-2 border-t border-white/10 pt-4">
+            <button type="button" onClick={() => setView('website')} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-semibold text-cream-muted transition-colors hover:bg-white/5 hover:text-cream focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold"><ArrowUpRight className="h-4 w-4" />View website</button>
+            <button type="button" onClick={logout} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-semibold text-cream-muted transition-colors hover:bg-rose-500/10 hover:text-rose-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold"><LogOut className="h-4 w-4" />Sign out</button>
           </div>
+        </aside>
 
-          {/* Quick Actions */}
-          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-            <button
-              id="driver-portal-book-new-btn"
-              onClick={() => {
-                setBookingWizardInitialServiceId(null);
-                setView('booking');
-              }}
-              className="py-3 px-5 rounded-xl bg-gold hover:bg-gold-hover text-ink font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg cursor-pointer"
-            >
-              <Plus className="w-4 h-4" /> Book New Service
-            </button>
-          </div>
-        </div>
-
-        {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-white/10 pb-3 mb-8 overflow-x-auto">
-          <button
-            id="tab-driver-overview"
-            onClick={() => setCustomerTab('dashboard')}
-            aria-pressed={customerTab === 'dashboard'}
-            className={`min-h-11 px-4 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
-              customerTab === 'dashboard'
-                ? 'bg-gold text-ink shadow-sm'
-                : 'text-cream-muted hover:text-cream hover:bg-white/5'
-            }`}
-          >
-            <Clock className="w-4 h-4" /> Overview & Live Jobs
-          </button>
-
-          <button
-            id="tab-driver-bookings"
-            onClick={() => setCustomerTab('bookings')}
-            aria-pressed={customerTab === 'bookings'}
-            className={`min-h-11 px-4 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
-              customerTab === 'bookings'
-                ? 'bg-gold text-ink shadow-sm'
-                : 'text-cream-muted hover:text-cream hover:bg-white/5'
-            }`}
-          >
-            <Calendar className="w-4 h-4" /> My Bookings ({myBookings.length})
-          </button>
-
-          <button
-            id="tab-driver-vehicles"
-            onClick={() => setCustomerTab('vehicles')}
-            aria-pressed={customerTab === 'vehicles'}
-            className={`min-h-11 px-4 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
-              customerTab === 'vehicles'
-                ? 'bg-gold text-ink shadow-sm'
-                : 'text-cream-muted hover:text-cream hover:bg-white/5'
-            }`}
-          >
-            <Car className="w-4 h-4" /> My Garage ({myVehicles.length})
-          </button>
-
-          <button
-            id="tab-driver-profile"
-            onClick={() => setCustomerTab('profile')}
-            aria-pressed={customerTab === 'profile'}
-            className={`min-h-11 px-4 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
-              customerTab === 'profile'
-                ? 'bg-gold text-ink shadow-sm'
-                : 'text-cream-muted hover:text-cream hover:bg-white/5'
-            }`}
-          >
-            <User className="w-4 h-4" /> Profile & M-Pesa Settings
-          </button>
-        </div>
-
+        <div className="min-w-0">
+          <nav aria-label="Driver account sections" className="sticky top-0 z-30 flex gap-1 overflow-x-auto border-b border-white/10 bg-ink-deep/95 px-3 py-2 backdrop-blur-xl lg:hidden">
+            {driverNavigation.map((item) => (
+              <button key={item.id} type="button" onClick={() => changeTab(item.id)} aria-current={customerTab === item.id ? 'page' : undefined} className={`flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-xs font-semibold ${customerTab === item.id ? 'bg-gold text-ink' : 'text-cream-muted hover:bg-white/5 hover:text-cream'}`}>
+                {item.icon}<span>{item.label}</span>{'count' in item && <span className="opacity-70">{item.count}</span>}
+              </button>
+            ))}
+            <span className="my-1 w-px shrink-0 bg-white/10" aria-hidden="true" />
+            <button type="button" onClick={() => setView('website')} className="flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-xs font-semibold text-cream-muted hover:bg-white/5 hover:text-cream"><ArrowUpRight className="h-4 w-4" /><span>Website</span></button>
+            <button type="button" onClick={logout} className="flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-xs font-semibold text-cream-muted hover:bg-rose-500/10 hover:text-rose-200"><LogOut className="h-4 w-4" /><span>Sign out</span></button>
+          </nav>
+          <main className="min-w-0 px-4 py-6 sm:px-6 lg:px-9 lg:py-9">
+            <header className="mb-7 flex flex-col justify-between gap-4 border-b border-white/10 pb-6 sm:flex-row sm:items-end">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[.2em] text-gold">Driver garage / Nairobi</p>
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <h1 className="font-display text-3xl font-black tracking-tight text-white sm:text-4xl">{pageTitle}</h1>
+                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${loyaltyTier.badgeClass}`}>{loyaltyTier.name}</span>
+                </div>
+                <p className="mt-2 text-sm text-cream-muted">Karibu, {currentUser.name}. Track your bookings, vehicles, and workshop progress.</p>
+              </div>
+              <button id="driver-portal-book-new-btn" onClick={() => { setBookingWizardInitialServiceId(null); setView('booking'); }} className="inline-flex min-h-11 items-center justify-center gap-2 self-start rounded-xl bg-gold px-5 text-xs font-black uppercase tracking-wider text-ink shadow-lg transition-colors hover:bg-gold-hover sm:self-auto">
+                <Plus className="h-4 w-4" /> Book a fitting
+              </button>
+            </header>
+            <div className="space-y-8">
         {/* ================= TAB 1: OVERVIEW ================= */}
         {customerTab === 'dashboard' && (
           <div className="space-y-8 animate-in fade-in">
@@ -285,18 +252,18 @@ export const CustomerDashboard: React.FC = () => {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-4">
                   <div>
                     <span className="text-xs font-bold text-gold uppercase tracking-wider flex items-center gap-1.5">
-                      <Scissors className="w-3.5 h-3.5" /> LIVE WORKSHOP STAGE TRACKER
+                      <Scissors className="w-3.5 h-3.5" /> YOUR JOB’S PROGRESS
                     </span>
                     <h3 className="text-xl font-black text-white font-display mt-0.5">
                       {latestActiveBooking.vehicleDetails?.make} {latestActiveBooking.vehicleDetails?.model} ({latestActiveBooking.vehicleDetails?.registrationNo})
                     </h3>
                     <p className="text-xs text-white/70">
-                      {latestActiveBooking.serviceName} • Craftsman: {latestActiveBooking.assignedStaffName || 'Master Upholsterer'}
+                      {latestActiveBooking.serviceName} · Upholsterer: {latestActiveBooking.assignedStaffName || 'Workshop team'}
                     </p>
                   </div>
                   <div className="text-right">
-                    <span className="px-3 py-1 rounded-full bg-gold text-gold border border-gold text-xs font-bold">
-                      Stage: {activeWorkOrder?.stage ? activeWorkOrder.stage.replace(/_/g, ' ') : latestActiveBooking.status.replace(/_/g, ' ').toUpperCase()}
+                      <span className="inline-flex rounded-full border border-gold/40 bg-ink px-3 py-1 text-xs font-bold text-cream">
+                      {activeWorkOrder?.stage ? activeWorkOrder.stage.replace(/_/g, ' ').toLowerCase() : latestActiveBooking.status.replace(/_/g, ' ')}
                     </span>
                   </div>
                 </div>
@@ -315,12 +282,12 @@ export const CustomerDashboard: React.FC = () => {
                         st.done 
                           ? 'bg-whatsapp' 
                           : st.current 
-                            ? 'bg-gold animate-pulse' 
+                          ? 'bg-gold motion-safe:animate-pulse'
                             : 'bg-white/10'
                       }`} />
                       <div className="flex items-center gap-1 text-[11px]">
                         {st.done && <CheckCircle2 className="w-3 h-3 text-whatsapp" />}
-                        {st.current && <span className="w-2 h-2 rounded-full bg-gold animate-ping" />}
+                        {st.current && <span className="w-2 h-2 rounded-full bg-gold motion-safe:animate-ping" />}
                         <span className={`font-semibold ${st.current ? 'text-gold' : st.done ? 'text-white' : 'text-white/40'}`}>
                           {st.stage}
                         </span>
@@ -684,6 +651,9 @@ export const CustomerDashboard: React.FC = () => {
           </div>
         )}
 
+            </div>
+          </main>
+        </div>
       </div>
 
       {/* Booking Detail Modal */}

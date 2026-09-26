@@ -61,7 +61,7 @@ export const WhyChooseUs: React.FC = () => {
           {cards.map((card, idx) => (
             <div
               key={idx}
-              className={`p-7 rounded-2xl bg-ink border border-gold hover:border-goldhover: transition-all duration-300 shadow-xl flex flex-col justify-between space-y-4 hover:-translate-y-1 ${
+              className={`p-7 rounded-2xl bg-ink border border-gold hover:border-gold transition-all duration-300 shadow-xl flex flex-col justify-between space-y-4 hover:-translate-y-1 ${
                 idx === 4 ? 'md:col-span-2 lg:col-span-1' : ''
               }`}
             >

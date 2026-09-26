@@ -1,5 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { motion, useReducedMotion } from 'motion/react';
+import React, { useMemo, useState } from 'react';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -19,7 +18,6 @@ import Reveal from './Reveal';
 import { Tilt } from './Tilt';
 import { Footer } from './Footer';
 import { resolveWebsiteAsset } from '../../config/assets';
-import { DUR, EASE, STAGGER } from '../../lib/motion';
 
 type LandingLocation = 'workshop' | 'customer_location';
 
@@ -28,12 +26,6 @@ type FittingDraft = {
   preferredDate: string;
   preferredTime: string;
   locationType: LandingLocation;
-};
-
-type BuildDraft = {
-  material: string;
-  color: string;
-  pattern: string;
 };
 
 const VEHICLE_TYPES: VehicleType[] = ['Car', 'SUV', 'Van', 'Truck', 'Matatu', 'Other'];
@@ -48,28 +40,7 @@ const PORTFOLIO_FILTERS: Array<{ label: string; value: PortfolioItem['category']
   { label: 'Before & after', value: 'Before & After' },
 ];
 
-const MATERIALS = [
-  { name: 'Genuine Nappa Leather', shortName: 'Genuine Nappa Leather', desc: 'Silky smooth / durable', image: '/images/upholstery/upholstery-02.jpg' },
-  { name: 'Italian Full Grain', shortName: 'Italian Full Grain', desc: 'Natural cowhide', image: '/images/upholstery/upholstery-10.jpg' },
-  { name: 'Heavy-Duty Vinyl', shortName: 'Heavy-Duty Vinyl', desc: 'Waterproof / tear resistant', image: '/images/cushioning/cushioning-01.jpeg' },
-  { name: 'Alcantara & Leather', shortName: 'Alcantara & Leather', desc: 'Velvety grip / cool touch', image: '/images/upholstery/upholstery-06.jpg' },
-] as const;
-
 const websiteImage = (source: string | undefined, alt: string, index = 0) => resolveWebsiteAsset(source, alt, index);
-
-const COLORS = [
-  { name: 'Saddle Brown & Black', primary: '#8C5E3C', secondary: '#111111' },
-  { name: 'Cognac Tan & Jet Black', primary: '#C2844B', secondary: '#171717' },
-  { name: 'Deep Burgundy Wine', primary: '#58111A', secondary: '#21070B' },
-] as const;
-
-const PATTERNS = [
-  { name: 'Diamond Quilted', type: 'diamond' },
-  { name: 'Double French Stitch', type: 'double' },
-  { name: 'Perforated Motorsport', type: 'perforated' },
-  { name: 'Classic Horizontal Pleats', type: 'pleats' },
-] as const;
-
 const QUALITY_CHECKS = [
   ['Premium materials', 'Automotive-grade hides, UV-stabilized vinyl, and high-density foam selected for comfort and long-term durability.'],
   ['Measured craftsmanship', 'Projects are measured and hand-stitched around your driving position, bolster requirements, and style direction.'],
@@ -236,133 +207,46 @@ const FittingRequest: React.FC<{
   );
 };
 
-const InspectionHero: React.FC<{
-  services: Service[];
-  onSubmit: (serviceId: string, draft: FittingDraft) => void;
-}> = ({ services, onSubmit }) => {
-  const slides = [
-    {
-      image: '/images/cushioning/cushioning-09.jpeg',
-      alt: 'Finished custom vehicle seats in a workshop',
-      eyebrow: 'Automotive upholstery',
-      title: 'A better interior starts here.',
-      description: 'We reshape seats, cabins, and details into interiors that feel personal, comfortable, and made for the road ahead.',
-    },
-    {
-      image: '/images/steering/steering-09.jpg',
-      alt: 'Custom stitched steering wheel',
-      eyebrow: 'Details that matter',
-      title: 'Make every drive feel yours.',
-      description: 'From steering wheel stitching to custom trim, we bring your ideas to life with careful measurement and confident craft.',
-    },
-    {
-      image: '/images/cushioning/cushioning-15.jpeg',
-      alt: 'Custom vehicle interior work completed for a customer',
-      eyebrow: 'Built around you',
-      title: 'Comfort, character, and craft.',
-      description: 'Choose your materials, colours, and finish. We help you create a vehicle interior you will be proud to step into.',
-    },
-  ] as const;
-  const [activeSlide, setActiveSlide] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  const reduceMotion = useReducedMotion();
-
-  useEffect(() => {
-    if (reduceMotion || isPaused) return;
-    const timer = window.setInterval(() => {
-      setActiveSlide((current) => (current + 1) % slides.length);
-    }, 7000);
-    return () => window.clearInterval(timer);
-  }, [isPaused, reduceMotion, slides.length]);
-
-  useEffect(() => {
-    const next = slides[(activeSlide + 1) % slides.length];
-    const asset = websiteImage(next.image, next.alt, (activeSlide + 1) % slides.length);
-    const preload = new Image();
-    preload.src = asset.src;
-  }, [activeSlide]);
-
-  const slide = slides[activeSlide];
-
-  return (
+const InspectionHero: React.FC = () => (
   <section id="hero-section" className="rr-section-forest border-b border-gold">
-    <div className="relative min-h-[720px] overflow-hidden lg:min-h-[calc(100svh-72px)]">
-      <div
-        className="absolute inset-0 min-h-[580px] overflow-hidden"
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
-        onFocus={() => setIsPaused(true)}
-        onBlur={() => setIsPaused(false)}
-      >
-        {slides.map((item, index) => {
-          const asset = websiteImage(item.image, item.alt, index);
-          return <motion.img
-            key={item.image}
-            src={asset.src}
-            sizes="(max-width: 1023px) 100vw, 58vw"
-            alt={asset.alt}
-            width={asset.width}
-            height={asset.height}
-            fetchPriority={index === 0 ? 'high' : 'auto'}
-            loading={index === 0 ? 'eager' : 'lazy'}
-            decoding="async"
-            className="absolute inset-0 h-full w-full object-cover [image-rendering:auto]"
-            style={{ objectPosition: asset.focal, zIndex: index === activeSlide ? 1 : 0 }}
-            initial={false}
-            animate={{ opacity: index === activeSlide ? 1 : 0, scale: index === activeSlide && !reduceMotion ? 1.055 : 1 }}
-            transition={{ opacity: { duration: DUR.hero, ease: EASE.expressive }, scale: { duration: 7, ease: 'linear' } }}
-          />;
-        })}
-        <div className="absolute inset-0 bg-gradient-to-r from-ink/80 via-ink/45 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-transparent to-ink/30" />
-        <div className="relative z-10 flex h-full max-w-[760px] flex-col justify-end px-6 pb-20 pt-32 sm:px-12 lg:px-20 lg:pb-24">
-          <div key={slide.eyebrow} className="rr-hero-copy" aria-live="polite">
-            <div className="mb-6 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[.18em] text-gold">
-              <span className="h-px w-8 bg-gold" />
-              EST. 2014 · NAIROBI UPHOLSTERY ATELIER
-            </div>
-            <h1 className="max-w-[760px] text-[3.3rem] font-black leading-[.94] tracking-[-.04em] text-cream sm:text-[5rem] lg:text-[6.2rem]">
-              {slide.title}
-            </h1>
-            <p className="mt-7 max-w-[560px] text-[16px] leading-7 text-cream">
-              {slide.description}
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <button type="button" id="hero-primary-book-btn" onClick={() => document.getElementById('fitting-request')?.scrollIntoView({ behavior: 'smooth' })} className="rr-button-gold h-12 px-6 text-[11px] tracking-[.08em]">BOOK A FITTING <ArrowRight aria-hidden="true" className="h-4 w-4" /></button>
-              <button type="button" onClick={() => document.getElementById('services-section')?.scrollIntoView({ behavior: 'smooth' })} className="rr-button-outline h-12 px-6 text-[11px] tracking-[.08em]">VIEW SERVICES</button>
-            </div>
-          </div>
-          <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-cream">
-            <span className="flex items-center gap-2"><CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5 text-gold" />Made in Nairobi</span>
-            <span className="h-1 w-1 rounded-full bg-gold" />
-            <span>Workshop or on-site fitting</span>
-          </div>
-          <div className="mt-8 flex items-center gap-4 border-t border-cream pt-5">
-            <div className="flex items-center gap-2" role="tablist" aria-label="Hero stories">
-              {slides.map((item, index) => (
-                <button
-                  key={item.eyebrow}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeSlide === index}
-                  aria-label={`Show ${item.eyebrow}`}
-                  onClick={() => setActiveSlide(index)}
-                  className="flex h-11 w-14 items-center justify-center"
-                >
-                  <span className={`relative block h-0.5 overflow-hidden ${activeSlide === index ? 'w-14 bg-cream-faint' : 'w-6 bg-cream-faint'}`}>
-                    {activeSlide === index && <motion.span key={`${activeSlide}-progress`} className="absolute inset-0 origin-left bg-gold" initial={{ scaleX: 0 }} animate={{ scaleX: !reduceMotion && !isPaused ? 1 : 0 }} transition={{ duration: 7, ease: 'linear' }} />}
-                  </span>
-                </button>
-              ))}
-            </div>
-            <span className="text-[11px] text-cream">Explore our craft</span>
-          </div>
+    <div className="mx-auto grid min-h-[min(760px,calc(100svh-72px))] max-w-[1440px] grid-cols-1 lg:grid-cols-[1.05fr_.95fr]">
+      <div className="relative z-10 flex flex-col justify-center px-6 py-16 sm:px-10 lg:px-16 lg:py-20">
+        <div className="mb-6 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[.18em] text-gold">
+          <span className="h-px w-8 bg-gold" />
+          CUSTOM UPHOLSTERY · NAIROBI
         </div>
+        <h1 className="max-w-[620px] text-[clamp(2.8rem,4.4vw,4.5rem)] font-black leading-[.99] tracking-[-.045em] text-cream">
+          Make every drive feel yours.
+        </h1>
+        <p className="mt-6 max-w-[490px] text-[16px] leading-7 text-cream-muted sm:text-[17px]">
+          Custom seats, careful stitching, and comfortable interiors made for your vehicle and the road ahead.
+        </p>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <button type="button" id="hero-primary-book-btn" onClick={() => document.getElementById('fitting-request')?.scrollIntoView({ behavior: 'smooth' })} className="rr-button-gold h-12 px-6 text-[11px] tracking-[.08em]">BOOK A FITTING <ArrowRight aria-hidden="true" className="h-4 w-4" /></button>
+          <button type="button" onClick={() => document.getElementById('services-section')?.scrollIntoView({ behavior: 'smooth' })} className="rr-button-outline h-12 px-6 text-[11px] tracking-[.08em]">VIEW SERVICES</button>
+        </div>
+        <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-cream">
+          <span className="flex items-center gap-2"><CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5 text-gold" />Made in Nairobi</span>
+          <span className="h-1 w-1 rounded-full bg-gold" aria-hidden="true" />
+          <span>Workshop or on-site fitting</span>
+        </div>
+      </div>
+      <div className="relative min-h-[360px] overflow-hidden lg:min-h-0">
+        <img
+          src="/images/hero/upholstery-workshop-hero.webp"
+          alt="Handcrafted cognac leather vehicle seats in an upholstery workshop"
+          width="1672"
+          height="941"
+          fetchPriority="high"
+          decoding="async"
+          className="absolute inset-0 h-full w-full object-cover object-[62%_center]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-ink/35 via-transparent to-transparent lg:from-ink/55" aria-hidden="true" />
+        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-ink/60 to-transparent lg:hidden" aria-hidden="true" />
       </div>
     </div>
   </section>
-  );
-};
+);
 
 const ServiceInspectionBoard: React.FC<{
   services: Service[];
@@ -473,176 +357,6 @@ const ServiceInspectionBoard: React.FC<{
   );
 };
 
-const BuildSpecification: React.FC<{ onBook: (draft: BuildDraft) => void }> = ({ onBook }) => {
-  const { currentUser, authFetch, authVerifying } = useApp();
-  const [activeMaterial, setActiveMaterial] = useState<string>(MATERIALS[0].name);
-  const [activeColor, setActiveColor] = useState<string>(COLORS[0].name);
-  const [activePattern, setActivePattern] = useState<string>(PATTERNS[0].name);
-  const [focusOnSeats, setFocusOnSeats] = useState(false);
-  const [draftLoaded, setDraftLoaded] = useState(false);
-  const reduce = useReducedMotion();
-
-  const material = MATERIALS.find((option) => option.name === activeMaterial) || MATERIALS[0];
-  const color = COLORS.find((option) => option.name === activeColor) || COLORS[0];
-  const pattern = PATTERNS.find((option) => option.name === activePattern) || PATTERNS[0];
-  const draft = useMemo(() => ({
-    material: material.name,
-    color: color.name,
-    pattern: pattern.name,
-  }), [color.name, material.name, pattern.name]);
-
-  useEffect(() => {
-    if (authVerifying) return;
-    if (!currentUser) {
-      setDraftLoaded(true);
-      return;
-    }
-    let cancelled = false;
-    void authFetch('/api/build-draft').then(async (response) => {
-      if (!response.ok) return;
-      const body = await response.json() as { draft?: Partial<BuildDraft> | null };
-      if (cancelled || !body.draft) return;
-      if (body.draft.material && MATERIALS.some((option) => option.name === body.draft?.material)) setActiveMaterial(body.draft.material);
-      if (body.draft.color && COLORS.some((option) => option.name === body.draft?.color)) setActiveColor(body.draft.color);
-      if (body.draft.pattern && PATTERNS.some((option) => option.name === body.draft?.pattern)) setActivePattern(body.draft.pattern);
-    }).catch(() => {}).finally(() => {
-      if (!cancelled) setDraftLoaded(true);
-    });
-    return () => { cancelled = true; };
-  }, [authFetch, authVerifying, currentUser]);
-
-  useEffect(() => {
-    if (authVerifying || !currentUser || !draftLoaded) return;
-    const timer = window.setTimeout(() => {
-      void authFetch('/api/build-draft', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(draft),
-      }).catch(() => {});
-    }, 350);
-    return () => window.clearTimeout(timer);
-  }, [authFetch, authVerifying, currentUser, draft]);
-
-const resetDraft = () => {
-    setActiveMaterial(MATERIALS[0].name);
-    setActiveColor(COLORS[0].name);
-    setActivePattern(PATTERNS[0].name);
-    setFocusOnSeats(false);
-    if (currentUser) {
-      void authFetch('/api/build-draft', { method: 'DELETE' }).catch(() => {});
-    }
-  };
-
-  return (
-    <section id="spec-section" className="rr-section-forest relative overflow-hidden px-5 py-24 text-cream lg:px-12 lg:py-32">
-      <div className="mx-auto max-w-[1280px]">
-        <Reveal>
-          <SectionHeader light eyebrow="03 / Interior direction" title="Make it yours." description="Choose the leather, colour, and stitch pattern you want to explore." />
-          <StitchRule light />
-        </Reveal>
-
-        <div className="relative mt-12 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
-          <motion.div
-            className="relative overflow-hidden border border-gold bg-ink-deep shadow-e3 lg:col-span-7"
-            initial={reduce ? { opacity: 1 } : { opacity: 0, y: 36, rotateX: 5 }}
-            whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
-            viewport={{ once: true, amount: 0.2 }}
-            transition={reduce ? {} : { duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            style={{ perspective: 1200 }}
-          >
-            <div className="relative h-[420px] overflow-hidden sm:h-[520px]">
-              <motion.img
-                key={material.image}
-                id="spec-image"
-                src={websiteImage(material.image, `${activeMaterial} interior preview`).src}
-                sizes="(max-width: 1024px) 100vw, 58vw"
-                alt={`${activeMaterial} interior preview`}
-                width={websiteImage(material.image, `${activeMaterial} interior preview`).width}
-                height={websiteImage(material.image, `${activeMaterial} interior preview`).height}
-                style={{ objectPosition: websiteImage(material.image, `${activeMaterial} interior preview`).focal }}
-                initial={reduce ? { opacity: 1 } : { opacity: 0 }}
-                animate={{ opacity: 1, scale: focusOnSeats ? 1.12 : 1 }}
-                transition={reduce ? { duration: 0 } : { duration: DUR.medium, ease: EASE.standard }}
-                className="absolute inset-0 h-full w-full object-cover object-center"
-                loading="lazy"
-                decoding="async"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-ink via-transparent to-black/10" />
-              <span className="absolute left-5 top-5 rounded-full border border-cream bg-ink px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.16em] text-cream backdrop-blur-md">Vehicle interior / direction</span>
-              <motion.button type="button" aria-pressed={focusOnSeats} onClick={() => setFocusOnSeats((focused) => !focused)} whileHover={reduce ? {} : { y: -2 }} whileTap={reduce ? {} : { scale: .96 }} className="absolute right-5 top-5 z-20 min-h-11 rounded-full border border-cream bg-ink px-4 py-2 text-[11px] font-bold text-cream backdrop-blur-md transition-colors hover:border-gold">
-                {focusOnSeats ? 'ZOOM OUT' : 'ZOOM IN'} <ArrowUpRight aria-hidden="true" className="ml-1 inline h-3 w-3" />
-              </motion.button>
-              <div className="absolute inset-x-4 bottom-4 z-20 border-t border-dashed border-gold pt-3 text-[13px] font-semibold text-cream" aria-live="polite">
-                <span id="spec-summary">{activeMaterial} <b className="px-1 text-gold">·</b> {activeColor} <b className="px-1 text-gold">·</b> {activePattern}</span>
-                <span className="mt-1 block text-[11px] font-normal text-cream">A visual starting point for your fitting.</span>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            className="lg:col-span-5"
-            initial={reduce ? { opacity: 1 } : { opacity: 0, x: 28 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, amount: 0.2 }}
-            transition={reduce ? {} : { duration: 0.7, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <fieldset className="border-t border-cream pt-5">
-              <legend className="flex w-full items-center justify-between rr-label text-gold"><span>M01 / Material</span><span className="text-cream">Choose one</span></legend>
-              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {MATERIALS.map((option, index) => (
-                  <motion.button key={option.name} type="button" aria-pressed={activeMaterial === option.name} onClick={() => setActiveMaterial(option.name)} whileHover={reduce ? {} : { y: -5, rotate: index % 2 ? 1 : -1 }} whileTap={reduce ? {} : { scale: .97 }} className={`group relative min-h-[116px] overflow-hidden rounded-2xl border p-3 text-left transition-colors ${activeMaterial === option.name ? 'border-gold bg-gold/[.12] shadow-[0_10px_30px_rgba(214,166,46,.12)]' : 'border-cream bg-ink-deep hover:border-gold'}`}>
-                    <img src={websiteImage(option.image, `${option.name} material`).src} alt="" aria-hidden="true" width={1200} height={750} className="absolute inset-0 h-full w-full object-cover opacity-25 transition duration-500 group-hover:opacity-40" />
-                    <span className="absolute inset-0 bg-gradient-to-t from-ink-deep via-ink-deep to-transparent" />
-                    <span className="relative block text-[12px] font-bold">{option.shortName}</span>
-                    <span className="relative mt-1 block text-[11px] text-cream">{option.desc}</span>
-                    {activeMaterial === option.name && <motion.span layoutId="mat-ring" className="absolute right-3 top-3 h-2 w-2 rounded-full bg-gold" />}
-                  </motion.button>
-                ))}
-              </div>
-            </fieldset>
-
-            <fieldset className="mt-7 border-t border-cream pt-4">
-              <legend className="flex w-full items-center justify-between rr-label text-gold"><span>C01 / Colour pairing</span><span className="text-cream">Choose one</span></legend>
-              <div className="mt-4 space-y-2">
-                {COLORS.map((option) => (
-                  <motion.button key={option.name} type="button" aria-pressed={activeColor === option.name} onClick={() => setActiveColor(option.name)} whileHover={reduce ? {} : { x: 6 }} className={`flex min-h-[54px] w-full items-center gap-3 rounded-xl border px-3 text-left text-[12px] font-semibold transition-colors ${activeColor === option.name ? 'border-gold bg-gold/[.08]' : 'border-cream hover:border-gold'}`}>
-                    <span className="flex h-8 w-10 shrink-0 overflow-hidden rounded-md border border-white/10"><span className="w-1/2" style={{ backgroundColor: option.primary }} /><span className="w-1/2" style={{ backgroundColor: option.secondary }} /></span>
-                    {option.name}
-                    {activeColor === option.name && <motion.span layoutId="col-ring" className="ml-auto h-2 w-2 rounded-full bg-gold" />}
-                  </motion.button>
-                ))}
-              </div>
-            </fieldset>
-
-            <fieldset className="mt-7 border-t border-cream pt-4">
-              <legend className="flex w-full items-center justify-between rr-label text-gold"><span>P01 / Stitch pattern</span><span className="text-cream">Choose one</span></legend>
-              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {PATTERNS.map((option) => (
-                  <motion.button key={option.name} type="button" aria-pressed={activePattern === option.name} onClick={() => setActivePattern(option.name)} whileHover={reduce ? {} : { y: -3 }} className={`min-h-[70px] rounded-xl border p-3 text-left text-[12px] font-semibold transition-colors ${activePattern === option.name ? 'border-gold bg-gold/[.08] text-cream' : 'border-cream text-cream hover:border-gold'}`}>
-                    <span className={`mb-3 block h-4 w-full rounded-sm ${option.type === 'diamond' ? 'rr-pattern-diamond' : option.type === 'perforated' ? 'rr-pattern-dots' : option.type === 'pleats' ? 'rr-pattern-pleats' : 'rr-pattern-double'}`} aria-hidden="true" />
-                    {option.name}
-                    {activePattern === option.name && <motion.span layoutId="pat-ring" className="absolute right-3 top-3 h-2 w-2 rounded-full bg-gold" />}
-                  </motion.button>
-                ))}
-              </div>
-            </fieldset>
-
-            <div className="mt-6 flex items-center justify-between gap-4 text-[11px] text-cream">
-              <span>{currentUser ? 'Configuration saved to your account.' : 'Sign in to save this configuration.'}</span>
-              <button type="button" onClick={resetDraft} className="font-bold uppercase tracking-[.12em] text-gold transition-colors hover:text-cream">
-                Reset choices
-              </button>
-            </div>
-            <motion.button type="button" onClick={() => onBook(draft)} whileHover={reduce ? {} : { scale: 1.02, boxShadow: '0 12px 30px rgba(214,166,46,.22)' }} whileTap={reduce ? {} : { scale: .98 }} className="rr-button-gold mt-4 h-14 w-full text-[12px] tracking-[.08em]">
-              BOOK THIS INTERIOR BUILD <ArrowRight aria-hidden="true" className="h-4 w-4" />
-            </motion.button>
-          </motion.div>
-        </div>
-      </div>
-    </section>
-  );
-};
-
 const BookingRoute: React.FC<{ onStart: () => void }> = ({ onStart }) => {
   const steps = [
     ['01', 'Choose a service', 'Select full upholstery, custom seats, leather work, steering stitching, cushions, shades, or a workshop service.'],
@@ -655,7 +369,7 @@ const BookingRoute: React.FC<{ onStart: () => void }> = ({ onStart }) => {
     <section id="booking-route" className="rr-section-panel px-5 py-24 text-cream lg:px-12 lg:py-28">
       <div className="mx-auto max-w-[1280px]">
         <Reveal>
-          <SectionHeader light eyebrow="04 / Booking handoff" title="From selection to fitting." description="Four clear steps take your request from a service choice to a confirmed Nairobi workshop appointment." />
+          <SectionHeader light eyebrow="How booking works" title="Book your fitting." description="Choose a service, share your vehicle details, pick a preferred time, and send your request for confirmation." />
         </Reveal>
         <div className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-16">
           <div className="relative lg:col-span-8">
@@ -709,7 +423,7 @@ const EvidenceGallery: React.FC<{ portfolio: PortfolioItem[] }> = ({ portfolio }
     <section id="portfolio-section" className="rr-paper px-5 py-24 text-ink lg:px-12 lg:py-28">
       <div className="mx-auto max-w-[1280px]">
         <Reveal>
-          <SectionHeader eyebrow="05 / Inspection evidence" title="See the workmanship." description="Real transformations from Nairobi, Mombasa Road, Karen, and beyond. Compare the cabin before you browse the full work file." />
+          <SectionHeader eyebrow="Before and after" title="See the difference." description="Compare the original seats with the finished work, then browse more projects from the workshop." />
           <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 border-y border-ink py-3">
             {PORTFOLIO_FILTERS.map((filter) => (
               <button key={filter.value} type="button" aria-pressed={activeFilter === filter.value} onClick={() => setActiveFilter(filter.value)} className={`rr-filter ${activeFilter === filter.value ? 'is-active' : ''} text-[11px] font-bold`}>{filter.label}</button>
@@ -749,13 +463,13 @@ const EvidenceGallery: React.FC<{ portfolio: PortfolioItem[] }> = ({ portfolio }
             <div className="pointer-events-none absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 gap-3 bg-ink px-2 py-1 text-[11px] text-cream" aria-hidden="true"><span>←</span><span>→</span></div>
           </div>
           <aside className="lg:col-span-3">
-            <p className="rr-label text-ink">Featured file / P-01</p>
+            <p className="rr-label text-ink">Featured project</p>
             <h3 className="mt-4 text-[20px] font-black leading-tight tracking-[-.04em]">{featured.title}</h3>
             <div className="mt-5 border-t border-ink pt-5 text-[11px] leading-5">
               <strong className="block">{featured.service} · {featured.location}</strong>
               <p className="mt-2 text-[12px] leading-5 text-ink">{featured.description}</p>
             </div>
-            <a href="#portfolio-section" className="mt-6 inline-flex min-h-11 items-center gap-2 border-b border-gold pb-2 text-[12px] font-bold">OPEN PROJECT FILE <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5" /></a>
+            <a href="#portfolio-section" className="mt-6 inline-flex min-h-11 items-center gap-2 border-b border-gold pb-2 text-[12px] font-bold">Browse all projects <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5" /></a>
           </aside>
         </div>
 
@@ -826,7 +540,7 @@ const ArrivalBoard: React.FC = () => {
   return (
     <section id="arrival-section" className="rr-section-panel px-5 py-24 text-cream lg:px-12 lg:py-28">
       <div className="mx-auto max-w-[1280px]">
-        <Reveal><SectionHeader light eyebrow="07 / Arrival board" title="Find the workshop." description="Bring your vehicle for a material inspection, a leather swatch review, or a sit-down ergonomics consultation." /></Reveal>
+        <Reveal><SectionHeader light eyebrow="Visit us" title="Find the workshop." description="Visit us in Nairobi to review materials, discuss your vehicle, and plan the work with our team." /></Reveal>
         <div className="mt-10 grid grid-cols-1 border border-gold lg:grid-cols-12">
           <div className="rr-map relative min-h-[420px] overflow-hidden lg:col-span-7">
             {mapLoaded ? <iframe title={`${BUSINESS_CONFIG.name} workshop map`} src={location.mapsEmbedUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="absolute inset-0 h-full w-full border-0 opacity-70 grayscale-[.25]" /> : (
@@ -859,7 +573,7 @@ const ArrivalBoard: React.FC = () => {
             </div>
             <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
               <a href={phone.telLink} className="rr-button-outline h-12 px-3 text-[12px]"><Phone aria-hidden="true" className="h-3.5 w-3.5" />CALL {phone.formatted}</a>
-              <a href={whatsappHref} target="_blank" rel="noreferrer" className="flex h-12 items-center justify-center gap-2 bg-whatsapp px-3 text-[12px] font-black text-white transition-colors hover:bg-whatsapp-darkhover:"><MessageCircle aria-hidden="true" className="h-3.5 w-3.5" />WHATSAPP</a>
+              <a href={whatsappHref} target="_blank" rel="noreferrer" className="flex h-12 items-center justify-center gap-2 bg-whatsapp px-3 text-[12px] font-black text-white transition-colors hover:bg-whatsapp-dark"><MessageCircle aria-hidden="true" className="h-3.5 w-3.5" />WHATSAPP</a>
             </div>
           </div>
         </div>
@@ -878,7 +592,7 @@ export const InspectionBayLanding: React.FC = () => {
     setBookingWizardDraft,
   } = useApp();
 
-  const startBooking = (serviceId: string | null = null, draft: FittingDraft | BuildDraft | null = null) => {
+  const startBooking = (serviceId: string | null = null, draft: FittingDraft | null = null) => {
     setBookingWizardInitialServiceId(serviceId);
     setBookingWizardDraft(draft);
     setView('booking');
@@ -887,10 +601,7 @@ export const InspectionBayLanding: React.FC = () => {
 
   return (
     <div className="rr-page">
-      <InspectionHero
-        services={services}
-        onSubmit={(serviceId, draft) => startBooking(serviceId, draft)}
-      />
+      <InspectionHero />
       <section id="fitting-request" className="rr-section-forest px-5 py-20 text-cream lg:px-12 lg:py-24">
         <div className="mx-auto grid max-w-[1280px] gap-12 lg:grid-cols-12 lg:items-start">
           <div className="lg:col-span-5 lg:pt-8">
@@ -902,9 +613,6 @@ export const InspectionBayLanding: React.FC = () => {
         </div>
       </section>
       <ServiceInspectionBoard services={services} onBook={(serviceId) => startBooking(serviceId)} />
-      <BuildSpecification onBook={(draft) => {
-        startBooking('srv-1', draft);
-      }} />
       <BookingRoute onStart={() => startBooking()} />
       <EvidenceGallery portfolio={portfolio} />
       <QualityLedger reviews={reviews} />

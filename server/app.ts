@@ -968,6 +968,10 @@ app.patch("/api/services/:id", authenticate, requireAdmin, requireCasbin("servic
   if("isFeatured" in body) data.isFeatured=Boolean(body.isFeatured);
   if("popular" in body) data.popular=Boolean(body.popular);
   if("name" in body){ if(typeof body.name!=="string"||body.name.trim().length<2) return res.status(400).json({success:false,error:"Service name is invalid."}); data.name=body.name.trim(); }
+  if("shortDesc" in body){ if(typeof body.shortDesc!=="string"||body.shortDesc.length>500) return res.status(400).json({success:false,error:"Short description must be 500 characters or fewer."}); data.shortDesc=body.shortDesc; }
+  if("longDesc" in body){ if(typeof body.longDesc!=="string"||body.longDesc.length>3000) return res.status(400).json({success:false,error:"Full description must be 3,000 characters or fewer."}); data.longDesc=body.longDesc; }
+  if("estimatedDuration" in body){ if(typeof body.estimatedDuration!=="string"||body.estimatedDuration.length>100) return res.status(400).json({success:false,error:"Estimated duration is invalid."}); data.estimatedDuration=body.estimatedDuration; }
+  if("image" in body){ if(typeof body.image!=="string"||body.image.length>2000) return res.status(400).json({success:false,error:"Service image URL is invalid."}); data.image=body.image; }
   if(!Object.keys(data).length) return res.status(400).json({success:false,error:"No supported service fields supplied."});
   try { const service=await prisma.service.update({ where:{id:req.params.id}, data }); res.json({success:true,service}); }
   catch(error:any){ if(error?.code==="P2025") return res.status(404).json({success:false,error:"Service not found."}); if(error?.code==="P2002") return res.status(409).json({success:false,error:"A service with this name already exists."}); throw error; }

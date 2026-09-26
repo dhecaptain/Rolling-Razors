@@ -102,7 +102,7 @@ export const LocationContact: React.FC = () => {
               <button
                 id="contact-whatsapp-btn"
                 onClick={handleWhatsApp}
-                className="py-3.5 px-4 rounded-xl bg-whatsapp hover:bg-whatsapp-darkhover: text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer"
+                className="py-3.5 px-4 rounded-xl bg-whatsapp hover:bg-whatsapp-dark text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer"
               >
                 <MessageCircle className="w-4 h-4" />
                 <span>Chat on WhatsApp</span>
@@ -127,7 +127,7 @@ export const LocationContact: React.FC = () => {
               <div className="absolute top-4 left-4 bg-ink border border-white/10 backdrop-blur-md px-3 py-1.5 rounded-lg text-[11px] text-white/90 flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5 text-gold" /> {BUSINESS_CONFIG.location.city} Workshop • {BUSINESS_CONFIG.location.coordinates.lat.toFixed(4)}, {BUSINESS_CONFIG.location.coordinates.lng.toFixed(4)}
               </div>
-              <button onClick={handleDirections} className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-gold text-ink border-2 border-white px-4 py-1.5 rounded-full text-xs font-black shadow-xl flex items-center gap-1.5 hover:bg-gold-hoverhover: transition-colors">
+              <button onClick={handleDirections} className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-gold text-ink border-2 border-white px-4 py-1.5 rounded-full text-xs font-black shadow-xl flex items-center gap-1.5 hover:bg-gold-hover transition-colors">
                 <MapPin className="w-3.5 h-3.5" /> Open in Google Maps
               </button>
             </div>
@@ -143,7 +143,7 @@ export const LocationContact: React.FC = () => {
                 <button
                   id="get-directions-btn"
                   onClick={handleDirections}
-                  className="flex-1 sm:flex-initial py-2.5 px-5 rounded-xl bg-gold hover:bg-gold-hoverhover: text-ink font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                  className="flex-1 sm:flex-initial py-2.5 px-5 rounded-xl bg-gold hover:bg-gold-hover text-ink font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer"
                 >
                   <Navigation className="w-3.5 h-3.5" />
                   <span>Get Directions</span>

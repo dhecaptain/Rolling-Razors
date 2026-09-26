@@ -154,7 +154,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
         {photos.map((photoUrl, idx) => (
           <div
             key={`${photoUrl}-${idx}`}
-            className="group relative aspect-video rounded-xl overflow-hidden bg-ink border border-gold shadow-md transition-all hover:border-goldhover:"
+            className="group relative aspect-video rounded-xl overflow-hidden bg-ink border border-gold shadow-md transition-all hover:border-gold"
           >
             <img
               src={photoUrl}
@@ -172,7 +172,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
               <button
                 type="button"
                 onClick={() => setActivePreview(photoUrl)}
-                className="p-1.5 rounded-lg bg-black/60 text-white hover:text-goldhover: transition-colors"
+                className="p-1.5 rounded-lg bg-black/60 text-white hover:text-gold transition-colors"
                 title="View Full Size"
               >
                 <Eye className="w-4 h-4" />
@@ -265,7 +265,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
             className={`aspect-video rounded-xl border-2 border-dashed transition-all flex flex-col items-center justify-center p-3 text-center cursor-pointer ${
               dragOver
                 ? 'border-gold bg-gold'
-                : 'border-white/20 hover:border-goldhover: bg-ink hover:bg-inkhover:'
+                : 'border-white/20 hover:border-gold bg-ink hover:bg-ink'
             }`}
           >
             <input

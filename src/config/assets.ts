@@ -52,6 +52,17 @@ const sourceToSlot: Record<string, ImageSlot> = {
   '/images/upholstery/upholstery-06.jpg': assets.materials[3],
 };
 
+const portfolioPhotos: Record<string, ImageSlot> = {
+  '/images/portfolio/before-seat.jpg': { ...makeSlot('portfolio/before-seat.jpg', '4:3', 'Vehicle seat before reupholstery', 1024, 768), src: '/images/portfolio/before-seat.jpg' },
+  '/images/portfolio/after-seat.jpg': { ...makeSlot('portfolio/after-seat.jpg', '4:3', 'Vehicle seat after reupholstery', 1024, 768), src: '/images/portfolio/after-seat.jpg' },
+};
+
+const availableWorkshopPhotos: Record<string, ImageSlot> = {
+  '/images/services/leather-seats.jpg': { ...makeSlot('services/leather-seats.jpg', '3:2', 'Custom leather vehicle seats', 966, 641), src: '/images/services/leather-seats.jpg' },
+  '/images/services/stitching.jpg': { ...makeSlot('services/stitching.jpg', '3:2', 'Automotive upholstery stitching in progress', 1012, 675), src: '/images/services/stitching.jpg' },
+  '/images/services/paint-booth.jpg': { ...makeSlot('services/paint-booth.jpg', '4:3', 'Vehicle in a professional workshop paint booth', 1024, 768), src: '/images/services/paint-booth.jpg' },
+};
+
 const fallbackSlots = ['services/service-01.jpg', 'portfolio/project-01-after.jpg', 'portfolio/project-01-before.jpg'];
 
 const servicePhoto = (url: string, alt: string, aspect: string, width: number, height: number) => ({
@@ -60,20 +71,27 @@ const servicePhoto = (url: string, alt: string, aspect: string, width: number, h
 });
 
 export function resolveWebsiteAsset(source: string | undefined, alt: string, index = 0): ImageSlot {
+  if (source && availableWorkshopPhotos[source]) return { ...availableWorkshopPhotos[source], alt };
+  if (source && portfolioPhotos[source]) return { ...portfolioPhotos[source], alt };
+
+  // Known legacy photo paths are intentionally mapped to the branded asset
+  // slots. In placeholder mode this keeps the site self-contained until the
+  // workshop's approved photography is installed in public/images.
+  if (source && sourceToSlot[source]) return { ...sourceToSlot[source], alt };
+
   const subject = alt.toLowerCase();
   if (subject.includes('paint') || subject.includes('body work')) return { ...makeSlot('services/paint-booth.jpg', '4:3', alt, 1024, 768), src: '/images/services/paint-booth.jpg' };
   if (subject.includes('stitch') || subject.includes('steering')) return { ...makeSlot('services/stitching.jpg', '3:2', alt, 1012, 675), src: '/images/services/stitching.jpg' };
   if (subject.includes('cushion') || subject.includes('canvas') || subject.includes('shade') || subject.includes('tent')) {
     return servicePhoto(index % 2 === 0
-      ? 'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?auto=format&fit=crop&w=1200&q=82'
-      : 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1200&q=82', alt, '3:2', 1200, 800);
+      ? 'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?auto=format&fit=crop&w=2000&q=90'
+      : 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=2000&q=90', alt, '3:2', 2000, 1333);
   }
   if (subject.includes('seat') || subject.includes('upholstery') || subject.includes('leather') || subject.includes('interior')) {
     return servicePhoto(index % 2 === 0
-      ? 'https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&w=1200&q=82'
-      : 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=82', alt, '3:2', 1200, 800);
+      ? 'https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&w=2000&q=90'
+      : 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=2000&q=90', alt, '3:2', 2000, 1333);
   }
-  if (source && sourceToSlot[source]) return { ...sourceToSlot[source], alt };
   const slot = fallbackSlots[index % fallbackSlots.length];
   return makeSlot(slot, slot.includes('portfolio') ? '3:2' : '4:3', alt, slot.includes('portfolio') ? 1600 : 1600, slot.includes('portfolio') ? 1067 : 1200);
 }
