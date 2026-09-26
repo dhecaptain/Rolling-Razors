@@ -23,6 +23,26 @@ export class CloudinaryStorageProvider implements StorageProvider {
     return crypto.createHash("sha1").update(stringToSign).digest("hex");
   }
 
+  private publicIdForKey(key: string): string {
+    const folder = this.config.folder || "rolling-razors";
+    const withoutExtension = key.replace(/\.[^/.]+$/, "");
+    return withoutExtension.startsWith(`${folder}/`) ? withoutExtension : `${folder}/${withoutExtension}`;
+  }
+
+  private authenticatedUrl(publicId: string, format: string): string {
+    const resourcePath = `${publicId}.${format}`;
+    const signature = crypto
+      .createHash("sha1")
+      .update(`${resourcePath}${this.config.apiSecret}`)
+      .digest("base64url")
+      .slice(0, 8);
+    return `https://res.cloudinary.com/${this.config.cloudName}/image/authenticated/s--${signature}--/${resourcePath}`;
+  }
+
+  private formatForKey(key: string): string {
+    return key.match(/\.([a-z0-9]+)$/i)?.[1] || "jpg";
+  }
+
   async upload(buffer: Buffer, options: UploadOptions): Promise<UploadResult> {
     const validation = validateImageUpload(buffer, options.mimeType);
     if (!validation.valid || !validation.sanitizedMime) {
@@ -34,6 +54,9 @@ export class CloudinaryStorageProvider implements StorageProvider {
     const timestamp = Math.floor(Date.now() / 1000);
     const folder = this.config.folder || "rolling-razors";
     const tags = `rr_customs,${options.category},${options.entityId || "general"}`;
+    const isPrivate = options.isPrivate ?? (
+      options.category.startsWith("work-order") || options.category === "booking-reference"
+    );
 
     const params: Record<string, string | number | boolean> = {
       folder,
@@ -41,6 +64,7 @@ export class CloudinaryStorageProvider implements StorageProvider {
       tags,
       timestamp,
     };
+    if (isPrivate) params.type = "authenticated";
 
     const signature = this.generateSignature(params);
 
@@ -52,6 +76,7 @@ export class CloudinaryStorageProvider implements StorageProvider {
     formData.append("public_id", publicId);
     formData.append("tags", tags);
     formData.append("signature", signature);
+    if (isPrivate) formData.append("type", "authenticated");
 
     const uploadUrl = `https://api.cloudinary.com/v1_1/${this.config.cloudName}/image/upload`;
     const response = await fetch(uploadUrl, {
@@ -65,18 +90,17 @@ export class CloudinaryStorageProvider implements StorageProvider {
     }
 
     const data = (await response.json()) as any;
-    const isPrivate = options.isPrivate ?? (
-      options.category.startsWith("work-order") || options.category === "booking-reference"
-    );
-
-    // Provide optimized delivery URL using f_auto,q_auto for fast Kenyan mobile loading
+    // Authenticated assets require signed URLs. Do not add dynamic transforms:
+    // Cloudinary does not generate on-the-fly transformations for this type.
     const secureUrl = data.secure_url || data.url;
-    const optimizedUrl = secureUrl.includes("/upload/")
-      ? secureUrl.replace("/upload/", "/upload/f_auto,q_auto/")
-      : secureUrl;
+    const optimizedUrl = isPrivate
+      ? ""
+      : secureUrl.includes("/upload/")
+        ? secureUrl.replace("/upload/", "/upload/f_auto,q_auto/")
+        : secureUrl;
 
     return {
-      key: data.public_id || key,
+      key,
       url: optimizedUrl,
       category: options.category,
       size: data.bytes || buffer.length,
@@ -92,7 +116,7 @@ export class CloudinaryStorageProvider implements StorageProvider {
   async delete(key: string): Promise<boolean> {
     try {
       const timestamp = Math.floor(Date.now() / 1000);
-      const publicId = key.replace(/\.[^/.]+$/, "");
+      const publicId = this.publicIdForKey(key);
       const params: Record<string, string | number | boolean> = {
         public_id: publicId,
         timestamp,
@@ -116,9 +140,15 @@ export class CloudinaryStorageProvider implements StorageProvider {
     }
   }
 
-  async getUrl(key: string): Promise<string> {
-    const folder = this.config.folder || "rolling-razors";
-    const cleanKey = key.startsWith(folder) ? key : `${folder}/${key}`;
-    return `https://res.cloudinary.com/${this.config.cloudName}/image/upload/f_auto,q_auto/${cleanKey}`;
+  async getUrl(key: string, isPrivate = false): Promise<string> {
+    const publicId = this.publicIdForKey(key);
+    if (isPrivate) {
+      return this.authenticatedUrl(publicId, this.formatForKey(key));
+    }
+    return `https://res.cloudinary.com/${this.config.cloudName}/image/upload/f_auto,q_auto/${publicId}.${this.formatForKey(key)}`;
+  }
+
+  async getSignedUrl(key: string): Promise<string> {
+    return this.getUrl(key, true);
   }
 }

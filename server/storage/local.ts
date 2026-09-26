@@ -81,9 +81,13 @@ export class LocalStorageProvider implements StorageProvider {
   async getUrl(key: string, isPrivate?: boolean): Promise<string> {
     const encodedKey = encodeURIComponent(key);
     if (isPrivate) {
-      return this.getSignedUrl(key, 3600);
+      return this.getPrivateProxyUrl(key);
     }
     return `/api/uploads/file/${encodedKey}`;
+  }
+
+  getPrivateProxyUrl(key: string): string {
+    return `/api/uploads/file/${encodeURIComponent(key)}`;
   }
 
   async getSignedUrl(key: string, expiresInSeconds: number = 3600): Promise<string> {

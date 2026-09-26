@@ -20,7 +20,7 @@ import { initSentry, Sentry } from "./sentry";
 import { requireCasbin, authorize } from "./casbin/enforcer";
 import { normalizePhoneKe, toDarajaPhone, phoneKey, phonesMatch, isValidKePhone } from "./phone";
 import { validate, adminLoginSchema, customerLoginSchema, customerRegisterSchema, stkPushSchema, paystackInitSchema, bookingCreateSchema, vehicleCreateSchema, buildDraftSchema, uploadImageSchema, staffCreateSchema, staffUpdateSchema, changePasswordSchema, bootstrapSchema } from "./validators";
-import { storageService } from "./storage";
+import { DurableStorageRequiredError, storageService } from "./storage";
 import { Booking, Customer, User, Vehicle, WorkOrder, UserRole, Staff } from "../src/types";
 
 initSentry();
@@ -722,8 +722,11 @@ app.patch("/api/work-orders/:id", authenticate, requireCasbin("work-orders","upd
 app.post("/api/uploads", authenticate, async (req, res) => {
   const v = validate(uploadImageSchema, req.body);
   if (!v.success) return res.status(400).json({ success: false, error: v.error });
-  const { category, entityId, originalFilename, mimeType, base64Data, isPrivate } = v.data;
+  const { category, entityId, originalFilename, mimeType, base64Data } = v.data;
   const user = (req as any).user;
+  // Privacy is defined by the server-side category policy. Never allow a client
+  // to mark customer or work-order photos as public.
+  const isPrivate = category.startsWith("work-order") || category === "booking-reference";
 
   try {
     const cleanBase64 = base64Data.replace(/^data:[^;]+;base64,/, "");
@@ -731,7 +734,7 @@ app.post("/api/uploads", authenticate, async (req, res) => {
 
     const result = await storageService.uploadImage(buffer, {
       category,
-      entityId,
+      entityId: entityId || (category === "booking-reference" ? user.id : undefined),
       originalFilename,
       mimeType,
       isPrivate,
@@ -741,56 +744,64 @@ app.post("/api/uploads", authenticate, async (req, res) => {
     res.status(201).json({ success: true, file: result });
   } catch (err: any) {
     logger.error({ err, category }, "[Upload] Upload failed");
-    res.status(400).json({ success: false, error: err.message || "Failed to process image upload." });
+    const unavailable = err instanceof DurableStorageRequiredError;
+    res.status(unavailable ? 503 : 400).json({ success: false, error: err.message || "Failed to process image upload." });
   }
 });
 
 // Secure file access for locally stored images or signed token verification
-app.get("/api/uploads/file/:encodedKey", async (req, res) => {
+app.get("/api/uploads/file/:encodedKey", (req, res, next) => {
+  const key = decodeURIComponent(req.params.encodedKey);
+  const isPrivate = key.startsWith("work-order") || key.startsWith("booking-reference");
+  if (isPrivate) return authenticate(req, res, next);
+  next();
+}, async (req, res) => {
   const { encodedKey } = req.params;
   const key = decodeURIComponent(encodedKey);
-  const { exp, sig } = req.query as { exp?: string; sig?: string };
-
   const isPrivate = key.startsWith("work-order") || key.startsWith("booking-reference");
 
   if (isPrivate) {
     let authorized = false;
-    if (exp && sig && storageService.localProvider.verifySignature(key, exp, sig)) {
+    const user = (req as any).user;
+    if (user && isStaffRole(user.role)) {
       authorized = true;
-    } else {
-      let token: string | undefined;
-      const h = req.headers.authorization;
-      if (h?.startsWith("Bearer ")) token = h.split(" ")[1];
-      else if ((req as any).cookies?.rr_auth_token) token = (req as any).cookies.rr_auth_token;
-      else if ((req as any).cookies?.admin_token) token = (req as any).cookies.admin_token;
-      if (token) {
-        const decoded = verifyToken(token);
-        if (decoded) {
-          if (isStaffRole(decoded.role)) {
-            authorized = true;
-          } else if (key.includes(decoded.id)) {
-            authorized = true;
-          } else {
-            const parts = key.split("/");
-            const entityId = parts[1];
-            if (entityId && entityId !== "general") {
-              const booking = await serverDb.getBooking(entityId);
-              if (booking && (booking.customerId === decoded.id || phonesMatch(booking.customerPhone, decoded.phone || ""))) {
-                authorized = true;
-              } else {
-                const wo = await serverDb.getWorkOrder(entityId);
-                if (wo && wo.customerId === decoded.id) {
-                  authorized = true;
-                }
-              }
-            }
-          }
+    } else if (user && key.includes(user.id)) {
+      authorized = true;
+    } else if (user) {
+      const parts = key.split("/");
+      const entityId = parts[1];
+      if (entityId && entityId !== "general") {
+        const booking = await serverDb.getBooking(entityId);
+        if (booking && (booking.customerId === user.id || phonesMatch(booking.customerPhone, user.phone || ""))) {
+          authorized = true;
+        } else {
+          const wo = await serverDb.getWorkOrder(entityId);
+          if (wo && wo.customerId === user.id) authorized = true;
         }
       }
     }
 
     if (!authorized) {
       return res.status(403).json({ success: false, error: "Access denied to private workshop asset." });
+    }
+  }
+
+  if (isPrivate && storageService.providerName !== "local") {
+    try {
+      const signedUrl = await storageService.getSignedUrl(key, 300);
+      const imageResponse = await fetch(signedUrl);
+      if (!imageResponse.ok) {
+        logger.warn({ key, status: imageResponse.status }, "[Storage] Private image provider returned an error");
+        return res.status(503).json({ success: false, error: "Private image is temporarily unavailable." });
+      }
+      res.setHeader("Content-Type", imageResponse.headers.get("content-type") || "application/octet-stream");
+      res.setHeader("Content-Disposition", "inline");
+      res.setHeader("Cache-Control", "private, no-store");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      return res.send(Buffer.from(await imageResponse.arrayBuffer()));
+    } catch (err) {
+      logger.error({ err, key }, "[Storage] Could not sign private image URL");
+      return res.status(503).json({ success: false, error: "Private image is temporarily unavailable." });
     }
   }
 

@@ -54,7 +54,7 @@ export class SupabaseStorageProvider implements StorageProvider {
       throw new Error(`Supabase upload failed (${res.status}): ${errorText}`);
     }
 
-    const url = await this.getUrl(key, isPrivate);
+    const url = isPrivate ? "" : await this.getUrl(key, false);
 
     return {
       key,
@@ -105,8 +105,7 @@ export class SupabaseStorageProvider implements StorageProvider {
     });
 
     if (!res.ok) {
-      // Fallback to public if bucket is public
-      return `${this.baseUrl}/storage/v1/object/public/${this.bucket}/${key}`;
+      throw new Error(`Supabase could not create a private asset URL (${res.status}).`);
     }
 
     const data = (await res.json()) as { signedURL?: string };
@@ -116,6 +115,6 @@ export class SupabaseStorageProvider implements StorageProvider {
         : `${this.baseUrl}${data.signedURL}`;
     }
 
-    return `${this.baseUrl}/storage/v1/object/public/${this.bucket}/${key}`;
+    throw new Error("Supabase did not return a signed URL for a private asset.");
   }
 }

@@ -30,7 +30,7 @@ test.describe("Storage & Photo Uploads", () => {
     expect(res.status()).toBe(400);
   });
 
-  test("authenticated customer can upload booking reference photo", async ({ request }) => {
+  test("booking reference stays private even if the client requests a public upload", async ({ request, playwright }) => {
     await registerCustomer(request);
     const res = await request.post("/api/uploads", {
       data: {
@@ -38,6 +38,7 @@ test.describe("Storage & Photo Uploads", () => {
         originalFilename: "seat-inspiration.png",
         mimeType: "image/png",
         base64Data: TINY_PNG_BASE64,
+        isPrivate: false,
       },
     });
     expect(res.status()).toBe(201);
@@ -46,6 +47,12 @@ test.describe("Storage & Photo Uploads", () => {
     expect(body.file).toBeDefined();
     expect(body.file.url).toBeTruthy();
     expect(body.file.key).toBeTruthy();
+    expect(body.file.isPrivate).toBe(true);
+
+    const guest = await playwright.request.newContext();
+    expect((await guest.get(body.file.url)).status()).toBe(401);
+    expect((await request.get(body.file.url)).status()).toBe(200);
+    await guest.dispose();
   });
 
   test("admin can update work order with inspection photos", async ({ request }) => {
@@ -79,7 +86,7 @@ test.describe("Storage & Photo Uploads", () => {
 
   test("private asset endpoint rejects unauthenticated access", async ({ request }) => {
     const res = await request.get("/api/uploads/file/work-order-before-test.jpg");
-    expect(res.status()).toBe(403);
+    expect(res.status()).toBe(401);
   });
 
   test("customer cannot access another customer's private work-order asset without signed url", async ({ request }) => {

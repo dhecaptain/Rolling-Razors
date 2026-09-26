@@ -10,6 +10,14 @@ export * from "./local";
 export * from "./cloudinary";
 export * from "./supabase";
 
+export class DurableStorageRequiredError extends Error {
+  readonly statusCode = 503;
+  constructor() {
+    super("Image uploads are temporarily unavailable because persistent storage is not configured.");
+    this.name = "DurableStorageRequiredError";
+  }
+}
+
 export class StorageService {
   private provider: StorageProvider;
   readonly localProvider: LocalStorageProvider;
@@ -79,18 +87,24 @@ export class StorageService {
   }
 
   async uploadImage(buffer: Buffer, options: UploadOptions): Promise<UploadResult> {
+    if (process.env.NODE_ENV === "production" && this.provider.name === "local") {
+      throw new DurableStorageRequiredError();
+    }
     try {
       const result = await this.provider.upload(buffer, options);
+      const file = result.isPrivate
+        ? { ...result, url: this.localProvider.getPrivateProxyUrl(result.key) }
+        : result;
       logger.info(
         {
-          key: result.key,
-          category: result.category,
-          size: result.size,
+          key: file.key,
+          category: file.category,
+          size: file.size,
           provider: this.provider.name,
         },
         "[Storage] Image uploaded successfully"
       );
-      return result;
+      return file;
     } catch (err) {
       logger.error({ err, category: options.category, provider: this.provider.name }, "[Storage] Image upload failed");
       throw err;
