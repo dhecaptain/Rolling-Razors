@@ -161,7 +161,7 @@ if (!env.BOOTSTRAP_TOKEN && env.NODE_ENV === "production") {
   console.warn("[ENV] BOOTSTRAP_TOKEN not set — admin bootstrap endpoint is disabled (set it to initialise the workshop owner on a fresh installation).");
 }
 if (env.NODE_ENV === "production" && !env.MPESA_CALLBACK_SECRET) {
-  throw new Error("MPESA_CALLBACK_SECRET is required in production — M-Pesa callbacks are authenticated against it and verified with Daraja before payments are applied.");
+  console.warn("[SECURITY] MPESA_CALLBACK_SECRET is unset; M-Pesa callbacks will return 503 until configured.");
 }
 
 export function isMpesaConfigured(): boolean {

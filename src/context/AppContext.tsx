@@ -221,6 +221,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
   // Verify and load cryptographic JWT session token on boot (legacy provider only;
   // Clerk sessions are resolved from the Clerk SDK + /api/auth/sync).
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [clerkSyncComplete, setClerkSyncComplete] = useState(false);
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
@@ -309,9 +310,11 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
       setAuthToken(null);
       setCurrentUser(null);
       setIsLoggedIn(false);
+      setClerkSyncComplete(true);
       return;
     }
     let active = true;
+    setClerkSyncComplete(false);
     (async () => {
       try {
         const token = await clerk.getToken();
@@ -336,6 +339,8 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
           setCurrentUser(null);
           setIsLoggedIn(false);
         }
+      } finally {
+        if (active) setClerkSyncComplete(true);
       }
     })();
     return () => { active = false; };
@@ -1481,7 +1486,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
         authProvider: clerkEnabled ? 'clerk' : 'legacy',
         authVerifying: clerkMode
           ? clerk
-            ? !(clerk.isLoaded && (!clerk.isSignedIn || Boolean(currentUser)))
+            ? !(clerk.isLoaded && (!clerk.isSignedIn || clerkSyncComplete))
             : true
           : legacyVerifying,
         clerkLoaded: clerkMode ? Boolean(clerk?.isLoaded) : true,

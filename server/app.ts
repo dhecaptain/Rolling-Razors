@@ -1100,12 +1100,14 @@ async function verifyAndApplyMpesa(checkoutRequestId: string): Promise<{ status:
 }
 
 app.post("/api/mpesa/callback", callbackLimiter, async (req, res) => {
-  if (env.MPESA_CALLBACK_SECRET) {
-    const token = String((req.headers["x-callback-token"] as string) || req.query.token || "").trim();
-    if (!token || !safeEqual(token, env.MPESA_CALLBACK_SECRET)) {
-      logger.warn({ ip: req.ip, requestId: (req as any).id }, "[M-PESA] callback auth failed");
-      return res.status(401).json({ ResultCode: 1, ResultDesc: "Unauthorized callback" });
-    }
+  if (!env.MPESA_CALLBACK_SECRET) {
+    logger.error({ requestId: (req as any).id }, "[M-PESA] callback endpoint disabled because MPESA_CALLBACK_SECRET is not configured");
+    return res.status(503).json({ ResultCode: 1, ResultDesc: "Callback endpoint is not configured" });
+  }
+  const token = String((req.headers["x-callback-token"] as string) || req.query.token || "").trim();
+  if (!token || !safeEqual(token, env.MPESA_CALLBACK_SECRET)) {
+    logger.warn({ ip: req.ip, requestId: (req as any).id }, "[M-PESA] callback auth failed");
+    return res.status(401).json({ ResultCode: 1, ResultDesc: "Unauthorized callback" });
   }
   const stkCallback = req.body?.Body?.stkCallback;
   if (stkCallback?.CheckoutRequestID) {
