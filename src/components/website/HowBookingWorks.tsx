@@ -40,7 +40,7 @@ export const HowBookingWorks: React.FC = () => {
     {
       num: '04',
       title: 'Bring It In & We Transform It',
-      desc: 'Drive into our Nairobi workshop or request mobile fitting. Pay deposit securely with M-Pesa.',
+      desc: 'Visit our Narok workshop or request mobile fitting. Pay deposit securely with M-Pesa.',
       icon: <CheckCircle className="w-6 h-6 text-gold" />
     }
   ];

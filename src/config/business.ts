@@ -85,17 +85,17 @@ export const BUSINESS_CONFIG: BusinessConfig = {
     tillNumber: "889922"
   },
   location: {
-    address: "Enterprise Road / Off Commercial Street",
-    area: "Industrial Area",
-    city: "Nairobi",
+    address: "Narok",
+    area: "Narok County",
+    city: "Narok",
     country: "Kenya",
-    landmark: "Close to Mombasa Road & Southern Bypass Interchange",
-    fullAddress: "Enterprise Road / Off Commercial Street, Industrial Area, Nairobi, Kenya",
-    mapsUrl: "https://maps.google.com/?q=-1.3098,36.8524+(Rolling+Razors+Customs)",
-    mapsEmbedUrl: "https://www.google.com/maps?q=-1.3098,36.8524&z=16&hl=en&output=embed",
+    landmark: "Use the map coordinates for precise directions",
+    fullAddress: "Narok, Narok County, Kenya",
+    mapsUrl: "https://www.google.com/maps/search/?api=1&query=-1.089494%2C35.878523",
+    mapsEmbedUrl: "https://www.google.com/maps?q=-1.089494,35.878523&z=16&hl=en&output=embed",
     coordinates: {
-      lat: -1.3098,
-      lng: 36.8524
+      lat: -1.089494,
+      lng: 35.878523
     }
   },
   hours: {

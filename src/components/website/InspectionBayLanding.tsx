@@ -11,7 +11,7 @@ import {
   Phone,
   ShieldCheck,
 } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { isStaff, useApp } from '../../context/AppContext';
 import { BUSINESS_CONFIG } from '../../config/business';
 import { PortfolioItem, Review, Service, VehicleType } from '../../types';
 import Reveal from './Reveal';
@@ -182,7 +182,7 @@ const FittingRequest: React.FC<{
           <legend className="mb-2 block text-[12px] font-bold text-cream">04 / Fitting location</legend>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {[
-              { value: 'workshop' as const, title: 'Rolling Razors Workshop', note: 'Industrial Area, Nairobi' },
+              { value: 'workshop' as const, title: 'Rolling Razors Workshop', note: 'Narok, Kenya' },
               { value: 'customer_location' as const, title: 'Customer location', note: 'On-site / mobile fit' },
             ].map((location) => (
               <button
@@ -207,13 +207,13 @@ const FittingRequest: React.FC<{
   );
 };
 
-const InspectionHero: React.FC = () => (
+const InspectionHero: React.FC<{ canBook: boolean }> = ({ canBook }) => (
   <section id="hero-section" className="rr-section-forest border-b border-gold">
     <div className="mx-auto grid min-h-[min(760px,calc(100svh-72px))] max-w-[1440px] grid-cols-1 lg:grid-cols-[1.05fr_.95fr]">
       <div className="relative z-10 flex flex-col justify-center px-6 py-16 sm:px-10 lg:px-16 lg:py-20">
         <div className="mb-6 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[.18em] text-gold">
           <span className="h-px w-8 bg-gold" />
-          CUSTOM UPHOLSTERY · NAIROBI
+          CUSTOM UPHOLSTERY · NAROK, KENYA
         </div>
         <h1 className="max-w-[620px] text-[clamp(2.8rem,4.4vw,4.5rem)] font-black leading-[.99] tracking-[-.045em] text-cream">
           Make every drive feel yours.
@@ -222,11 +222,11 @@ const InspectionHero: React.FC = () => (
           Custom seats, careful stitching, and comfortable interiors made for your vehicle and the road ahead.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
-          <button type="button" id="hero-primary-book-btn" onClick={() => document.getElementById('fitting-request')?.scrollIntoView({ behavior: 'smooth' })} className="rr-button-gold h-12 px-6 text-[11px] tracking-[.08em]">BOOK A FITTING <ArrowRight aria-hidden="true" className="h-4 w-4" /></button>
+          {canBook && <button type="button" id="hero-primary-book-btn" onClick={() => document.getElementById('fitting-request')?.scrollIntoView({ behavior: 'smooth' })} className="rr-button-gold h-12 px-6 text-[11px] tracking-[.08em]">BOOK A FITTING <ArrowRight aria-hidden="true" className="h-4 w-4" /></button>}
           <button type="button" onClick={() => document.getElementById('services-section')?.scrollIntoView({ behavior: 'smooth' })} className="rr-button-outline h-12 px-6 text-[11px] tracking-[.08em]">VIEW SERVICES</button>
         </div>
         <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-cream">
-          <span className="flex items-center gap-2"><CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5 text-gold" />Made in Nairobi</span>
+          <span className="flex items-center gap-2"><CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5 text-gold" />Made in Narok</span>
           <span className="h-1 w-1 rounded-full bg-gold" aria-hidden="true" />
           <span>Workshop or on-site fitting</span>
         </div>
@@ -251,7 +251,8 @@ const InspectionHero: React.FC = () => (
 const ServiceInspectionBoard: React.FC<{
   services: Service[];
   onBook: (serviceId: string) => void;
-}> = ({ services, onBook }) => {
+  canBook: boolean;
+}> = ({ services, onBook, canBook }) => {
   const [selectedId, setSelectedId] = useState(services[0]?.id || 'srv-1');
   const [showDetails, setShowDetails] = useState(false);
   const selectedService = services.find((service) => service.id === selectedId) || services[0];
@@ -346,9 +347,9 @@ const ServiceInspectionBoard: React.FC<{
               <button type="button" aria-expanded={showDetails} onClick={() => setShowDetails((visible) => !visible)} className="rr-button-outline h-12 w-full text-[12px]">
                 {showDetails ? 'HIDE SERVICE DETAILS' : 'VIEW FULL DETAILS'} <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
               </button>
-              <button type="button" onClick={() => onBook(selectedService.id)} className="rr-button-gold h-12 w-full text-[12px]">
+              {canBook && <button type="button" onClick={() => onBook(selectedService.id)} className="rr-button-gold h-12 w-full text-[12px]">
                 BOOK THIS SERVICE <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
-              </button>
+              </button>}
             </div>
           </aside>
         </div>
@@ -357,12 +358,12 @@ const ServiceInspectionBoard: React.FC<{
   );
 };
 
-const BookingRoute: React.FC<{ onStart: () => void }> = ({ onStart }) => {
+const BookingRoute: React.FC<{ onStart: () => void; canBook: boolean }> = ({ onStart, canBook }) => {
   const steps = [
     ['01', 'Choose a service', 'Select full upholstery, custom seats, leather work, steering stitching, cushions, shades, or a workshop service.'],
     ['02', 'Select a fitting time', 'Pick a preferred day and time slot. We check the workshop schedule before confirming the visit.'],
     ['03', 'Tell us about your vehicle', 'Add make, model, registration details and your preferred leather colour, stitch pattern, or fitting requirements.'],
-    ['04', 'Bring it in & we transform it', 'Drive to our Nairobi workshop or request mobile fitting. Pay the deposit securely with M-Pesa.'],
+    ['04', 'Bring it in & we transform it', 'Visit our Narok workshop or request mobile fitting. Pay the deposit securely with M-Pesa.'],
   ] as const;
 
   return (
@@ -389,7 +390,7 @@ const BookingRoute: React.FC<{ onStart: () => void }> = ({ onStart }) => {
               <p className="rr-label text-gold">Step 04 / Appointment</p>
               <h3 className="mt-4 text-[21px] font-black">Choose a fitting time.</h3>
               <p className="mt-2 text-[12px] leading-5 text-cream">Free cancellation up to 24 hours before your appointment. M-Pesa deposit instructions appear before confirmation.</p>
-              <button type="button" onClick={onStart} className="rr-button-gold mt-7 h-12 w-full text-[12px] tracking-[.08em]">START BOOKING <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" /></button>
+              {canBook && <button type="button" onClick={onStart} className="rr-button-gold mt-7 h-12 w-full text-[12px] tracking-[.08em]">START BOOKING <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" /></button>}
             </aside>
           </Tilt>
         </div>
@@ -535,23 +536,18 @@ const QualityLedger: React.FC<{ reviews: Review[] }> = ({ reviews }) => {
 const ArrivalBoard: React.FC = () => {
   const { location, hours, phone, whatsapp } = BUSINESS_CONFIG;
   const whatsappHref = `${whatsapp.link}?text=${encodeURIComponent(whatsapp.defaultMessage)}`;
-  const [mapLoaded, setMapLoaded] = useState(false);
 
   return (
     <section id="arrival-section" className="rr-section-panel px-5 py-24 text-cream lg:px-12 lg:py-28">
       <div className="mx-auto max-w-[1280px]">
-        <Reveal><SectionHeader light eyebrow="Visit us" title="Find the workshop." description="Visit us in Nairobi to review materials, discuss your vehicle, and plan the work with our team." /></Reveal>
+        <Reveal><SectionHeader light eyebrow="Visit us" title="Find the workshop." description="Visit our workshop in Narok to review materials, discuss your vehicle, and plan the work with our team." /></Reveal>
         <div className="mt-10 grid grid-cols-1 border border-gold lg:grid-cols-12">
           <div className="rr-map relative min-h-[420px] overflow-hidden lg:col-span-7">
-            {mapLoaded ? <iframe title={`${BUSINESS_CONFIG.name} workshop map`} src={location.mapsEmbedUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="absolute inset-0 h-full w-full border-0 opacity-70 grayscale-[.25]" /> : (
-              <div className="absolute inset-0 flex items-center justify-center bg-ink-deep p-6 text-center">
-                <button type="button" onClick={() => setMapLoaded(true)} className="rr-button-gold h-12 px-5 text-[11px]">LOAD INTERACTIVE MAP</button>
-              </div>
-            )}
+            <iframe title={`${BUSINESS_CONFIG.name} workshop map in ${location.city}`} src={location.mapsEmbedUrl} loading="eager" referrerPolicy="no-referrer-when-downgrade" allowFullScreen className="absolute inset-0 h-full w-full border-0" />
             <div className="pointer-events-none absolute left-5 top-5 z-10 border-l-2 border-gold bg-ink px-4 py-3">
               <span className="rr-label text-gold">Workshop coordinates</span>
               <strong className="mt-1 block text-[12px]">{location.area} · {location.city}</strong>
-              <span className="mt-1 block text-[11px] text-cream">{location.coordinates.lat}, {location.coordinates.lng}</span>
+              <span className="mt-1 block text-[11px] text-cream">{location.coordinates.lat.toFixed(7)}, {location.coordinates.lng.toFixed(7)}</span>
             </div>
             <a href={location.mapsUrl} target="_blank" rel="noreferrer" className="rr-button-gold absolute bottom-5 right-5 z-10 h-12 px-5 text-[11px]">GET DIRECTIONS <Navigation aria-hidden="true" className="h-3.5 w-3.5" /></a>
           </div>
@@ -588,9 +584,12 @@ export const InspectionBayLanding: React.FC = () => {
     portfolio,
     reviews,
     setView,
+    currentUser,
     setBookingWizardInitialServiceId,
     setBookingWizardDraft,
   } = useApp();
+
+  const canBook = !(currentUser && isStaff(currentUser.role));
 
   const startBooking = (serviceId: string | null = null, draft: FittingDraft | null = null) => {
     setBookingWizardInitialServiceId(serviceId);
@@ -601,8 +600,8 @@ export const InspectionBayLanding: React.FC = () => {
 
   return (
     <div className="rr-page">
-      <InspectionHero />
-      <section id="fitting-request" className="rr-section-forest px-5 py-20 text-cream lg:px-12 lg:py-24">
+      <InspectionHero canBook={canBook} />
+      {canBook && <section id="fitting-request" className="rr-section-forest px-5 py-20 text-cream lg:px-12 lg:py-24">
         <div className="mx-auto grid max-w-[1280px] gap-12 lg:grid-cols-12 lg:items-start">
           <div className="lg:col-span-5 lg:pt-8">
             <p className="rr-label text-gold">01 / Start a project</p>
@@ -611,9 +610,9 @@ export const InspectionBayLanding: React.FC = () => {
           </div>
           <div className="lg:col-span-7 lg:border-l lg:border-creamlg: lg:pl-12"><FittingRequest services={services} onSubmit={(serviceId, draft) => startBooking(serviceId, draft)} /></div>
         </div>
-      </section>
-      <ServiceInspectionBoard services={services} onBook={(serviceId) => startBooking(serviceId)} />
-      <BookingRoute onStart={() => startBooking()} />
+      </section>}
+      <ServiceInspectionBoard services={services} onBook={(serviceId) => startBooking(serviceId)} canBook={canBook} />
+      <BookingRoute onStart={() => startBooking()} canBook={canBook} />
       <EvidenceGallery portfolio={portfolio} />
       <QualityLedger reviews={reviews} />
       <ArrivalBoard />

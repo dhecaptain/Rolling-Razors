@@ -101,7 +101,7 @@ test.describe("M-Pesa", () => {
 
   test("callback with valid secret and unknown transaction is acked", async ({ request }) => {
     const res = await request.post("/api/mpesa/callback", {
-      headers: { "x-callback-token": "test-callback-secret-0123456789abcdef" },
+      headers: { "x-callback-token": process.env.MPESA_CALLBACK_SECRET! },
       data: { Body: { stkCallback: { CheckoutRequestID: "ws_CO_123", ResultCode: 0, CallbackMetadata: { Item: [{ Name: "MpesaReceiptNumber", Value: "QJ12345678" }] } } } },
     });
     expect([200, 404, 400]).toContain(res.status());

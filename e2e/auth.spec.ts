@@ -24,7 +24,7 @@ test.describe("Auth", () => {
     const provider = await getAuthProvider(request);
     test.skip(provider === "clerk", "Legacy registration disabled in Clerk mode");
     const { phone } = await registerCustomer(request);
-    const login = await request.post("/api/auth/customer/login", { data: { phone, password: "WrongPass!99" } });
+    const login = await request.post("/api/auth/customer/login", { data: { phone, password: `${TEST_PASSWORD}-invalid` } });
     expect(login.status()).toBe(401);
   });
 
@@ -32,7 +32,7 @@ test.describe("Auth", () => {
     const provider = await getAuthProvider(request);
     test.skip(provider === "clerk", "Legacy admin login disabled in Clerk mode");
     const res = await request.post("/api/auth/admin/login", {
-      data: { identifier: "james@rollingrazors.co.ke", password: process.env.ADMIN_PASSWORD || "RollingRazors@2026!" },
+      data: { identifier: process.env.ADMIN_EMAIL || "owner@rollingrazors.test", password: process.env.ADMIN_PASSWORD! },
     });
     expect([200, 401]).toContain(res.status());
   });

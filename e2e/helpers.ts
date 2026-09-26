@@ -1,4 +1,5 @@
 import { APIRequestContext, expect } from "@playwright/test";
+import { randomBytes } from "node:crypto";
 
 export type AuthProvider = "clerk" | "legacy";
 
@@ -16,7 +17,7 @@ export interface TestCustomer {
   password: string;
 }
 
-export const TEST_PASSWORD = "E2ePass!234";
+export const TEST_PASSWORD = randomBytes(24).toString("base64url");
 
 /**
  * Registers a throwaway customer (password-only legacy auth) and returns the
@@ -57,8 +58,8 @@ export async function loginCustomer(request: APIRequestContext, phone: string, p
 export async function loginAdmin(request: APIRequestContext): Promise<void> {
   const res = await request.post("/api/auth/admin/login", {
     data: {
-      identifier: process.env.ADMIN_EMAIL || "james@rollingrazors.co.ke",
-      password: process.env.ADMIN_PASSWORD || "RollingRazors@2026!",
+      identifier: process.env.ADMIN_EMAIL || "owner@rollingrazors.test",
+      password: process.env.ADMIN_PASSWORD!,
     },
   });
   expect(res.ok(), `admin login failed (${res.status()}): ${await res.text()}`).toBeTruthy();

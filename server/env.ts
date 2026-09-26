@@ -54,11 +54,11 @@ export const env = {
   ADMIN_CLERK_IDS: (process.env.ADMIN_CLERK_IDS || "").split(",").map(s => s.trim()).filter(Boolean),
 
   // --- Legacy custom auth (used only when AUTH_PROVIDER=legacy) ---
-  AUTH_SECRET: (process.env.AUTH_SECRET || "rolling-razors-kenya-customs-secret-key-2026-auth-secure").trim(),
+  AUTH_SECRET: (process.env.AUTH_SECRET || "").trim(),
   // No default admin credentials in production: fail closed below if unset.
-  ADMIN_EMAIL: (process.env.ADMIN_EMAIL || "james@rollingrazors.co.ke").trim().toLowerCase(),
-  ADMIN_PHONE: (process.env.ADMIN_PHONE || "+254 712 345 678").trim().replace(/\s+/g, ""),
-  ADMIN_PASSWORD: (process.env.ADMIN_PASSWORD || "RollingRazors@2026!").trim(),
+  ADMIN_EMAIL: (process.env.ADMIN_EMAIL || "").trim().toLowerCase(),
+  ADMIN_PHONE: (process.env.ADMIN_PHONE || "").trim().replace(/\s+/g, ""),
+  ADMIN_PASSWORD: (process.env.ADMIN_PASSWORD || "").trim(),
   ADMIN_NAME: (process.env.ADMIN_NAME || "James Kimani (Owner)").trim(),
   // One-time setup secret for POST /api/admin/bootstrap (fresh installation only).
   BOOTSTRAP_TOKEN: (process.env.BOOTSTRAP_TOKEN || "").trim(),
@@ -69,7 +69,7 @@ export const env = {
   MPESA_PASSKEY: (process.env.MPESA_PASSKEY || "").trim(),
   MPESA_SHORTCODE: (process.env.MPESA_SHORTCODE || "").trim(),
   MPESA_ENVIRONMENT: (process.env.MPESA_ENVIRONMENT || "sandbox").trim().toLowerCase(),
-  MPESA_CALLBACK_SECRET: (process.env.MPESA_CALLBACK_SECRET || "test-callback-secret-0123456789abcdef").trim(),
+  MPESA_CALLBACK_SECRET: (process.env.MPESA_CALLBACK_SECRET || "").trim(),
 
   // --- Paystack (card / bank / mobile-money deposits; KES) ---
   PAYSTACK_SECRET_KEY: (process.env.PAYSTACK_SECRET_KEY || "").trim(),
@@ -132,8 +132,8 @@ if (env.RATE_LIMIT_STORE === "upstash") {
 }
 
 if (env.AUTH_PROVIDER === "legacy") {
-  if (!env.AUTH_SECRET || env.AUTH_SECRET.length < 32 || env.AUTH_SECRET === "rolling-razors-kenya-customs-secret-key-2026") {
-    const msg = "[SECURITY] AUTH_SECRET is weak/default — set a strong 32+ char secret (or switch to AUTH_PROVIDER=clerk)!";
+  if (!env.AUTH_SECRET || env.AUTH_SECRET.length < 32) {
+    const msg = "[SECURITY] AUTH_SECRET is missing or too weak — set a strong 32+ char secret (or switch to AUTH_PROVIDER=clerk)!";
     if (env.NODE_ENV === "production") throw new Error(msg);
     console.warn(msg);
   }

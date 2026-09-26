@@ -28,9 +28,8 @@ services:
       DATABASE_URL: postgresql://rolling_razors:rolling_razors_pass@postgres:5432/rolling_razors
       DATABASE_ENGINE: postgres
       NODE_ENV: production
-      # bcrypt hash of the documented default dev password "RollingRazors@2026!".
-      # Override with your own hash for anything beyond local use.
-      ADMIN_PASSWORD: $2b$12$U.1fCHyed1ayUSm3mKT.cu3EKo6.iRLK.lCTJ8FfvP2tGejdFad8a
+      # Set this to a unique bcrypt hash in your ignored local .env file.
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD to a unique bcrypt hash}
       PORT: 3000
     ports:
       - "3000:3000"

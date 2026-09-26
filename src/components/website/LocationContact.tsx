@@ -120,12 +120,12 @@ export const LocationContact: React.FC = () => {
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
-                loading="lazy"
+                loading="eager"
                 referrerPolicy="no-referrer-when-downgrade"
                 allowFullScreen
               />
               <div className="absolute top-4 left-4 bg-ink border border-white/10 backdrop-blur-md px-3 py-1.5 rounded-lg text-[11px] text-white/90 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-gold" /> {BUSINESS_CONFIG.location.city} Workshop • {BUSINESS_CONFIG.location.coordinates.lat.toFixed(4)}, {BUSINESS_CONFIG.location.coordinates.lng.toFixed(4)}
+                <MapPin className="w-3.5 h-3.5 text-gold" /> {BUSINESS_CONFIG.location.city} Workshop • {BUSINESS_CONFIG.location.coordinates.lat.toFixed(7)}, {BUSINESS_CONFIG.location.coordinates.lng.toFixed(7)}
               </div>
               <button onClick={handleDirections} className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-gold text-ink border-2 border-white px-4 py-1.5 rounded-full text-xs font-black shadow-xl flex items-center gap-1.5 hover:bg-gold-hover transition-colors">
                 <MapPin className="w-3.5 h-3.5" /> Open in Google Maps

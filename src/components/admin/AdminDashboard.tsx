@@ -344,7 +344,7 @@ export const AdminDashboard: React.FC = () => {
           <main className="min-w-0 px-4 py-6 sm:px-6 lg:px-9 lg:py-9">
             <header className="mb-7 flex flex-col justify-between gap-4 border-b border-white/10 pb-6 sm:flex-row sm:items-end">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[.2em] text-gold">Workshop / Nairobi</p>
+                <p className="text-[10px] font-bold uppercase tracking-[.2em] text-gold">Workshop / Narok</p>
                 <div className="mt-2 flex flex-wrap items-center gap-3">
                   <h1 className="font-display text-3xl font-black tracking-tight text-white sm:text-4xl">{pageTitle}</h1>
                   <span className="rounded-full border border-gold/30 bg-gold/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-gold">{STAFF_ROLE_LABEL[role as StaffRole] || role}</span>

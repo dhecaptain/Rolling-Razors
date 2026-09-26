@@ -15,7 +15,6 @@ import { LegalModal } from './components/common/LegalModal';
 import { CookieConsentBanner } from './components/common/CookieConsentBanner';
 import { ForcePasswordChangeModal } from './components/auth/ForcePasswordChangeModal';
 import { trackPageView } from './lib/analytics';
-const AdminAuthView = lazy(() => import('./components/auth/AdminAuthView').then(m => ({ default: m.AdminAuthView })));
 
 /** Rendered when a non-staff user attempts to access a staff-only view. */
 const AccessDenied: React.FC = () => {
@@ -61,7 +60,7 @@ const MainContent: React.FC = () => {
 
   useEffect(() => {
     const titles: Record<string, string> = {
-      website: 'Rolling Razors Customs | Automotive Upholstery Nairobi',
+      website: 'Rolling Razors Customs | Automotive Upholstery Narok',
       booking: 'Book a Custom Interior Service | Rolling Razors Customs',
       customer_dashboard: 'Driver Portal | Rolling Razors Customs',
       admin_dashboard: 'Workshop Hub | Rolling Razors Customs',
@@ -102,7 +101,7 @@ const MainContent: React.FC = () => {
           {view === 'admin_dashboard' && !denied && <AdminDashboard />}
           {view === 'admin_dashboard' && denied && <AccessDenied />}
           {view === 'auth' && <AuthView />}
-          {view === 'admin_auth' && !customerAtAdminAuth && <AdminAuthView />}
+          {view === 'admin_auth' && !customerAtAdminAuth && <AuthView />}
           {view === 'admin_auth' && customerAtAdminAuth && <AccessDenied />}
         </Suspense>
       </main>

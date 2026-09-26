@@ -29,10 +29,8 @@ jobs:
     env:
       DATABASE_URL: postgresql://rolling_razors:rolling_razors_pass@localhost:5435/rolling_razors_test
       DATABASE_ENGINE: postgres
-      AUTH_SECRET: test-secret-32chars-long-for-ci-only
-      ADMIN_EMAIL: james@rollingrazors.co.ke
-      ADMIN_PHONE: "+254 712 345 678"
-      ADMIN_PASSWORD: RollingRazors@2026!
+      ADMIN_EMAIL: owner@rollingrazors.test
+      ADMIN_PHONE: "+254 700 000 001"
       NODE_ENV: test
     steps:
       - uses: actions/checkout@v4
@@ -41,6 +39,16 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - name: Generate disposable test credentials
+        shell: bash
+        run: |
+          test_admin_password="$(openssl rand -base64 32 | tr -d '\n')"
+          {
+            echo "AUTH_SECRET=$(openssl rand -hex 32)"
+            echo "ADMIN_PASSWORD=$test_admin_password"
+            echo "SEED_ADMIN_PASSWORD=$test_admin_password"
+            echo "MPESA_CALLBACK_SECRET=$(openssl rand -hex 32)"
+          } >> "$GITHUB_ENV"
       - run: npx prisma migrate deploy
       - run: npx prisma generate
       - run: npm run db:seed

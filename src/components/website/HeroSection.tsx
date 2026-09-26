@@ -1,5 +1,5 @@
 import React from 'react';
-import { useApp } from '../../context/AppContext';
+import { isStaff, useApp } from '../../context/AppContext';
 import { 
   CheckCircle2, 
   ArrowRight, 
@@ -14,7 +14,8 @@ import { QuickBookingWidget } from './QuickBookingWidget';
 import { cdnUrl } from '../../utils/image';
 
 export const HeroSection: React.FC = () => {
-  const { setView, setBookingWizardInitialServiceId } = useApp();
+  const { currentUser, setView, setBookingWizardInitialServiceId } = useApp();
+  const canBook = !(currentUser && isStaff(currentUser.role));
 
   const handleBookNow = () => {
     setBookingWizardInitialServiceId(null);
@@ -77,14 +78,14 @@ export const HeroSection: React.FC = () => {
 
             {/* CTAs */}
             <div className="flex flex-wrap items-center gap-4 pt-2">
-              <button
+              {canBook && <button
                 id="hero-primary-book-btn"
                 onClick={handleBookNow}
                 className="py-3.5 px-7 rounded-xl bg-gold hover:bg-gold-hover text-ink font-black text-sm uppercase tracking-wider flex items-center gap-2.5 shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-0.5 cursor-pointer"
               >
                 <span>Book a Service</span>
                 <ArrowRight className="w-4 h-4" />
-              </button>
+              </button>}
 
               <button
                 id="hero-secondary-explore-btn"

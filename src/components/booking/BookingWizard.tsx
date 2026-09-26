@@ -681,7 +681,7 @@ export const BookingWizard: React.FC = () => {
                     }`}
                   >
                     <div className="font-bold text-xs">Rolling Razors Workshop</div>
-                    <div className="text-[11px] text-white/60">Industrial Area / Mombasa Road, Nairobi</div>
+                    <div className="text-[11px] text-white/60">Narok, Kenya</div>
                   </button>
 
                   <button
@@ -704,7 +704,7 @@ export const BookingWizard: React.FC = () => {
                       type="text"
                       value={customerLocationAddress}
                       onChange={(e) => setCustomerLocationAddress(e.target.value)}
-                      placeholder="Enter your exact estate/location in Nairobi (e.g. Westlands, Kilimani, Karen)"
+                      placeholder="Enter your exact estate/location in Kenya (e.g. Narok, Nairobi, Nakuru)"
                       className="w-full py-2.5 px-3.5 rounded-xl bg-ink border border-gold text-cream text-xs"
                     />
                   </div>

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { randomBytes } from "node:crypto";
 import type { APIRequestContext } from "@playwright/test";
 import { registerCustomer, loginAdmin, TEST_PASSWORD, uniqueAppointment } from "./helpers";
 
@@ -102,16 +103,17 @@ test.describe("Admin bootstrap & staff lifecycle", () => {
     const loginBody = await login.json();
     expect(loginBody.user.mustChangePassword).toBe(true);
 
+    const freshPassword = randomBytes(24).toString("base64url");
     // Wrong current passcode is rejected before any change happens
     const wrongCurrent = await member.post("/api/auth/change-password", {
-      data: { currentPassword: "NotTheTempPass", newPassword: "FreshPass!234" },
+      data: { currentPassword: randomBytes(24).toString("base64url"), newPassword: freshPassword },
     });
     expect(wrongCurrent.status()).toBe(401);
     expect((await wrongCurrent.json()).error).toMatch(/incorrect/i);
 
-    // Change to a real password: flag clears, directory row activates, new token issued
+    // Change to a fresh test-only password: flag clears, directory row activates, new token issued
     const changed = await member.post("/api/auth/change-password", {
-      data: { currentPassword: temp, newPassword: "FreshPass!234" },
+      data: { currentPassword: temp, newPassword: freshPassword },
     });
     expect(changed.status(), `change-password failed: ${await changed.text()}`).toBe(200);
     expect((await changed.json()).user.mustChangePassword).toBe(false);
@@ -125,7 +127,7 @@ test.describe("Admin bootstrap & staff lifecycle", () => {
     expect(staleTemp.status()).toBe(401);
 
     const fresh = await playwright.request.newContext();
-    const freshLogin = await fresh.post("/api/auth/admin/login", { data: { identifier: staff.email, password: "FreshPass!234" } });
+    const freshLogin = await fresh.post("/api/auth/admin/login", { data: { identifier: staff.email, password: freshPassword } });
     expect(freshLogin.status(), `new-password login failed: ${await freshLogin.text()}`).toBe(200);
     expect((await freshLogin.json()).user.mustChangePassword).toBe(false);
 

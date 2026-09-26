@@ -27,6 +27,7 @@ export const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [authDropdownOpen, setAuthDropdownOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('');
+  const staffSession = Boolean(isLoggedIn && currentUser && isStaff(currentUser.role));
 
   useEffect(() => {
     if (view !== 'website') return;
@@ -129,12 +130,9 @@ export const Navbar: React.FC = () => {
                 {isStaff(currentUser.role) ? 'Workshop hub' : 'Driver garage'}
               </button>
             ) : (
-              <>
-                <button id="nav-driver-signin-btn" type="button" onClick={() => openAuth('customer')} className="hidden min-h-11 items-center gap-2 rounded-full border border-cream px-4 py-2 text-[12px] font-bold text-cream transition-colors hover:border-gold hover:text-gold sm:inline-flex"><UserRound aria-hidden="true" className="h-3.5 w-3.5" />Driver sign in</button>
-                <button id="nav-workshop-staff-btn" type="button" onClick={() => openAuth('admin')} aria-label="Workshop staff sign in" title="Workshop staff sign in" className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-cream text-cream transition-colors hover:border-gold hover:text-gold"><ShieldAlert aria-hidden="true" className="h-4 w-4" /></button>
-              </>
+              <button id="nav-signin-btn" type="button" onClick={() => openAuth('customer')} className="hidden min-h-11 items-center gap-2 rounded-full border border-cream px-4 py-2 text-[12px] font-bold text-cream transition-colors hover:border-gold hover:text-gold sm:inline-flex"><UserRound aria-hidden="true" className="h-3.5 w-3.5" />Sign in</button>
             )}
-            <button type="button" onClick={startBooking} className="rr-button-gold inline-flex h-11 items-center gap-2 px-5 text-[12px] font-black tracking-[.08em]">BOOK A FITTING <ArrowUpRightIcon /></button>
+            {!staffSession && <button type="button" onClick={startBooking} className="rr-button-gold inline-flex h-11 items-center gap-2 px-5 text-[12px] font-black tracking-[.08em]">BOOK A FITTING <ArrowUpRightIcon /></button>}
             {isLoggedIn && currentUser && (
               <div className="relative">
                 <button id="user-profile-menu-btn" type="button" onClick={() => setAuthDropdownOpen((open) => !open)} aria-expanded={authDropdownOpen} aria-label="Account menu" className="flex h-11 items-center gap-2 rounded-full border border-cream px-2 text-[11px] text-cream">
@@ -155,7 +153,7 @@ export const Navbar: React.FC = () => {
 
           {/* Mobile control cluster */}
           <div className="flex items-center gap-2 lg:hidden">
-            <button type="button" onClick={startBooking} className="rr-button-gold h-11 px-4 text-[12px] font-black uppercase">Book</button>
+            {!staffSession && <button type="button" onClick={startBooking} className="rr-button-gold h-11 px-4 text-[12px] font-black uppercase">Book</button>}
             <button
               id="mobile-menu-toggle-btn"
               type="button"
@@ -214,10 +212,10 @@ export const Navbar: React.FC = () => {
                 {label}
               </button>
             ))}
-            <button type="button" onClick={() => { closeMobileMenu(); startBooking(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-black text-ink transition-colors hover:bg-gold-hover bg-gold">
+            {!staffSession && <button type="button" onClick={() => { closeMobileMenu(); startBooking(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-black text-ink transition-colors hover:bg-gold-hover bg-gold">
               <ArrowUpRight className="h-5 w-5" />
               Book a Fitting
-            </button>
+            </button>}
           </div>
 
           {/* Account Area */}
@@ -245,10 +243,7 @@ export const Navbar: React.FC = () => {
           ) : (
             <div className="mt-6 space-y-1.5 border-t border-cream pt-4">
               <button type="button" onClick={() => { closeMobileMenu(); openAuth('customer'); }} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gold py-3 text-xs font-black uppercase tracking-wider text-ink transition-colors hover:bg-gold-hover">
-                <UserRound className="h-4 w-4" /> Driver sign in
-              </button>
-              <button type="button" onClick={() => { closeMobileMenu(); openAuth('admin'); }} className="flex w-full items-center justify-center gap-2 rounded-xl border border-cream py-3 text-xs font-bold text-cream transition-colors hover:border-gold hover:text-gold">
-                <ShieldAlert className="h-4 w-4" /> Workshop staff
+                <UserRound className="h-4 w-4" /> Sign in
               </button>
               <a href={BUSINESS_CONFIG.phone.telLink} className="flex w-full items-center justify-center gap-2 rounded-xl border border-gold py-3 text-xs font-bold text-gold transition-colors hover:bg-gold-hover hover:text-ink">
                 <PhoneCall className="h-4 w-4" /> Call {BUSINESS_CONFIG.phone.formatted}

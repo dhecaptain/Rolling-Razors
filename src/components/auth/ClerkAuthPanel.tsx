@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { SignIn, SignUp } from '@clerk/react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { ArrowLeft, ShieldAlert, Lock } from 'lucide-react';
@@ -94,10 +94,16 @@ const clerkAppearance = {
 export const ClerkAuthPanel: React.FC<ClerkAuthPanelProps> = ({ admin = false }) => {
   const { setView, currentUser, isLoggedIn, authReturnView } = useApp();
   const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn');
+  const [staffMode, setStaffMode] = useState(admin);
   const reduce = useReducedMotion();
 
+  useEffect(() => {
+    setStaffMode(admin);
+    setMode('signIn');
+  }, [admin]);
+
   // A signed-in customer must never be presented the workshop (admin) sign-in.
-  if (admin && isLoggedIn && currentUser && !isStaff(currentUser.role)) {
+  if (staffMode && isLoggedIn && currentUser && !isStaff(currentUser.role)) {
     return (
       <div
         id="admin-auth-page"
@@ -125,7 +131,7 @@ export const ClerkAuthPanel: React.FC<ClerkAuthPanelProps> = ({ admin = false })
 
   return (
     <motion.div
-      id={admin ? 'admin-auth-page' : 'auth-portal-page'}
+      id="auth-portal-page"
       initial={reduce ? { opacity: 1 } : { opacity: 0 }}
       animate={{ opacity: 1 }}
       className="rr-auth-page relative flex min-h-screen items-center justify-center overflow-hidden bg-paper px-4 pb-16 pt-24 text-ink"
@@ -135,16 +141,16 @@ export const ClerkAuthPanel: React.FC<ClerkAuthPanelProps> = ({ admin = false })
       <motion.div aria-hidden="true" className="pointer-events-none absolute -bottom-32 -right-20 h-96 w-96 rounded-full border border-gold" animate={reduce ? {} : { rotate: 360 }} transition={reduce ? {} : { duration: 32, repeat: Infinity, ease: 'linear' }} />
       <div className="relative z-10 grid w-full max-w-5xl items-center gap-12 lg:grid-cols-[.85fr_1fr]">
         <motion.div initial={reduce ? { opacity: 1 } : { opacity: 0, x: -28 }} animate={{ opacity: 1, x: 0 }} transition={reduce ? {} : { duration: .7, ease: [0.22, 1, .36, 1] }} className="hidden lg:block">
-          <p className="rr-label text-gold">{admin ? 'Workshop access' : 'Your vehicle, your account'}</p>
+          <p className="rr-label text-gold">{staffMode ? 'Workshop access' : 'Your vehicle, your account'}</p>
           <h1 className="mt-5 max-w-md text-5xl font-black leading-[.98] tracking-[-.05em] text-cream">
-            {admin ? 'Keep the workshop moving.' : 'Your next interior starts here.'}
+            {staffMode ? 'Keep the workshop moving.' : 'Your next interior starts here.'}
           </h1>
           <p className="mt-6 max-w-sm text-sm leading-7 text-cream">
-            {admin ? 'A secure workspace for managing appointments, work orders, materials, and customer handoffs.' : 'Sign in once to save your build direction, follow workshop progress, and keep every booking in one place.'}
+            {staffMode ? 'A secure workspace for managing appointments, work orders, materials, and customer handoffs.' : 'Sign in once to save your build direction, follow workshop progress, and keep every booking in one place.'}
           </p>
           <div className="mt-8 flex flex-wrap gap-2 text-[11px] font-bold text-cream">
             <span className="rounded-full border border-gold bg-panel px-3 py-2">Encrypted session</span>
-            <span className="rounded-full border border-cream bg-panel px-3 py-2">{admin ? 'Staff only' : 'Booking continuity'}</span>
+            <span className="rounded-full border border-cream bg-panel px-3 py-2">{staffMode ? 'Staff only' : 'Booking continuity'}</span>
           </div>
         </motion.div>
         <div className="w-full max-w-md justify-self-center lg:max-w-lg">
@@ -156,7 +162,7 @@ export const ClerkAuthPanel: React.FC<ClerkAuthPanelProps> = ({ admin = false })
             <ArrowLeft className="w-3.5 h-3.5" /> Back to {authReturnView === 'booking' ? 'Booking' : 'Website'}
           </button>
           <span className="text-[11px] text-white/50 font-mono flex items-center gap-1">
-            {admin ? <><Lock className="w-3 h-3 text-whatsapp" /> Workshop Isolated</> : <><Lock className="w-3 h-3 text-whatsapp" /> Secured by Clerk</>}
+            <><Lock className="w-3 h-3 text-whatsapp" /> Secured by Clerk</>
           </span>
         </div>
 
@@ -164,26 +170,18 @@ export const ClerkAuthPanel: React.FC<ClerkAuthPanelProps> = ({ admin = false })
           <Logo variant="light" size="md" showTagline={false} />
         </motion.div>
 
-        {admin ? (
-          <div className="text-center space-y-1">
-            <h2 className="text-2xl font-black font-display text-white">Workshop Operations Hub</h2>
-            <p className="text-xs text-white/70 flex items-center justify-center gap-1.5">
-              <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-              Restricted to authorized Rolling Razors staff.
-            </p>
-          </div>
-        ) : (
-          <div className="text-center space-y-1">
-            <h2 className="text-2xl font-black font-display text-white">
-              {mode === 'signIn' ? 'Driver Portal Sign In' : 'Create Driver Account'}
-            </h2>
-            <p className="text-xs text-white/70">
-              Track stitching status, view invoices, and settle M-Pesa deposits.
-            </p>
-          </div>
-        )}
+        <div className="text-center space-y-1">
+          <h2 className="text-2xl font-black font-display text-white">{staffMode ? 'Staff sign in' : mode === 'signIn' ? 'Driver sign in' : 'Create driver account'}</h2>
+          <p className="text-xs text-white/70">{staffMode ? 'Restricted to authorized Rolling Razors staff.' : 'Track bookings, vehicle progress, and payments.'}</p>
+        </div>
 
-        {!admin && (
+        <div className="mx-auto mt-5 flex w-full max-w-xs rounded-2xl border border-white/10 bg-ink p-1.5" role="tablist" aria-label="Account type">
+          {[false, true].map((staff) => (
+            <motion.button key={staff ? 'staff' : 'driver'} type="button" role="tab" aria-selected={staffMode === staff} onClick={() => { setStaffMode(staff); setMode('signIn'); }} whileTap={reduce ? {} : { scale: 0.98 }} className={`flex-1 rounded-xl px-3 py-2 text-[11px] font-black uppercase tracking-wider ${staffMode === staff ? 'bg-gold text-ink' : 'text-white/55 hover:text-white'}`}>{staff ? 'Staff' : 'Driver'}</motion.button>
+          ))}
+        </div>
+
+        {!staffMode && (
           <div className="mx-auto mt-5 flex w-full max-w-xs rounded-2xl border border-white/10 bg-ink p-1.5" role="tablist" aria-label="Authentication mode">
             {(['signIn', 'signUp'] as const).map((option) => (
               <motion.button
@@ -207,7 +205,7 @@ export const ClerkAuthPanel: React.FC<ClerkAuthPanelProps> = ({ admin = false })
         <div className="relative overflow-hidden rounded-[28px] border border-gold bg-panel p-5 shadow-[0_24px_80px_rgba(0,0,0,.3)] backdrop-blur-xl sm:p-7">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div key={mode} initial={reduce ? { opacity: 1 } : { opacity: 0, x: mode === 'signIn' ? -16 : 16 }} animate={{ opacity: 1, x: 0 }} exit={reduce ? { opacity: 0 } : { opacity: 0, x: mode === 'signIn' ? 16 : -16 }} transition={reduce ? { duration: 0 } : { duration: .28, ease: [0.22, 1, .36, 1] }}>
-              {mode === 'signIn' ? <SignIn routing="hash" appearance={clerkAppearance} /> : <SignUp routing="hash" appearance={clerkAppearance} />}
+              {staffMode || mode === 'signIn' ? <SignIn routing="hash" appearance={clerkAppearance} /> : <SignUp routing="hash" appearance={clerkAppearance} />}
             </motion.div>
           </AnimatePresence>
         </div>

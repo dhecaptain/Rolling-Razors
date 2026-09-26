@@ -1,4 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
+import { randomBytes } from "node:crypto";
+
+// Disposable test-only credentials; never reuse these outside E2E.
+process.env.AUTH_SECRET ||= randomBytes(32).toString("hex");
+process.env.ADMIN_EMAIL ||= "owner@rollingrazors.test";
+process.env.ADMIN_PHONE ||= "+254700000001";
+process.env.ADMIN_PASSWORD ||= randomBytes(24).toString("base64url");
+process.env.MPESA_CALLBACK_SECRET ||= randomBytes(32).toString("hex");
 
 export default defineConfig({
   testDir: "./e2e",
@@ -24,14 +32,11 @@ export default defineConfig({
       DATABASE_URL: process.env.DATABASE_URL || "postgresql://rolling_razors:rolling_razors_pass@localhost:5435/rolling_razors",
       // Locally the mock engine needs no Postgres; CI sets DATABASE_ENGINE=postgres.
       DATABASE_ENGINE: process.env.DATABASE_ENGINE || "mock",
-      AUTH_SECRET: process.env.AUTH_SECRET || "test-secret-32chars-long-for-ci-only",
-      // Mirrors server/env.ts defaults so the same owner credentials work in the
-      // mock engine, the local Postgres seed, and CI regardless of engine.
-      ADMIN_EMAIL: process.env.ADMIN_EMAIL || "james@rollingrazors.co.ke",
-      ADMIN_PHONE: process.env.ADMIN_PHONE || "+254 712 345 678",
-      ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || "RollingRazors@2026!",
-      // Enables fail-closed callback auth tests in mpesa.spec.ts.
-      MPESA_CALLBACK_SECRET: "test-callback-secret-0123456789abcdef",
+      AUTH_SECRET: process.env.AUTH_SECRET,
+      ADMIN_EMAIL: process.env.ADMIN_EMAIL,
+      ADMIN_PHONE: process.env.ADMIN_PHONE,
+      ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
+      MPESA_CALLBACK_SECRET: process.env.MPESA_CALLBACK_SECRET,
       // Tests use the legacy provider unless a Clerk test instance is configured.
       AUTH_PROVIDER: process.env.AUTH_PROVIDER || "legacy",
       VITE_AUTH_PROVIDER: process.env.VITE_AUTH_PROVIDER || "legacy",

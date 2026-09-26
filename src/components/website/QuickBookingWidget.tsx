@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useApp } from '../../context/AppContext';
+import { isStaff, useApp } from '../../context/AppContext';
 import { 
   Calendar as CalendarIcon, 
   Clock, 
@@ -12,7 +12,8 @@ import {
 import { VehicleType } from '../../types';
 
 export const QuickBookingWidget: React.FC = () => {
-  const { services, setView, setBookingWizardInitialServiceId, setBookingWizardDraft } = useApp();
+  const { services, currentUser, setView, setBookingWizardInitialServiceId, setBookingWizardDraft } = useApp();
+  if (currentUser && isStaff(currentUser.role)) return null;
 
   const [serviceId, setServiceId] = useState<string>(services[0]?.id || 'srv-1');
   const [vehicleType, setVehicleType] = useState<VehicleType>('Car');
@@ -172,7 +173,7 @@ export const QuickBookingWidget: React.FC = () => {
               </div>
               <div>
                 <span className="block leading-tight">Rolling Razors Workshop</span>
-                <span className="text-[10px] text-white/50 font-normal">Nairobi Location</span>
+                <span className="text-[10px] text-white/50 font-normal">Narok Workshop</span>
               </div>
             </button>
 
