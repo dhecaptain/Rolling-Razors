@@ -100,6 +100,7 @@ interface AppContextType {
   /** True while the auth provider's session is still being resolved server-side. */
   authVerifying: boolean;
   clerkLoaded: boolean;
+  clerkLoadTimedOut: boolean;
   authFetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
   
   // Data Collections
@@ -222,6 +223,7 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
   // Clerk sessions are resolved from the Clerk SDK + /api/auth/sync).
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [clerkSyncComplete, setClerkSyncComplete] = useState(false);
+  const [clerkLoadTimedOut, setClerkLoadTimedOut] = useState(false);
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
@@ -303,6 +305,17 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
   // --- Clerk session synchronization (server-verified via /api/auth/sync) ---
   const clerkUserId = clerk?.user?.id;
   const clerkLoaded = Boolean(clerk?.isLoaded);
+
+  // A Clerk frontend API domain/DNS failure can leave isLoaded false forever.
+  // Keep public browsing available and expose a recoverable sign-in notice.
+  useEffect(() => {
+    if (!clerkMode || clerkLoaded) {
+      setClerkLoadTimedOut(false);
+      return;
+    }
+    const timeout = window.setTimeout(() => setClerkLoadTimedOut(true), 10_000);
+    return () => window.clearTimeout(timeout);
+  }, [clerkMode, clerkLoaded]);
 
   useEffect(() => {
     if (!clerkMode || !clerk || !clerk.isLoaded) return;
@@ -1486,10 +1499,11 @@ const AppProviderInner: React.FC<{ children: React.ReactNode; clerk?: ClerkApi }
         authProvider: clerkEnabled ? 'clerk' : 'legacy',
         authVerifying: clerkMode
           ? clerk
-            ? !(clerk.isLoaded && (!clerk.isSignedIn || clerkSyncComplete))
-            : true
+            ? !(clerk.isLoaded && (!clerk.isSignedIn || clerkSyncComplete)) && !clerkLoadTimedOut
+            : !clerkLoadTimedOut
           : legacyVerifying,
         clerkLoaded: clerkMode ? Boolean(clerk?.isLoaded) : true,
+        clerkLoadTimedOut,
         authFetch,
         services,
         bookings,

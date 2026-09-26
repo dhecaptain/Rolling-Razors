@@ -43,7 +43,7 @@ const AccessDenied: React.FC = () => {
 };
 
 const MainContent: React.FC = () => {
-  const { view, currentUser, authVerifying, isLoggedIn, setView, legalModal, closeLegalModal, setLegalModalType } = useApp();
+  const { view, currentUser, authVerifying, clerkLoadTimedOut, isLoggedIn, setView, legalModal, closeLegalModal, setLegalModalType } = useApp();
 
   // While Clerk (or legacy boot re-verification) resolves the authenticated
   // identity server-side, do not render any dashboard. This prevents a flash of
@@ -92,6 +92,14 @@ const MainContent: React.FC = () => {
 
       {/* Dynamic Main View */}
       <main id="main-content" className="flex-1">
+        {clerkLoadTimedOut && (
+          <div role="status" className="border-b border-gold/30 bg-panel px-5 py-3 text-center text-sm text-cream/80">
+            Sign-in is temporarily unavailable. You can continue browsing; please try again later.
+            <button type="button" onClick={() => window.location.reload()} className="ml-2 min-h-11 px-2 font-bold text-gold underline underline-offset-4">
+              Retry
+            </button>
+          </div>
+        )}
         {view === 'website' && <InspectionBayLanding />}
 
         {view === 'booking' && <button type="button" onClick={() => setView('website')} className="mx-5 mt-24 min-h-11 text-left text-sm font-bold text-gold">← Back to site</button>}
